@@ -1,0 +1,42 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2466"/>
+      <stop offset="1" stop-color="#14102b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.6">
+      <stop offset="0" stop-color="#9b5de5" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#9b5de5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.18"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+
+  <!-- Bottle -->
+  <g transform="translate(166 96)">
+    <!-- liquid layers, clipped to the bottle body -->
+    <clipPath id="body">
+      <path d="M0 70 a90 90 0 0 1 180 0 L180 250 a90 90 0 0 1 -180 0 Z"/>
+    </clipPath>
+    <g clip-path="url(#body)">
+      <rect x="-10" y="40"  width="200" height="70" fill="#e23d54"/>
+      <rect x="-10" y="110" width="200" height="70" fill="#f5a623"/>
+      <rect x="-10" y="180" width="200" height="70" fill="#21bf73"/>
+      <rect x="-10" y="250" width="200" height="90" fill="#3a7bd5"/>
+      <!-- glossy highlight -->
+      <rect x="22" y="40" width="22" height="300" rx="11" fill="#ffffff" opacity="0.25"/>
+    </g>
+    <!-- glass outline -->
+    <path d="M0 70 a90 90 0 0 1 180 0 L180 250 a90 90 0 0 1 -180 0 Z"
+          fill="url(#glass)" stroke="#ffffff" stroke-opacity="0.7" stroke-width="10"/>
+    <!-- neck + cork -->
+    <rect x="58" y="-30" width="64" height="64" rx="14" fill="#2a1a4a" stroke="#ffffff" stroke-opacity="0.7" stroke-width="10"/>
+    <rect x="50" y="-44" width="80" height="26" rx="13" fill="#ffd166"/>
+  </g>
+</svg>

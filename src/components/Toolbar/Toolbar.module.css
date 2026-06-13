@@ -1,0 +1,39 @@
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.stats {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.stat {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.stat b {
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.tools,
+.difficulty {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.difficulty .active {
+  background: var(--accent);
+  color: #2a1a4a;
+  border-color: var(--accent-strong);
+  font-weight: 600;
+}

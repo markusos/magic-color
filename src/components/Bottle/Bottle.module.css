@@ -1,0 +1,49 @@
+.bottle {
+  position: relative;
+  width: var(--bottle-width);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.glass {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(255, 255, 255, 0.55);
+  border-top: none;
+  border-radius: 6px 6px var(--radius-md) var(--radius-md);
+  background: var(--glass);
+  overflow: hidden;
+  backdrop-filter: blur(2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 0 12px rgba(255, 255, 255, 0.08);
+}
+
+/* Glass highlight stripe */
+.glass::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  width: 8px;
+  height: calc(100% - 16px);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05));
+  pointer-events: none;
+}
+
+.liquidColumn {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column-reverse; /* array index 0 renders at the bottom */
+}
+
+.target .glass {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.3);
+}

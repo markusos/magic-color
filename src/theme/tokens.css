@@ -1,0 +1,83 @@
+/* Global design tokens + base reset for the magical color-sort UI. */
+:root {
+  --bg-top: #2a1a4a;
+  --bg-bottom: #14102b;
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-border: rgba(255, 255, 255, 0.14);
+  --text: #f4f1ff;
+  --text-dim: #b9b2d6;
+  --accent: #ffd166;
+  --accent-strong: #ffb703;
+  --danger: #ff5d73;
+  --success: #4ade80;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --bottle-width: 56px;
+  --segment-height: 40px;
+  --glass: rgba(255, 255, 255, 0.1);
+
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+/* Solid backstop that matches the bottom of the gradient, so the iOS safe areas
+   (status bar / home indicator) never reveal the default white page background. */
+html {
+  background-color: var(--bg-bottom);
+}
+
+body {
+  /* Fill the dynamic viewport (handles the iOS toolbar/safe-area resize). */
+  min-height: 100dvh;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(155, 93, 229, 0.35), transparent 60%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* Base button styling, shared across the app. */
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

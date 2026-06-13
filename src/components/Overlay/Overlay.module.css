@@ -1,0 +1,53 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 26, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.panel {
+  background: linear-gradient(180deg, #34245c, #221a40);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-align: center;
+  width: min(90vw, 360px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.win {
+  margin: 0 0 var(--space-2);
+  color: var(--success);
+}
+
+.fail {
+  margin: 0 0 var(--space-2);
+  color: var(--danger);
+}
+
+.sub {
+  color: var(--text-dim);
+  margin: 0 0 var(--space-4);
+}
+
+.dim {
+  opacity: 0.7;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.primary {
+  background: var(--accent);
+  color: #2a1a4a;
+  border-color: var(--accent-strong);
+  font-weight: 600;
+}
