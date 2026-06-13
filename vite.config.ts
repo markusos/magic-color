@@ -5,9 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
-  // GitHub Pages serves project sites from a subpath: https://<user>.github.io/magic-color/
-  // The base makes all asset, manifest, and service-worker paths resolve under it.
-  base: '/magic-color/',
+  // Relative base so the app works at BOTH the default Pages subpath
+  // (https://<user>.github.io/magic-color/) AND a root custom domain
+  // (https://magic-color.ostberg.dev/) with no reconfiguration. All asset, manifest,
+  // and service-worker paths are emitted relative to the document.
+  base: './',
   plugins: [
     react(),
     // Installable PWA + offline support (Workbox service worker precaches the build).
