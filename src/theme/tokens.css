@@ -36,18 +36,21 @@ html,
 body,
 #root {
   margin: 0;
-  min-height: 100%;
+  height: var(--app-height, 100%);
 }
 
 /* Solid backstop that matches the bottom of the gradient, so the iOS safe areas
    (status bar / home indicator) never reveal the default white page background. */
 html {
   background-color: var(--bg-bottom);
+  /* Stop the iOS rubber-band drag that revealed the short-launch layout. */
+  overscroll-behavior: none;
 }
 
 body {
-  /* Fill the dynamic viewport (handles the iOS toolbar/safe-area resize). */
-  min-height: 100dvh;
+  /* Lock to the viewport: no scroll, no overscroll. */
+  overflow: hidden;
+  overscroll-behavior: none;
   color: var(--text);
   background:
     radial-gradient(1200px 600px at 50% -10%, rgba(155, 93, 229, 0.35), transparent 60%),

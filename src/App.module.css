@@ -1,6 +1,8 @@
 .app {
-  /* Lock to the viewport and never scroll — the board sizes itself to fit. */
-  height: 100dvh;
+  /* Lock to the viewport and never scroll — the board sizes itself to fit.
+     --app-height (window.innerHeight, set in main.tsx) avoids the iOS standalone
+     100dvh launch bug; 100dvh is the fallback for first paint / non-JS. */
+  height: var(--app-height, 100dvh);
   overflow: hidden;
   display: flex;
   flex-direction: column;
