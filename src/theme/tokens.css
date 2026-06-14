@@ -60,6 +60,17 @@ body {
   user-select: none;
 }
 
+/* iOS standalone (home-screen) mis-measures vh/dvh and innerHeight at launch, leaving a
+   gap at the bottom. -webkit-fill-available fills the real screen height there. Scoped to
+   standalone so the working normal-browser (innerHeight/dvh) path is untouched. */
+@media all and (display-mode: standalone) {
+  html,
+  body,
+  #root {
+    height: -webkit-fill-available;
+  }
+}
+
 /* Base button styling, shared across the app. */
 button {
   font: inherit;

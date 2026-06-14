@@ -12,6 +12,13 @@
     calc(var(--space-3) + env(safe-area-inset-bottom));
 }
 
+/* iOS standalone: fill the real screen height (see tokens.css note). */
+@media all and (display-mode: standalone) {
+  .app {
+    height: -webkit-fill-available;
+  }
+}
+
 .header {
   flex-shrink: 0;
   text-align: center;
