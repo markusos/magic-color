@@ -48,15 +48,17 @@ export function mulberry32(seed: number): () => number {
 
 /**
  * Whether a (colors, bottles, capacity) combo is in the known-good, efficiently
- * solvable space. Requires at least one empty bottle; we cap empties at 2 (the
- * mobile-genre standard) and colors at the palette size to keep the solver fast.
+ * solvable space. Requires at least one empty bottle and caps colors at the palette
+ * size. Note: with only 1 empty, random shuffles are frequently unsolvable, so the
+ * generator's rejection sampling churns — callers should prefer >= 2 empties for fast,
+ * reliable generation (see the tier presets in levels.ts).
  */
 export function isValidCombo(colors: number, bottles: number, capacity = DEFAULT_CAPACITY): boolean {
   if (!Number.isInteger(colors) || !Number.isInteger(bottles)) return false;
   if (capacity < 2) return false;
   if (colors < 2 || colors > MAX_COLORS) return false;
   const empties = bottles - colors;
-  return empties >= 1 && empties <= 2;
+  return empties >= 1;
 }
 
 /** Fisher–Yates shuffle using the provided PRNG (in place). */

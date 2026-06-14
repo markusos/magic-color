@@ -51,8 +51,6 @@ interface GameStore {
   tapBottle: (i: number) => void;
   undo: () => void;
   restart: () => void;
-  /** Toolbox: add an empty tube to create breathing room. */
-  addEmptyTube: () => void;
 }
 
 /** Status we can decide instantly: a win, or a board with no legal move at all. */
@@ -97,7 +95,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 
   // Initial level.
-  const first = createLevel('normal', 1);
+  const first = createLevel('easy', 1);
 
   return {
     current: first.state,
@@ -106,7 +104,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     moves: [],
     selected: null,
     status: syncStatus(first.state),
-    difficulty: 'normal',
+    difficulty: 'easy',
     seed: first.seed,
     par: first.minMoves,
 
@@ -165,14 +163,6 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     restart: () => {
       commit(get().initial, { history: [], moves: [], selected: null });
-    },
-
-    addEmptyTube: () => {
-      const { current, status } = get();
-      if (status !== 'playing') return;
-      const next: GameState = { ...current, bottles: [...current.bottles, []] };
-      // Pushing onto history lets the player undo the extra tube too.
-      commit(next, { history: [...get().history, current], selected: null });
     },
   };
 });

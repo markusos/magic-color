@@ -5,10 +5,10 @@ import { createLevel } from '../game/levels';
 
 const store = () => useGameStore.getState();
 
-// Generation is deterministic by seed, so the store's board for ('normal', 1) is
+// Generation is deterministic by seed, so the store's board for ('easy', 1) is
 // identical to this independently-generated level — including its known solution.
 const SEED = 1;
-const reference = createLevel('normal', SEED);
+const reference = createLevel('easy', SEED);
 
 // Inject a zero-debounce, in-process monitor so the async deadlock check resolves fast
 // and deterministically (no Web Worker in the test environment).
@@ -17,7 +17,7 @@ let testMonitor: DeadlockMonitor;
 beforeEach(() => {
   testMonitor = createDeadlockMonitor({ debounceMs: 0 });
   __setDeadlockMonitor(testMonitor);
-  store().newGame('normal', SEED);
+  store().newGame('easy', SEED);
 });
 
 afterEach(() => {
@@ -126,20 +126,9 @@ describe('deadlock detection', () => {
   });
 
   it('does not flag a solvable board as deadlocked', async () => {
-    store().newGame('normal', SEED);
+    store().newGame('easy', SEED);
     // Give the debounced check time to run; a solvable board must stay playable.
     await new Promise((r) => setTimeout(r, 10));
     expect(store().status).toBe('playing');
-  });
-});
-
-describe('addEmptyTube', () => {
-  it('appends an empty bottle and can be undone', () => {
-    const count = store().current.bottles.length;
-    store().addEmptyTube();
-    expect(store().current.bottles).toHaveLength(count + 1);
-    expect(store().current.bottles[count]).toEqual([]);
-    store().undo();
-    expect(store().current.bottles).toHaveLength(count);
   });
 });

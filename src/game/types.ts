@@ -31,7 +31,7 @@ export interface Move {
 }
 
 /** Difficulty tiers, mirroring the source game's progression. */
-export type Difficulty = 'normal' | 'hard' | 'superHard';
+export type Difficulty = 'easy' | 'normal' | 'hard';
 
 /** Parameters that define how to generate a level. */
 export interface LevelDef {

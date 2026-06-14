@@ -1,26 +1,44 @@
+import { useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { canPour } from '../../game/engine';
 import { Bottle } from '../Bottle/Bottle';
+import { useBottleMetrics } from './useBottleMetrics';
 import styles from './GameBoard.module.css';
 
-/** The grid of bottles. Tap interaction is delegated to the store. */
+/** The grid of bottles, sized responsively to fit the viewport without scrolling. */
 export function GameBoard() {
   const current = useGameStore((s) => s.current);
   const selected = useGameStore((s) => s.selected);
   const tapBottle = useGameStore((s) => s.tapBottle);
 
+  const areaRef = useRef<HTMLDivElement>(null);
+  const metrics = useBottleMetrics(areaRef, current.bottles.length, current.capacity);
+
   return (
-    <div className={styles.board}>
-      {current.bottles.map((bottle, i) => (
-        <Bottle
-          key={i}
-          bottle={bottle}
-          capacity={current.capacity}
-          selected={selected === i}
-          isTarget={selected !== null && selected !== i && canPour(current, selected, i)}
-          onTap={() => tapBottle(i)}
-        />
-      ))}
+    <div className={styles.boardArea} ref={areaRef}>
+      <div
+        className={styles.board}
+        style={{
+          gridTemplateColumns: `repeat(${metrics.columns}, ${metrics.width}px)`,
+          columnGap: `${metrics.colGap}px`,
+          rowGap: `${metrics.rowGap}px`,
+          // Sizing vars consumed by Bottle / LiquidSegment.
+          ['--bottle-width' as string]: `${metrics.width}px`,
+          ['--segment-height' as string]: `${metrics.segmentHeight}px`,
+        }}
+      >
+        {current.bottles.map((bottle, i) => (
+          <Bottle
+            key={i}
+            bottle={bottle}
+            capacity={current.capacity}
+            selected={selected === i}
+            isTarget={selected !== null && selected !== i && canPour(current, selected, i)}
+            lift={metrics.segmentHeight * 0.7}
+            onTap={() => tapBottle(i)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

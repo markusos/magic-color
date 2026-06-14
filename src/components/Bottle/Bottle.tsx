@@ -10,11 +10,13 @@ interface Props {
   selected: boolean;
   /** Highlight as a valid pour target while another bottle is selected. */
   isTarget?: boolean;
+  /** How far (px) the bottle lifts when selected; scales with bottle size. */
+  lift: number;
   onTap: () => void;
 }
 
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, selected, isTarget, onTap }: Props) {
+export function Bottle({ bottle, capacity, selected, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
 
   return (
@@ -23,10 +25,10 @@ export function Bottle({ bottle, capacity, selected, isTarget, onTap }: Props) {
       className={`${styles.bottle} ${isTarget ? styles.target : ''}`}
       onClick={onTap}
       aria-label={`bottle with ${bottle.length} of ${capacity} filled`}
-      animate={{ y: selected ? -22 : 0, rotate: selected ? -6 : 0 }}
+      animate={{ y: selected ? -lift : 0, rotate: selected ? -6 : 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 26 }}
       whileTap={{ scale: 0.96 }}
-      style={{ height: `calc(var(--segment-height) * ${capacity} + 14px)` }}
+      style={{ height: `calc(var(--segment-height) * ${capacity} + var(--segment-height) * 0.4)` }}
     >
       <div className={styles.glass}>
         <div className={styles.liquidColumn}>

@@ -14,9 +14,11 @@
   position: relative;
   width: 100%;
   height: 100%;
-  border: 3px solid rgba(255, 255, 255, 0.55);
+  /* Border, radius and highlight all scale with bottle width so tiny bottles (15-tube
+     boards) and large ones (5-tube boards) both look right. */
+  border: max(2px, calc(var(--bottle-width) * 0.06)) solid rgba(255, 255, 255, 0.55);
   border-top: none;
-  border-radius: 6px 6px var(--radius-md) var(--radius-md);
+  border-radius: 14% 14% 26% 26%;
   background: var(--glass);
   overflow: hidden;
   backdrop-filter: blur(2px);
@@ -27,11 +29,11 @@
 .glass::after {
   content: '';
   position: absolute;
-  top: 6px;
-  left: 8px;
-  width: 8px;
-  height: calc(100% - 16px);
-  border-radius: 8px;
+  top: 8%;
+  left: 14%;
+  width: 14%;
+  height: 80%;
+  border-radius: 999px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05));
   pointer-events: none;
 }

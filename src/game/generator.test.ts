@@ -10,13 +10,13 @@ function replay(start: GameState, moves: Move[]): GameState {
 }
 
 describe('isValidCombo', () => {
-  it('requires 1–2 empties and a sane color count', () => {
+  it('requires at least one empty and a sane color count', () => {
     expect(isValidCombo(4, 6)).toBe(true); // 2 empties
     expect(isValidCombo(4, 5)).toBe(true); // 1 empty
+    expect(isValidCombo(10, 15)).toBe(true); // 5 empties (15-tube super hard)
     expect(isValidCombo(4, 4)).toBe(false); // 0 empties
-    expect(isValidCombo(4, 7)).toBe(false); // 3 empties
     expect(isValidCombo(1, 3)).toBe(false); // too few colors
-    expect(isValidCombo(13, 15)).toBe(false); // too many colors
+    expect(isValidCombo(13, 15)).toBe(false); // too many colors (palette is 12)
   });
 });
 
@@ -69,12 +69,30 @@ describe('generateLevel', () => {
 });
 
 describe('difficulty tiers', () => {
-  const tiers: Difficulty[] = ['normal', 'hard', 'superHard'];
-  it.each(tiers)('createLevel(%s) yields a solvable board', (tier) => {
+  const tiers: Difficulty[] = ['easy', 'normal', 'hard'];
+
+  it.each(tiers)('createLevel(%s) yields a solvable board with the tier tube count', (tier) => {
     const level = createLevel(tier, 5);
     const preset = TIERS[tier];
-    expect(level.colors).toBe(preset.colors);
-    expect(level.bottles).toBe(preset.colors + preset.empties);
+    expect(level.bottles).toBe(preset.tubes); // fixed tubes per tier
+    expect(level.colors).toBeGreaterThanOrEqual(preset.colorsMin);
+    expect(level.colors).toBeLessThanOrEqual(preset.colorsMax); // flexible colors, in range
     expect(isWon(replay(level.state, level.solution))).toBe(true);
+  });
+
+  it('keeps colors flexible across seeds (varies within the tier range)', () => {
+    const counts = new Set<number>();
+    for (let seed = 0; seed < 30; seed++) counts.add(createLevel('normal', seed).colors);
+    // normal allows 7–8 colors; across many seeds we should see more than one value.
+    expect(counts.size).toBeGreaterThan(1);
+  });
+
+  it('every tier generates a solvable board across many seeds (incl. 15-tube super hard)', () => {
+    for (const tier of tiers) {
+      for (let seed = 0; seed < 12; seed++) {
+        const level = createLevel(tier, seed);
+        expect(isWon(replay(level.state, level.solution))).toBe(true);
+      }
+    }
   });
 });

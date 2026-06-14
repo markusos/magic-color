@@ -1,21 +1,25 @@
 .app {
-  min-height: 100%;
+  /* Lock to the viewport and never scroll — the board sizes itself to fit. */
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* Add the iOS safe-area insets so content clears the (translucent) status bar and
-     the home indicator. env() is 0 on platforms without notches/insets. */
-  padding: calc(var(--space-5) + env(safe-area-inset-top)) var(--space-4)
-    calc(var(--space-4) + env(safe-area-inset-bottom));
+  /* Safe-area insets so content clears the (translucent) status bar and home indicator.
+     env() is 0 on platforms without notches/insets. */
+  padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4)
+    calc(var(--space-3) + env(safe-area-inset-bottom));
 }
 
 .header {
+  flex-shrink: 0;
   text-align: center;
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .title {
   margin: 0;
-  font-size: 2.2rem;
+  /* Scales down on small/short phones to leave more room for the board. */
+  font-size: clamp(1.5rem, 7vw, 2.2rem);
   letter-spacing: 0.5px;
   background: linear-gradient(90deg, var(--accent), #ff8fab, var(--accent));
   -webkit-background-clip: text;
@@ -26,13 +30,10 @@
 .tagline {
   margin: var(--space-1) 0 0;
   color: var(--text-dim);
-  font-size: 0.95rem;
+  font-size: clamp(0.78rem, 3.4vw, 0.95rem);
 }
 
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--space-4);
+.footer {
+  flex-shrink: 0;
+  margin-top: var(--space-2);
 }
