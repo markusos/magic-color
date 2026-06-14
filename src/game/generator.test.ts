@@ -71,23 +71,28 @@ describe('generateLevel', () => {
 describe('difficulty tiers', () => {
   const tiers: Difficulty[] = ['easy', 'normal', 'hard'];
 
-  it.each(tiers)('createLevel(%s) yields a solvable board with the tier tube count', (tier) => {
+  it.each(tiers)('createLevel(%s) has fixed tubes, open tubes, and colors', (tier) => {
     const level = createLevel(tier, 5);
     const preset = TIERS[tier];
+    const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
     expect(level.bottles).toBe(preset.tubes); // fixed tubes per tier
-    expect(level.colors).toBeGreaterThanOrEqual(preset.colorsMin);
-    expect(level.colors).toBeLessThanOrEqual(preset.colorsMax); // flexible colors, in range
+    expect(emptyTubes).toBe(preset.emptyTubes); // fixed open tubes per tier
+    expect(level.colors).toBe(preset.tubes - preset.emptyTubes); // colors = tubes - open
     expect(isWon(replay(level.state, level.solution))).toBe(true);
   });
 
-  it('keeps colors flexible across seeds (varies within the tier range)', () => {
-    const counts = new Set<number>();
-    for (let seed = 0; seed < 30; seed++) counts.add(createLevel('normal', seed).colors);
-    // normal allows 7–8 colors; across many seeds we should see more than one value.
-    expect(counts.size).toBeGreaterThan(1);
+  it('each tier always has its fixed open-tube count regardless of seed', () => {
+    const expected: Record<Difficulty, number> = { easy: 1, normal: 2, hard: 3 };
+    for (const tier of tiers) {
+      for (let seed = 0; seed < 20; seed++) {
+        const level = createLevel(tier, seed);
+        const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
+        expect(emptyTubes).toBe(expected[tier]);
+      }
+    }
   });
 
-  it('every tier generates a solvable board across many seeds (incl. 15-tube super hard)', () => {
+  it('every tier generates a solvable board across many seeds (incl. 15-tube hard)', () => {
     for (const tier of tiers) {
       for (let seed = 0; seed < 12; seed++) {
         const level = createLevel(tier, seed);
