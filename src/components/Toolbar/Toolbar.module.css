@@ -10,6 +10,10 @@
 
 /* iOS toolbar-style buttons: borderless, soft filled pill, comfortable tap target. */
 .toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   border: none;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;

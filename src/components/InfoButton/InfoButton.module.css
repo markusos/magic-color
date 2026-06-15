@@ -6,13 +6,9 @@
   height: 30px;
   padding: 0;
   border-radius: 50%;
-  border: 1.5px solid var(--text-dim);
+  border: none;
   background: transparent;
   color: var(--text-dim);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-style: italic;
-  font-weight: 700;
-  font-size: 1rem;
   line-height: 1;
   display: grid;
   place-items: center;

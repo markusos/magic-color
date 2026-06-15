@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Info } from 'lucide-react';
 import styles from './InfoButton.module.css';
 
 /** iOS-style ⓘ button in the top-right; taps open a popover with how-to-play text. */
@@ -14,7 +15,7 @@ export function InfoButton() {
         onClick={() => setOpen((o) => !o)}
         aria-label="How to play"
       >
-        i
+        <Info size={24} strokeWidth={2} aria-hidden />
       </button>
 
       <AnimatePresence>

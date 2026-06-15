@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { Sparkles, Undo2, RotateCcw } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import styles from './Overlay.module.css';
 
@@ -35,7 +36,10 @@ export function Overlay() {
           >
             {status === 'won' ? (
               <>
-                <h2 className={styles.win}>✨ Level Complete!</h2>
+                <h2 className={styles.win}>
+                  <Sparkles size={22} strokeWidth={2} aria-hidden />
+                  Level Complete!
+                </h2>
                 <p className={styles.sub}>
                   Solved in {moves.length} moves <span className={styles.dim}>(par {par})</span>
                 </p>
@@ -48,8 +52,14 @@ export function Overlay() {
                 <h2 className={styles.fail}>No moves left</h2>
                 <p className={styles.sub}>This board is stuck — undo a move or try again.</p>
                 <div className={styles.row}>
-                  <button onClick={undo}>↩ Undo</button>
-                  <button onClick={restart}>⟳ Restart</button>
+                  <button onClick={undo}>
+                    <Undo2 size={18} strokeWidth={2} aria-hidden />
+                    Undo
+                  </button>
+                  <button onClick={restart}>
+                    <RotateCcw size={18} strokeWidth={2} aria-hidden />
+                    Restart
+                  </button>
                   <button className={styles.primary} onClick={() => newGame(difficulty)}>
                     New Board
                   </button>
