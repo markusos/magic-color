@@ -6,10 +6,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* Safe-area insets so content clears the (translucent) status bar and home indicator.
-     env() is 0 on platforms without notches/insets. */
-  padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4)
-    calc(var(--space-3) + env(safe-area-inset-bottom));
+  /* Safe-area top inset clears the translucent status bar. The bottom inset is handled by
+     the footer (so its frosted bar reaches the screen edge). env() is 0 without insets. */
+  padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-4) 0;
 }
 
 /* iOS standalone hands the app the small/visual viewport, so dvh/innerHeight/fixed stop
@@ -49,7 +48,15 @@
   font-size: clamp(0.78rem, 3.4vw, 0.95rem);
 }
 
+/* Frosted, edge-to-edge bottom toolbar (iOS tab-bar feel). Negative horizontal margin
+   cancels the app's side padding so the blur + hairline run full width; the bottom
+   safe-area inset lives here so the bar reaches the screen bottom. */
 .footer {
   flex-shrink: 0;
-  margin-top: var(--space-2);
+  margin: var(--space-2) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-3) var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom));
+  background: rgba(20, 16, 43, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
 }
