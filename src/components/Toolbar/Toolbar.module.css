@@ -1,38 +1,15 @@
 .toolbar {
-  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-3);
+  justify-content: center;
   align-items: center;
   width: 100%;
   max-width: 560px;
   margin: 0 auto;
 }
 
-.stats {
-  display: flex;
-  gap: var(--space-4);
-}
-
-.stat {
-  color: var(--text-dim);
-  font-size: 0.9rem;
-}
-
-.stat b {
-  color: var(--text);
-  font-size: 1.05rem;
-}
-
-.tools {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
 /* iOS toolbar-style buttons: borderless, soft filled pill, comfortable tap target. */
-.tools button {
+.toolbar button {
   border: none;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
@@ -41,6 +18,6 @@
   min-width: 116px;
 }
 
-.tools button:hover:not(:disabled) {
+.toolbar button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.16);
 }

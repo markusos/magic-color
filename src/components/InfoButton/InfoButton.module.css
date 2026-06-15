@@ -1,0 +1,58 @@
+.info {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-dim);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.info:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.popover {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  width: min(80vw, 290px);
+  z-index: 50;
+  text-align: left;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(40, 30, 70, 0.92);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.title {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}

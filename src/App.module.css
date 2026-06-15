@@ -26,6 +26,7 @@
 }
 
 .header {
+  position: relative; /* anchor for the absolute info button */
   flex-shrink: 0;
   text-align: center;
   margin-bottom: var(--space-1);
@@ -42,11 +43,6 @@
   color: transparent;
 }
 
-.tagline {
-  margin: var(--space-1) 0 0;
-  color: var(--text-dim);
-  font-size: clamp(0.78rem, 3.4vw, 0.95rem);
-}
 
 /* Frosted, edge-to-edge bottom toolbar (iOS tab-bar feel). Negative horizontal margin
    cancels the app's side padding so the blur + hairline run full width; the bottom
