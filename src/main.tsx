@@ -15,6 +15,13 @@ requestAnimationFrame(syncAppHeight);
   window.addEventListener(event, syncAppHeight),
 );
 
+// iOS doesn't reliably match the `display-mode: standalone` media query, so detect the
+// home-screen (standalone) launch in JS and tag <html> for the CSS to target.
+const isStandalone =
+  (window.navigator as { standalone?: boolean }).standalone === true ||
+  window.matchMedia('(display-mode: standalone)').matches;
+if (isStandalone) document.documentElement.classList.add('pwa-standalone');
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

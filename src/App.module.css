@@ -12,15 +12,17 @@
     calc(var(--space-3) + env(safe-area-inset-bottom));
 }
 
-/* iOS standalone mis-measures vh/dvh/innerHeight at launch (gap at the bottom). Anchor to
-   all four screen edges with fixed positioning instead — no height unit involved, so the
-   flex column pushes the footer to the true bottom. Scoped to standalone; the normal
-   browser keeps the innerHeight/dvh height above. */
+/* iOS standalone hands the app the small/visual viewport, so dvh/innerHeight/fixed stop
+   where the Safari toolbar would be, leaving a bottom gap. 100vh is the LARGE viewport =
+   the full screen in standalone. Targeted via the JS-added html.pwa-standalone class
+   (iOS doesn't reliably match the display-mode query), with that query as a fallback. */
+:global(html.pwa-standalone) .app {
+  height: 100vh;
+}
+
 @media all and (display-mode: standalone) {
   .app {
-    position: fixed;
-    inset: 0;
-    height: auto;
+    height: 100vh;
   }
 }
 
