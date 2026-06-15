@@ -74,9 +74,3 @@ rebuild for the move because all paths are relative.
 > **PWA install note:** the service worker (offline support) only registers over HTTPS,
 > which both the `.github.io` URL and the custom domain provide. Install on iOS via
 > Safari → Share → **Add to Home Screen** while online once; it then runs fully offline.
-
-## Roadmap (deferred)
-
-Node backend + persistence/leaderboards, the meta-loop (potions/cauldron, ingredients),
-seasonal events, Rive animations and interactive background (cat, fireplace, mage tower),
-Shuffle tool, hints, and sound.
