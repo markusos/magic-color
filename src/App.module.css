@@ -53,8 +53,9 @@
    safe-area inset lives here so the bar reaches the screen bottom. */
 .footer {
   flex-shrink: 0;
-  margin: var(--space-2) calc(-1 * var(--space-4)) 0;
-  padding: var(--space-3) var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom));
+  margin: 0 calc(-1 * var(--space-4));
+  /* Compact: minimal top/bottom padding; bottom inset is just the home-indicator clearance. */
+  padding: var(--space-2) var(--space-4) max(var(--space-2), env(safe-area-inset-bottom));
   background: rgba(20, 16, 43, 0.72);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   backdrop-filter: blur(20px) saturate(160%);
