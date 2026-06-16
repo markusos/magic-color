@@ -35,11 +35,11 @@ function playSolution() {
 }
 
 describe('loadLevel', () => {
-  it('starts in the playing state with the level and its par', () => {
+  it('starts in the playing state with the level and its optimal reference', () => {
     const s = store();
     expect(s.status).toBe('playing');
     expect(s.level).toBe(LEVEL);
-    expect(s.par).toBe(reference.par);
+    expect(s.optimal).toBe(reference.optimal);
     expect(s.current.bottles).toEqual(reference.state.bottles);
     expect(s.history).toHaveLength(0);
     expect(s.selected).toBeNull();

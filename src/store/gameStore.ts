@@ -16,9 +16,10 @@ import { create } from 'zustand';
 import { canPour, isWon, pour } from '../game/engine';
 import { generateForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
+import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createDeadlockMonitor, type DeadlockMonitor } from './deadlockMonitor';
-import { clearProgress, loadProgress, recordBest, saveProgress, type Progress } from './progress';
+import { clearProgress, loadProgress, recordResult, saveProgress, type Progress } from './progress';
 
 export type GameStatus = 'playing' | 'won' | 'deadlocked';
 
@@ -55,10 +56,16 @@ interface GameStore {
   phase: Difficulty;
   /** Board mechanics active this level (empty in chapter 0). */
   mechanics: readonly Mechanic[];
-  /** Par of the current level, for the move counter. */
-  par: number;
+  /** Achievable near-optimal move count for the current level — basis for the star rating. */
+  optimal: number;
   /** The player's best (fewest) moves for the current level, or null if never solved. */
   best: number | null;
+  /** The player's best star rating for the current level, or null if never solved. */
+  bestStars: Stars | null;
+  /** Highest level reached (the unlock frontier) — the level selector lists 1..furthest. */
+  furthest: number;
+  /** Best star rating per reached level, for the level selector. */
+  levelStars: Record<number, Stars>;
 
   /** Load a specific level into play (regenerates its board) and persist it as reached. */
   loadLevel: (level: number) => void;
@@ -120,10 +127,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     set({ current, status, ...extra });
 
     if (status === 'won') {
-      const { level, moves } = get();
-      progress = recordBest(progress, level, moves.length);
+      const { level, moves, optimal } = get();
+      const stars = starsFor(moves.length, optimal);
+      progress = recordResult(progress, level, moves.length, stars);
       saveProgress(progress);
-      set({ best: progress.best[level] ?? null });
+      set({
+        best: progress.best[level] ?? null,
+        bestStars: progress.stars[level] ?? null,
+        levelStars: progress.stars,
+      });
     }
 
     if (status === 'playing') {
@@ -140,7 +152,8 @@ export const useGameStore = create<GameStore>((set, get) => {
 
   const loadLevel = (level: number) => {
     const generated = generateForLevel(level);
-    progress = { ...progress, current: level };
+    // Replaying an earlier level must not lower the unlock frontier.
+    progress = { ...progress, current: Math.max(progress.current, level) };
     saveProgress(progress);
     commit(generated.state, {
       initial: generated.state,
@@ -153,8 +166,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       level,
       phase: generated.phase,
       mechanics: generated.mechanics,
-      par: generated.par,
+      optimal: generated.optimal,
       best: progress.best[level] ?? null,
+      bestStars: progress.stars[level] ?? null,
+      furthest: progress.current,
+      levelStars: progress.stars,
     });
   };
 
@@ -174,8 +190,11 @@ export const useGameStore = create<GameStore>((set, get) => {
     level: progress.current,
     phase: first.phase,
     mechanics: first.mechanics,
-    par: first.par,
+    optimal: first.optimal,
     best: progress.best[progress.current] ?? null,
+    bestStars: progress.stars[progress.current] ?? null,
+    furthest: progress.current,
+    levelStars: progress.stars,
 
     loadLevel,
     nextLevel: () => loadLevel(get().level + 1),

@@ -1,29 +1,20 @@
 import { useGameStore } from '../../store/gameStore';
+import { starsFor } from '../../game/stars';
+import { Stars } from '../Stars/Stars';
 import styles from './Stats.module.css';
 
-/** Move counter, par, and the player's best for this level, shown under the level header. */
+/**
+ * Live star rating for the current attempt, shown under the level header. Starts at three stars
+ * and dims as the move count crosses each threshold — a running preview of the rating you're
+ * heading for.
+ */
 export function Stats() {
   const moves = useGameStore((s) => s.moves.length);
-  const par = useGameStore((s) => s.par);
-  const best = useGameStore((s) => s.best);
+  const optimal = useGameStore((s) => s.optimal);
 
   return (
     <div className={styles.stats}>
-      <span>
-        Moves <b>{moves}</b>
-      </span>
-      <span className={styles.sep}>·</span>
-      <span>
-        Par <b>{par}</b>
-      </span>
-      {best !== null && (
-        <>
-          <span className={styles.sep}>·</span>
-          <span>
-            Best <b>{best}</b>
-          </span>
-        </>
-      )}
+      <Stars value={starsFor(moves, optimal)} size={20} />
     </div>
   );
 }

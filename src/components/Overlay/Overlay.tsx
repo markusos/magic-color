@@ -1,6 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, Undo2, RotateCcw } from 'lucide-react';
+import { Undo2, RotateCcw } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
+import { starsFor } from '../../game/stars';
+import { Stars } from '../Stars/Stars';
 import styles from './Overlay.module.css';
 
 /**
@@ -10,13 +12,14 @@ import styles from './Overlay.module.css';
 export function Overlay() {
   const status = useGameStore((s) => s.status);
   const moves = useGameStore((s) => s.moves);
-  const par = useGameStore((s) => s.par);
-  const best = useGameStore((s) => s.best);
+  const optimal = useGameStore((s) => s.optimal);
   const nextLevel = useGameStore((s) => s.nextLevel);
   const undo = useGameStore((s) => s.undo);
   const restart = useGameStore((s) => s.restart);
 
   const visible = status === 'won' || status === 'deadlocked';
+  const stars = starsFor(moves.length, optimal);
+  const praise = stars === 3 ? 'Perfect!' : stars === 2 ? 'Nicely done!' : 'Level Complete!';
 
   return (
     <AnimatePresence>
@@ -36,18 +39,15 @@ export function Overlay() {
           >
             {status === 'won' ? (
               <>
-                <h2 className={styles.win}>
-                  <Sparkles size={22} strokeWidth={2} aria-hidden />
-                  Level Complete!
-                </h2>
-                <p className={styles.sub}>
-                  Solved in {moves.length} moves <span className={styles.dim}>(par {par})</span>
-                </p>
-                {best !== null && best === moves.length && (
-                  <p className={styles.sub}>
-                    <span className={styles.dim}>New best!</span>
-                  </p>
-                )}
+                <motion.div
+                  className={styles.starsRow}
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 360, damping: 18, delay: 0.1 }}
+                >
+                  <Stars value={stars} size={48} />
+                </motion.div>
+                <h2 className={styles.win}>{praise}</h2>
                 <button className={styles.primary} onClick={nextLevel}>
                   Next Level
                 </button>

@@ -9,7 +9,13 @@
  * Persistence stores only the level number; the board is regenerated from its seed on demand.
  */
 import { generateLevel } from './generator';
-import { computeHidden, emptyGrid, exposableCells, type HiddenGrid } from './hidden';
+import {
+  cappedSolveMoves,
+  computeHidden,
+  emptyGrid,
+  exposableCells,
+  type HiddenGrid,
+} from './hidden';
 import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
 
 /** One rung of the difficulty ladder: a fixed footprint plus its phase label. */
@@ -110,6 +116,12 @@ export interface PlayableLevel extends GeneratedLevel {
   mechanics: readonly Mechanic[];
   /** Initial concealment overlay (all-false unless this chapter has the `hidden` mechanic). */
   hidden: HiddenGrid;
+  /**
+   * Achievable near-optimal move count (the solution replayed under the real capped/reveal
+   * rules). Basis for star thresholds — see `stars.ts`. Differs from `minMoves` (bulk solution
+   * length) on hidden levels, where capping forces more, smaller pours.
+   */
+  optimal: number;
 }
 
 /**
@@ -179,6 +191,7 @@ export function generateForLevel(level: number): PlayableLevel {
         phase: plan.phase,
         mechanics: plan.mechanics,
         hidden,
+        optimal: cappedSolveMoves(generated.state, generated.solution, hidden),
       };
     } catch {
       // Extremely unlikely; try a different seed for this same level.

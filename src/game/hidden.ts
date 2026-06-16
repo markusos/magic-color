@@ -20,6 +20,31 @@ import { pour } from './engine';
 import { mulberry32 } from './generator';
 import type { GameState, Move } from './types';
 
+/**
+ * Number of pour ACTIONS to play out `solution` under the real interaction rules — pours capped
+ * to the visible run, with concealed cells revealing as they surface. This is an achievable
+ * reference for the player's move count (what `moves.length` would be following this line), and
+ * the basis for star thresholds. For a board with no concealment it equals `solution.length`
+ * (each run pours in one tap); with hidden cells it's higher, because runs split at the "?"s.
+ */
+export function cappedSolveMoves(state: GameState, solution: Move[], hidden0: HiddenGrid): number {
+  let current = state;
+  let hidden = hidden0;
+  let pours = 0;
+  for (const m of solution) {
+    let remaining = m.count;
+    while (remaining > 0) {
+      const cap = knownTopRun(current.bottles[m.from]!, hidden[m.from]);
+      const { state: next, move } = pour(current, m.from, m.to, cap);
+      current = next;
+      hidden = revealExposed(current, hidden);
+      pours++;
+      remaining -= move.count;
+    }
+  }
+  return pours;
+}
+
 /** A boolean overlay parallel to a board's bottles (bottom-first). */
 export type HiddenGrid = boolean[][];
 

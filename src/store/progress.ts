@@ -1,9 +1,10 @@
 /**
- * Campaign progress persisted to localStorage: which level the player has reached, and their
- * best (fewest) move count per completed level. One versioned blob under a single key. Every
- * access is wrapped so a disabled/full/private-mode storage degrades to in-memory defaults
- * rather than throwing.
+ * Campaign progress persisted to localStorage: which level the player has reached, their best
+ * (fewest) move count per completed level, and the best star rating earned per level. One
+ * versioned blob under a single key. Every access is wrapped so a disabled/full/private-mode
+ * storage degrades to in-memory defaults rather than throwing.
  */
+import type { Stars } from '../game/stars';
 
 const KEY = 'magic-color:v1';
 const VERSION = 1;
@@ -14,10 +15,16 @@ export interface Progress {
   current: number;
   /** Best move count keyed by level number, for completed levels. */
   best: Record<number, number>;
+  /** Best star rating (1-3) keyed by level number, for completed levels. */
+  stars: Record<number, Stars>;
 }
 
 function defaults(): Progress {
-  return { version: VERSION, current: 1, best: {} };
+  return { version: VERSION, current: 1, best: {}, stars: {} };
+}
+
+function asRecord<T>(value: unknown): Record<number, T> {
+  return value && typeof value === 'object' ? (value as Record<number, T>) : {};
 }
 
 /** Load progress, returning fresh defaults on any error or shape mismatch. */
@@ -30,7 +37,8 @@ export function loadProgress(): Progress {
     return {
       version: VERSION,
       current: Math.max(1, Math.floor(parsed.current)),
-      best: parsed.best && typeof parsed.best === 'object' ? parsed.best : {},
+      best: asRecord<number>(parsed.best),
+      stars: asRecord<Stars>(parsed.stars),
     };
   } catch {
     return defaults();
@@ -47,13 +55,21 @@ export function saveProgress(progress: Progress): void {
 }
 
 /**
- * Record a completed level's move count if it beats the stored best, returning the updated
- * progress (immutably). Does not advance `current` — that's the caller's call.
+ * Record a completed level's result: keep the fewest moves and the most stars seen. Returns the
+ * updated progress (immutably). Does not advance `current` — that's the caller's call.
  */
-export function recordBest(progress: Progress, level: number, moves: number): Progress {
-  const prev = progress.best[level];
-  if (prev !== undefined && prev <= moves) return progress;
-  return { ...progress, best: { ...progress.best, [level]: moves } };
+export function recordResult(
+  progress: Progress,
+  level: number,
+  moves: number,
+  stars: Stars,
+): Progress {
+  const prevMoves = progress.best[level];
+  const prevStars = progress.stars[level];
+  const best = prevMoves !== undefined && prevMoves <= moves ? progress.best : { ...progress.best, [level]: moves };
+  const starMap =
+    prevStars !== undefined && prevStars >= stars ? progress.stars : { ...progress.stars, [level]: stars };
+  return { ...progress, best, stars: starMap };
 }
 
 /** Clear all saved progress (the Home screen's "Start Over"). */

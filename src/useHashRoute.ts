@@ -6,12 +6,13 @@
  */
 import { useSyncExternalStore } from 'react';
 
-export type Screen = 'home' | 'play' | 'settings';
+export type Screen = 'home' | 'play' | 'settings' | 'levels';
 
 function parse(hash: string): Screen {
   const path = hash.replace(/^#\/?/, '');
   if (path === 'play') return 'play';
   if (path === 'settings') return 'settings';
+  if (path === 'levels') return 'levels';
   return 'home';
 }
 

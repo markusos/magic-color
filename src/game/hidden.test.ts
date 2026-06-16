@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  cappedSolveMoves,
   computeHidden,
   emptyGrid,
   exposableCells,
@@ -7,6 +8,7 @@ import {
   knownTopRun,
   revealExposed,
 } from './hidden';
+import { generateForLevel } from './progression';
 import type { GameState, Move } from './types';
 
 const board = (bottles: string[][]): GameState => ({ bottles, capacity: 4 });
@@ -100,6 +102,23 @@ describe('revealExposed', () => {
     const hidden = [[false, true, false, false]];
     const complete = board([['ruby', 'ruby', 'ruby', 'ruby']]);
     expect(revealExposed(complete, hidden)[0]![1]).toBe(true); // stays concealed
+  });
+});
+
+describe('cappedSolveMoves', () => {
+  it('equals the bulk solution length when nothing is concealed', () => {
+    const lvl = generateForLevel(1); // chapter 0 — no hidden
+    expect(cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden)).toBe(lvl.solution.length);
+  });
+
+  it('is at least the bulk length on a hidden level and matches the level optimal', () => {
+    // Capping can only split runs, never merge them, so it never undercounts the bulk solution.
+    for (const level of [75, 90, 120, 145]) {
+      const lvl = generateForLevel(level); // chapter 1 — hidden
+      const capped = cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden);
+      expect(capped).toBeGreaterThanOrEqual(lvl.solution.length);
+      expect(lvl.optimal).toBe(capped); // exactly what the level exposes as `optimal`
+    }
   });
 });
 

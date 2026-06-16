@@ -64,3 +64,13 @@
   box-shadow: 0 6px 18px rgba(255, 183, 3, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.4);
 }
 
+.secondary {
+  padding: var(--space-3) var(--space-4);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-md);
+}
+

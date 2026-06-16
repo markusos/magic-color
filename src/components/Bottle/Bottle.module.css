@@ -57,7 +57,9 @@
   position: absolute;
   top: calc(var(--segment-height) * -0.16);
   left: 50%;
-  width: 112%;
+  /* Flush with the tube (not wider) so the end tubes' caps aren't clipped by the board's
+     overflow:hidden on narrow (iPhone) widths. */
+  width: 100%;
   height: calc(var(--segment-height) * 0.44);
   border-radius: 38% 38% 22% 22%;
   background: linear-gradient(180deg, #e9b787 0%, #cf9355 55%, #b97f45 100%);

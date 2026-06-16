@@ -1,0 +1,116 @@
+.screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: var(--space-3);
+}
+
+.back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+}
+
+.back:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Scrollable grid of level tiles. */
+.grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  /* Pack rows at the top with just the gap — don't stretch tracks to fill the tall container. */
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1) calc(var(--space-5) + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 1;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cell:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.num {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Pagination controls, pinned below the scrolling grid. */
+.pager {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0 calc(var(--space-3) + env(safe-area-inset-bottom));
+}
+
+.pageBtn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.pageBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.range {
+  min-width: 72px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-dim);
+}
