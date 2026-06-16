@@ -30,8 +30,24 @@ export interface Move {
   color: Color;
 }
 
-/** Difficulty tiers, mirroring the source game's progression. */
+/**
+ * Difficulty phase. In the single linear campaign this is a *label* derived from the
+ * level number (which rung of the footprint ladder you're on), not a mode the player picks.
+ */
 export type Difficulty = 'easy' | 'normal' | 'hard';
+
+/**
+ * Optional board mechanics layered on by later chapters (cumulative). Empty in chapter 0
+ * (the base game). `hidden` (covered segments) is the planned chapter-1 mechanic.
+ */
+export type Mechanic = 'hidden';
+
+/**
+ * How a level's "par" is measured. `optimal` runs the exact (but heavier) BFS — used for the
+ * small Easy/Normal boards; `proxy` uses the DFS solution length — cheap, used for big Hard
+ * boards where exact BFS risks the node cap.
+ */
+export type ParMode = 'optimal' | 'proxy';
 
 /** Parameters that define how to generate a level. */
 export interface LevelDef {
@@ -53,5 +69,11 @@ export interface GeneratedLevel {
   solution: Move[];
   /** Length of the stored solution (an upper bound on the optimal move count). */
   minMoves: number;
+  /**
+   * The level's "par" — the difficulty signal shown to the player and used by the
+   * generator's par-floor rejection. Equals the exact optimal (ParMode `optimal`) or the
+   * DFS solution length (ParMode `proxy`). Without a par target it's just `minMoves`.
+   */
+  par: number;
   seed: number;
 }

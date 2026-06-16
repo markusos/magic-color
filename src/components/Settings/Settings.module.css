@@ -1,0 +1,71 @@
+.settings {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Back chevron, matching the GameScreen header placement. */
+.back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+}
+
+.back:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(360px, 100%);
+  margin: 0 auto;
+}
+
+.danger {
+  padding: var(--space-3) var(--space-4);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--danger);
+  background: rgba(255, 93, 115, 0.12);
+  border: 0.5px solid rgba(255, 93, 115, 0.4);
+  border-radius: var(--radius-md);
+}
+
+.danger:hover:not(:disabled) {
+  background: rgba(255, 93, 115, 0.2);
+}
+
+.hint {
+  margin: 0;
+  padding: 0 var(--space-1);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}

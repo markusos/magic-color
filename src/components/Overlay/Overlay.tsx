@@ -11,8 +11,8 @@ export function Overlay() {
   const status = useGameStore((s) => s.status);
   const moves = useGameStore((s) => s.moves);
   const par = useGameStore((s) => s.par);
-  const difficulty = useGameStore((s) => s.difficulty);
-  const newGame = useGameStore((s) => s.newGame);
+  const best = useGameStore((s) => s.best);
+  const nextLevel = useGameStore((s) => s.nextLevel);
   const undo = useGameStore((s) => s.undo);
   const restart = useGameStore((s) => s.restart);
 
@@ -43,7 +43,12 @@ export function Overlay() {
                 <p className={styles.sub}>
                   Solved in {moves.length} moves <span className={styles.dim}>(par {par})</span>
                 </p>
-                <button className={styles.primary} onClick={() => newGame(difficulty)}>
+                {best !== null && best === moves.length && (
+                  <p className={styles.sub}>
+                    <span className={styles.dim}>New best!</span>
+                  </p>
+                )}
+                <button className={styles.primary} onClick={nextLevel}>
                   Next Level
                 </button>
               </>
@@ -56,12 +61,9 @@ export function Overlay() {
                     <Undo2 size={18} strokeWidth={2} aria-hidden />
                     Undo
                   </button>
-                  <button onClick={restart}>
+                  <button className={styles.primary} onClick={restart}>
                     <RotateCcw size={18} strokeWidth={2} aria-hidden />
-                    Restart
-                  </button>
-                  <button className={styles.primary} onClick={() => newGame(difficulty)}>
-                    New Board
+                    Restart Level
                   </button>
                 </div>
               </>

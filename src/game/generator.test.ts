@@ -66,6 +66,39 @@ describe('generateLevel', () => {
       expect(isSolvable(level.state)).toBe(true);
     }
   });
+
+  it('reports par equal to minMoves in the default (proxy, no floor) path', () => {
+    const level = generateLevel({ colors: 5, bottles: 7, seed: 7 });
+    expect(level.par).toBe(level.minMoves);
+  });
+
+  it('optimal parMode never exceeds the DFS solution length', () => {
+    const level = generateLevel({ colors: 4, bottles: 6, seed: 11, parMode: 'optimal' });
+    expect(level.par).toBeLessThanOrEqual(level.minMoves);
+    expect(level.par).toBeGreaterThan(0);
+  });
+});
+
+describe('generateLevel par floor', () => {
+  it('meets the floor when it is reachable, and stays solvable', () => {
+    const level = generateLevel({ colors: 5, bottles: 7, seed: 3, minPar: 8, parMode: 'proxy' });
+    expect(level.par).toBeGreaterThanOrEqual(8);
+    expect(isWon(replay(level.state, level.solution))).toBe(true);
+  });
+
+  it('falls back to the hardest board found when the floor is unreachable', () => {
+    // An absurd floor can never be met, but generation must still return a solvable board.
+    const level = generateLevel({ colors: 4, bottles: 6, seed: 5, minPar: 10_000 });
+    expect(level.par).toBeLessThan(10_000);
+    expect(isWon(replay(level.state, level.solution))).toBe(true);
+  });
+
+  it('is still reproducible for a fixed seed with a floor', () => {
+    const a = generateLevel({ colors: 5, bottles: 7, seed: 21, minPar: 12, parMode: 'optimal' });
+    const b = generateLevel({ colors: 5, bottles: 7, seed: 21, minPar: 12, parMode: 'optimal' });
+    expect(a.state.bottles).toEqual(b.state.bottles);
+    expect(a.par).toBe(b.par);
+  });
 });
 
 describe('difficulty tiers', () => {

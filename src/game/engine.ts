@@ -65,10 +65,19 @@ export function pourAmount(state: GameState, from: number, to: number): number {
 /**
  * Apply a pour, returning the resulting state and the executed move.
  * Throws if the pour is illegal — callers should gate with `canPour` first.
+ *
+ * `maxCount` caps how many segments move (default: the full top run). The hidden-colors
+ * mechanic uses it to limit a pour to the player-visible run; the engine itself stays
+ * unaware of concealment.
  */
-export function pour(state: GameState, from: number, to: number): { state: GameState; move: Move } {
-  const count = pourAmount(state, from, to);
-  if (count === 0) {
+export function pour(
+  state: GameState,
+  from: number,
+  to: number,
+  maxCount = Infinity,
+): { state: GameState; move: Move } {
+  const count = Math.min(pourAmount(state, from, to), maxCount);
+  if (count <= 0) {
     throw new Error(`Illegal pour from ${from} to ${to}`);
   }
   const src = state.bottles[from]!;

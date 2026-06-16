@@ -1,0 +1,61 @@
+/* Back-to-home chevron, mirroring the InfoButton's top-corner placement. */
+.home {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.home:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Centered "Level N" with a small phase chip beneath, replacing the old title/selector. */
+.levelInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.level {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text);
+}
+
+.phase {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+}
+
+.phase[data-phase='easy'] {
+  background: rgba(74, 222, 128, 0.18);
+  color: var(--success);
+}
+
+.phase[data-phase='normal'] {
+  background: rgba(255, 209, 102, 0.18);
+  color: var(--accent);
+}
+
+.phase[data-phase='hard'] {
+  background: rgba(255, 93, 115, 0.18);
+  color: var(--danger);
+}

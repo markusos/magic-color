@@ -1,4 +1,5 @@
 .segment {
+  position: relative;
   width: 100%;
   height: var(--segment-height);
   transform-origin: bottom center;
@@ -9,4 +10,20 @@
 .bottom {
   border-bottom-left-radius: 26%;
   border-bottom-right-radius: 26%;
+}
+
+/* Concealed segment: a near-black band carrying a "?" until it surfaces and reveals. */
+.hidden {
+  background-color: #0c0c16;
+}
+
+.mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 800;
+  font-size: calc(var(--segment-height) * 0.5);
+  line-height: 1;
 }

@@ -1,28 +1,17 @@
-import { GameBoard } from './components/GameBoard/GameBoard';
-import { DifficultySelector } from './components/DifficultySelector/DifficultySelector';
-import { Stats } from './components/Stats/Stats';
-import { InfoButton } from './components/InfoButton/InfoButton';
-import { Toolbar } from './components/Toolbar/Toolbar';
-import { Overlay } from './components/Overlay/Overlay';
+import { Home } from './components/Home/Home';
+import { GameScreen } from './components/GameScreen/GameScreen';
+import { Settings } from './components/Settings/Settings';
+import { useScreen } from './useHashRoute';
 import styles from './App.module.css';
 
 export default function App() {
+  const screen = useScreen();
+
   return (
     <div className={styles.app}>
-      <header className={styles.header}>
-        <InfoButton />
-        <h1 className={styles.title}>Magic Color</h1>
-        <DifficultySelector />
-        <Stats />
-      </header>
-
-      <GameBoard />
-
-      <footer className={styles.footer}>
-        <Toolbar />
-      </footer>
-
-      <Overlay />
+      {screen === 'play' && <GameScreen />}
+      {screen === 'settings' && <Settings />}
+      {screen === 'home' && <Home />}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import styles from './GameBoard.module.css';
 export function GameBoard() {
   const current = useGameStore((s) => s.current);
   const selected = useGameStore((s) => s.selected);
+  const hidden = useGameStore((s) => s.hidden);
   const tapBottle = useGameStore((s) => s.tapBottle);
 
   const areaRef = useRef<HTMLDivElement>(null);
@@ -32,6 +33,7 @@ export function GameBoard() {
             key={i}
             bottle={bottle}
             capacity={current.capacity}
+            hidden={hidden[i]}
             selected={selected === i}
             isTarget={selected !== null && selected !== i && canPour(current, selected, i)}
             lift={metrics.segmentHeight * 0.7}

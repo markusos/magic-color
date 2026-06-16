@@ -8,8 +8,8 @@
  * walk isn't reversible. Verifying with a real solver sidesteps that entirely.
  */
 import { isComplete, isWon } from './engine';
-import { solve } from './solver';
-import type { GameState, GeneratedLevel } from './types';
+import { bfsOptimal, solve } from './solver';
+import type { GameState, GeneratedLevel, Move, ParMode } from './types';
 
 /** Default palette ids (see ../theme/colors.ts). Generation uses the first N. */
 export const PALETTE: readonly string[] = [
@@ -30,6 +30,12 @@ export const PALETTE: readonly string[] = [
 export const DEFAULT_CAPACITY = 4;
 const MAX_COLORS = PALETTE.length; // 12
 const MAX_RETRIES = 300;
+/**
+ * When a `minPar` floor is requested, stop *hunting for a harder board* after this many
+ * solvable candidates and keep the most-tangled one seen. Bounds the extra solver work so
+ * generation never churns — the floor is a preference, not a hard requirement.
+ */
+const PAR_SAMPLE_CAP = 50;
 
 /**
  * Mulberry32 — a tiny, fast, deterministic PRNG. Seeding makes generated levels
@@ -94,6 +100,27 @@ export interface GenerateOptions {
   capacity?: number;
   /** Seed for reproducibility. Defaults to a random seed. */
   seed?: number;
+  /**
+   * Reject boards easier than this par (best-of-N rejection sampling). The floor is a
+   * preference: if no board reaches it within the sampling budget, the hardest one found is
+   * returned anyway, so generation never fails on account of the floor. Omit for the legacy
+   * "accept first solvable" behavior.
+   */
+  minPar?: number;
+  /** How to measure par for the floor / the returned `par`. Defaults to `proxy`. */
+  parMode?: ParMode;
+}
+
+/**
+ * Measure a board's par. `optimal` runs the exact BFS (falling back to the DFS length if it
+ * hits the node cap); `proxy` just uses the DFS solution length.
+ */
+function measurePar(state: GameState, solution: Move[], mode: ParMode): number {
+  if (mode === 'optimal') {
+    const optimal = bfsOptimal(state);
+    if (optimal !== null) return optimal;
+  }
+  return solution.length;
 }
 
 /**
@@ -110,6 +137,8 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
 
   const empties = bottles - colors;
   const baseSeed = options.seed ?? (Math.random() * 2 ** 32) >>> 0;
+  const parMode: ParMode = options.parMode ?? 'proxy';
+  const minPar = options.minPar;
   const rng = mulberry32(baseSeed);
 
   // The balanced multiset: `capacity` copies of each of the first `colors` palette ids.
@@ -118,24 +147,40 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
     for (let k = 0; k < capacity; k++) template.push(PALETTE[c]!);
   }
 
+  const build = (state: GameState, solution: Move[]): GeneratedLevel => ({
+    state,
+    colors,
+    bottles,
+    capacity,
+    solution,
+    minMoves: solution.length,
+    par: measurePar(state, solution, parMode),
+    seed: baseSeed,
+  });
+
+  // Best-of-N: the hardest solvable board seen so far, for the par-floor path's fallback.
+  let best: GeneratedLevel | null = null;
+  let solvableSeen = 0;
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const state = deal(shuffle([...template], rng), colors, empties, capacity);
     if (isDegenerate(state)) continue;
 
     const solution = solve(state);
-    if (solution) {
-      return {
-        state,
-        colors,
-        bottles,
-        capacity,
-        solution,
-        minMoves: solution.length,
-        seed: baseSeed,
-      };
-    }
+    if (!solution) continue;
+
+    // Legacy fast path: no floor requested, accept the first solvable board.
+    if (minPar === undefined) return build(state, solution);
+
+    const candidate = build(state, solution);
+    if (best === null || candidate.par > best.par) best = candidate;
+    if (candidate.par >= minPar) return candidate; // met the floor — done.
+
+    // Give up hunting for a harder board once we've sampled enough; keep the best.
+    if (++solvableSeen >= PAR_SAMPLE_CAP) return best;
   }
 
+  if (best) return best;
   throw new Error(
     `Failed to generate a solvable ${colors}/${bottles} level after ${MAX_RETRIES} attempts`,
   );

@@ -49,3 +49,20 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
+
+/* Cork lid on a finished (capped) tube. Perches on the rim; drops in via Framer Motion.
+   Horizontal centering is done with motion's own `x: -50%` (not a CSS transform) so it isn't
+   clobbered when motion writes the y/scale transform. */
+.cap {
+  position: absolute;
+  top: calc(var(--segment-height) * -0.16);
+  left: 50%;
+  width: 112%;
+  height: calc(var(--segment-height) * 0.44);
+  border-radius: 38% 38% 22% 22%;
+  background: linear-gradient(180deg, #e9b787 0%, #cf9355 55%, #b97f45 100%);
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.4), inset 0 1.5px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 2;
+}
