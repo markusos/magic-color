@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { applyColorMap, randomColorMap, recolor } from './recolor';
-import { PALETTE } from './generator';
+import { applyColorMap, pickSpreadSubset, randomColorMap, recolor } from './recolor';
+import { PALETTE, mulberry32 } from './generator';
+import { colorDistance } from '../theme/colors';
 import { board as makeBoard, color } from '../test/board';
 
 /** A deterministic rng from a list of [0,1) values, for pinning the random map in tests. */
@@ -46,6 +47,47 @@ describe('applyColorMap', () => {
     const before = structuredClone(board);
     applyColorMap(board, { ruby: color('teal'), amethyst: color('lime') });
     expect(board).toEqual(before);
+  });
+});
+
+describe('pickSpreadSubset (visual distinctness)', () => {
+  const minPairDistance = (ids: readonly string[]) => {
+    let min = Infinity;
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        min = Math.min(min, colorDistance(ids[i]!, ids[j]!));
+      }
+    }
+    return min;
+  };
+
+  it('keeps small easy/normal palettes clearly distinct across many seeds', () => {
+    for (let seed = 0; seed < 200; seed++) {
+      const rng = mulberry32(seed);
+      for (const count of [3, 4]) {
+        const subset = pickSpreadSubset(count, rng);
+        expect(subset).toHaveLength(count);
+        expect(new Set(subset).size).toBe(count); // all distinct ids
+        // Comfortably above the ~22 ΔE of the closest confusable pair (ruby/rose), so easy
+        // boards never surface two near-identical hues.
+        expect(minPairDistance(subset)).toBeGreaterThan(40);
+      }
+    }
+  });
+
+  it('beats a forced-cluster pick even for the larger normal palettes', () => {
+    // 7-8 of 12 colors must dip into a cluster, but spreading still keeps the closest pair well
+    // above the palette's worst case (~11 ΔE for violet/cobalt).
+    for (let seed = 0; seed < 200; seed++) {
+      const rng = mulberry32(seed);
+      for (const count of [7, 8]) {
+        expect(minPairDistance(pickSpreadSubset(count, rng))).toBeGreaterThan(20);
+      }
+    }
+  });
+
+  it('uses the whole palette when all 12 colors are needed (hard)', () => {
+    expect(new Set(pickSpreadSubset(12, mulberry32(1))).size).toBe(PALETTE.length);
   });
 });
 
