@@ -46,7 +46,7 @@ describe('applyColorMap', () => {
   });
 
   it('does not mutate the input board', () => {
-    const before = JSON.parse(JSON.stringify(board));
+    const before = structuredClone(board);
     applyColorMap(board, { ruby: 'teal', amethyst: 'lime' });
     expect(board).toEqual(before);
   });

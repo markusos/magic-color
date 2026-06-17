@@ -118,7 +118,7 @@ export const useGameStore = create<GameStore>((set, get) => {
    * the current level.
    */
   const commit = (current: GameState, extra: Partial<GameStore>) => {
-    const hidden = (extra.hidden ?? get().hidden) as HiddenGrid;
+    const hidden = extra.hidden ?? get().hidden;
     const status = syncStatus(current, hidden);
     set({ current, status, ...extra });
 
@@ -207,8 +207,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       // A capped (finished) tube is inert: it can't be selected or poured from/into.
       const selectable = (b: number) =>
         current.bottles[b] !== undefined &&
-        current.bottles[b]!.length > 0 &&
-        !isCapped(current.bottles[b]!, current.capacity, hidden[b]);
+        current.bottles[b].length > 0 &&
+        !isCapped(current.bottles[b], current.capacity, hidden[b]);
 
       // No current selection: select a non-empty, un-capped bottle.
       if (selected === null) {
