@@ -10,13 +10,13 @@
 import { isComplete, isWon } from './engine';
 import { mulberry32 } from './rng';
 import { bfsOptimal, solve } from './solver';
-import type { GameState, GeneratedLevel, Move, ParMode } from './types';
+import type { Color, GameState, GeneratedLevel, Move, ParMode } from './types';
 
 // Re-exported for callers that historically imported the PRNG from here; its home is now rng.ts.
 export { mulberry32 };
 
 /** Default palette ids (see ../theme/colors.ts). Generation uses the first N. */
-export const PALETTE: readonly string[] = [
+export const PALETTE: readonly Color[] = [
   'ruby',
   'amethyst',
   'sapphire',
@@ -29,7 +29,7 @@ export const PALETTE: readonly string[] = [
   'tangerine',
   'cobalt',
   'magenta',
-];
+].map((id) => id as Color);
 
 export const DEFAULT_CAPACITY = 4;
 const MAX_COLORS = PALETTE.length; // 12
@@ -68,8 +68,8 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
 }
 
 /** Deal a flat list of segments into `colors` full bottles, leaving `empties` empty. */
-function deal(segments: string[], colors: number, empties: number, capacity: number): GameState {
-  const bottles: string[][] = [];
+function deal(segments: Color[], colors: number, empties: number, capacity: number): GameState {
+  const bottles: Color[][] = [];
   for (let i = 0; i < colors; i++) {
     bottles.push(segments.slice(i * capacity, i * capacity + capacity));
   }
@@ -131,7 +131,7 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
   const rng = mulberry32(baseSeed);
 
   // The balanced multiset: `capacity` copies of each of the first `colors` palette ids.
-  const template: string[] = [];
+  const template: Color[] = [];
   for (let c = 0; c < colors; c++) {
     for (let k = 0; k < capacity; k++) template.push(PALETTE[c]!);
   }

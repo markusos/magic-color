@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
 import { generateForLevel } from '../game/progression';
+import { board } from '../test/board';
 
 const store = () => useGameStore.getState();
 
@@ -82,7 +83,7 @@ describe('progression', () => {
 describe('cap-aware deadlock detection', () => {
   const commitBoard = (current: { bottles: string[][]; capacity: number }, hidden: boolean[][]) => {
     useGameStore.setState({
-      initial: current,
+      initial: board(current.bottles, current.capacity),
       initialHidden: hidden,
       hidden,
       history: [],
@@ -129,13 +130,13 @@ describe('cap-aware deadlock detection', () => {
 describe('capped (finished) tubes', () => {
   it('cannot be selected, poured out of, or poured into', () => {
     useGameStore.setState({
-      current: {
-        bottles: [
+      current: board(
+        [
           ['ruby', 'ruby', 'ruby', 'ruby'], // full single color -> capped
           ['amber', 'amber'],
         ],
-        capacity: 4,
-      },
+        4,
+      ),
       hidden: [
         [false, false, false, false],
         [false, false],
@@ -279,7 +280,7 @@ describe('deadlock detection (genuine walls only)', () => {
   const seed = (bottles: string[][], capacity: number) => {
     const grid = bottles.map((b) => b.map(() => false));
     useGameStore.setState({
-      initial: { bottles, capacity },
+      initial: board(bottles, capacity),
       initialHidden: grid,
       hidden: grid,
       hiddenHistory: [],

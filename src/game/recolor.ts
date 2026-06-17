@@ -11,12 +11,12 @@
  * reproducible, only the layout is. `random` is injectable so tests can pin the mapping.
  */
 import { PALETTE } from './generator';
-import type { GameState } from './types';
+import type { Color, GameState } from './types';
 
 /** The distinct color ids present in a board, in first-seen (bottom-up, left-to-right) order. */
-function distinctIds(state: GameState): string[] {
-  const seen = new Set<string>();
-  const ids: string[] = [];
+function distinctIds(state: GameState): Color[] {
+  const seen = new Set<Color>();
+  const ids: Color[] = [];
   for (const bottle of state.bottles) {
     for (const id of bottle) {
       if (!seen.has(id)) {
@@ -34,9 +34,9 @@ function distinctIds(state: GameState): string[] {
  * Fisher–Yates over a palette copy guarantees the chosen targets are all distinct.
  */
 export function randomColorMap(
-  ids: readonly string[],
+  ids: readonly Color[],
   random: () => number = Math.random,
-): Record<string, string> {
+): Record<string, Color> {
   const pool = [...PALETTE];
   const n = Math.min(ids.length, pool.length);
   for (let i = 0; i < n; i++) {
@@ -45,7 +45,7 @@ export function randomColorMap(
     pool[i] = pool[j]!;
     pool[j] = tmp;
   }
-  const map: Record<string, string> = {};
+  const map: Record<string, Color> = {};
   ids.forEach((id, i) => {
     map[id] = pool[i] ?? id;
   });
@@ -53,7 +53,7 @@ export function randomColorMap(
 }
 
 /** Apply a color remap to every segment of a board, returning a new `GameState`. */
-export function applyColorMap(state: GameState, map: Record<string, string>): GameState {
+export function applyColorMap(state: GameState, map: Record<string, Color>): GameState {
   return {
     ...state,
     bottles: state.bottles.map((bottle) => bottle.map((id) => map[id] ?? id)),

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { canPour, isWon, pour } from './engine';
 import { canonical, isSolvable } from './solver';
 import { mulberry32 } from './generator';
-import type { GameState } from './types';
+import type { Bottle, GameState } from './types';
 
 /**
  * Cap-aware solvability: a BFS that, like the player, may NOT pour from a capped tube (full,
@@ -48,7 +48,7 @@ function randomBoard(rng: () => number, colors: number, empties: number, cap: nu
   const bottles: string[][] = [];
   for (let c = 0; c < colors; c++) bottles.push(segs.slice(c * cap, c * cap + cap));
   for (let e = 0; e < empties; e++) bottles.push([]);
-  return { bottles, capacity: cap };
+  return { bottles: bottles as Bottle[], capacity: cap };
 }
 
 describe('capping never changes solvability', () => {

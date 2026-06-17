@@ -11,34 +11,32 @@ import {
   legalMoves,
   isDeadlocked,
 } from './engine';
-import type { GameState } from './types';
-
-const state = (bottles: string[][], capacity = 4): GameState => ({ bottles, capacity });
+import { board as state, tube } from '../test/board';
 
 describe('inspection helpers', () => {
   it('topColor returns the last segment or null', () => {
-    expect(topColor(['r', 'g', 'b'])).toBe('b');
-    expect(topColor([])).toBeNull();
+    expect(topColor(tube(['r', 'g', 'b']))).toBe('b');
+    expect(topColor(tube([]))).toBeNull();
   });
 
   it('topRunLength counts the contiguous top color', () => {
-    expect(topRunLength(['r', 'g', 'g', 'g'])).toBe(3);
-    expect(topRunLength(['r', 'g', 'b'])).toBe(1);
-    expect(topRunLength([])).toBe(0);
-    expect(topRunLength(['b', 'b', 'b', 'b'])).toBe(4);
+    expect(topRunLength(tube(['r', 'g', 'g', 'g']))).toBe(3);
+    expect(topRunLength(tube(['r', 'g', 'b']))).toBe(1);
+    expect(topRunLength(tube([]))).toBe(0);
+    expect(topRunLength(tube(['b', 'b', 'b', 'b']))).toBe(4);
   });
 
   it('freeSpace accounts for capacity', () => {
-    expect(freeSpace(['r', 'g'], 4)).toBe(2);
-    expect(freeSpace([], 4)).toBe(4);
-    expect(freeSpace(['r', 'g', 'b', 'y'], 4)).toBe(0);
+    expect(freeSpace(tube(['r', 'g']), 4)).toBe(2);
+    expect(freeSpace(tube([]), 4)).toBe(4);
+    expect(freeSpace(tube(['r', 'g', 'b', 'y']), 4)).toBe(0);
   });
 
   it('isComplete is true for empty or full single-color bottles only', () => {
-    expect(isComplete([], 4)).toBe(true);
-    expect(isComplete(['r', 'r', 'r', 'r'], 4)).toBe(true);
-    expect(isComplete(['r', 'r', 'r'], 4)).toBe(false); // single color but not full
-    expect(isComplete(['r', 'r', 'r', 'g'], 4)).toBe(false);
+    expect(isComplete(tube([]), 4)).toBe(true);
+    expect(isComplete(tube(['r', 'r', 'r', 'r']), 4)).toBe(true);
+    expect(isComplete(tube(['r', 'r', 'r']), 4)).toBe(false); // single color but not full
+    expect(isComplete(tube(['r', 'r', 'r', 'g']), 4)).toBe(false);
   });
 });
 

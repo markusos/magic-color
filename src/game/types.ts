@@ -4,8 +4,13 @@
  * reused outside the browser (e.g. a future Node backend).
  */
 
-/** A color is referenced by a palette id (see ../theme/colors.ts for CSS values). */
-export type Color = string;
+/**
+ * A color is referenced by a palette id (see ../theme/colors.ts for CSS values). It's a
+ * *branded* string: every color originates from the palette or a recolor remap, so a raw,
+ * unrelated string (a state-key hash, a CSS value, a level id) can't be passed where a color is
+ * expected. The brand exists only at the type level — at runtime a Color is just its id string.
+ */
+export type Color = string & { readonly __color: unique symbol };
 
 /**
  * A bottle is a stack of color segments, bottom-first.

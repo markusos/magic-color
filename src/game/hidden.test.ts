@@ -12,8 +12,8 @@ import { optimalCappedMoves } from './search';
 import { generateForLevel } from './progression';
 import { bfsOptimal } from './solver';
 import type { GameState, Move } from './types';
+import { board, color, tube } from '../test/board';
 
-const board = (bottles: string[][]): GameState => ({ bottles, capacity: 4 });
 /** All cells eligible (full grid of true), for selection-focused tests. */
 const allExposable = (state: GameState) => state.bottles.map((b) => b.map(() => true));
 
@@ -21,7 +21,7 @@ describe('exposableCells', () => {
   it('marks cells the solution surfaces and nothing else', () => {
     // Bottle 0 fully empties into 1; so both of its cells are exposed. Bottle 1 only grows.
     const state = board([['ruby', 'ruby'], []]);
-    const solution: Move[] = [{ from: 0, to: 1, count: 2, color: 'ruby' }];
+    const solution: Move[] = [{ from: 0, to: 1, count: 2, color: color('ruby') }];
     const grid = exposableCells(state, solution);
     expect(grid[0]).toEqual([true, true]); // emptied -> both surfaced
     expect(grid[1]).toEqual([]); // started empty, only received
@@ -68,14 +68,14 @@ describe('computeHidden', () => {
 describe('knownTopRun', () => {
   it('counts the same-color top run but stops at a concealed cell', () => {
     // [red, red, red] all the same; concealing index 1 caps the visible run at 2 (indices 2..1? no).
-    const bottle = ['ruby', 'ruby', 'ruby'];
+    const bottle = tube(['ruby', 'ruby', 'ruby']);
     expect(knownTopRun(bottle, [false, false, false])).toBe(3);
     expect(knownTopRun(bottle, [false, true, false])).toBe(1); // concealed just below top
     expect(knownTopRun(bottle, [true, false, false])).toBe(2); // concealed at the bottom
   });
 
   it('stops at a color change like the normal top run', () => {
-    expect(knownTopRun(['amber', 'ruby', 'ruby'], [false, false, false])).toBe(2);
+    expect(knownTopRun(tube(['amber', 'ruby', 'ruby']), [false, false, false])).toBe(2);
   });
 
   it('is 0 for an empty bottle', () => {
@@ -148,18 +148,22 @@ describe('optimalCappedMoves', () => {
 
 describe('isCapped', () => {
   it('caps a full single-color, fully-revealed tube', () => {
-    expect(isCapped(['ruby', 'ruby', 'ruby', 'ruby'], 4)).toBe(true);
-    expect(isCapped(['ruby', 'ruby', 'ruby', 'ruby'], 4, [false, false, false, false])).toBe(true);
+    expect(isCapped(tube(['ruby', 'ruby', 'ruby', 'ruby']), 4)).toBe(true);
+    expect(isCapped(tube(['ruby', 'ruby', 'ruby', 'ruby']), 4, [false, false, false, false])).toBe(
+      true,
+    );
   });
 
   it('does not cap a full single-color tube that still hides a cell', () => {
-    expect(isCapped(['ruby', 'ruby', 'ruby', 'ruby'], 4, [false, true, false, false])).toBe(false);
+    expect(isCapped(tube(['ruby', 'ruby', 'ruby', 'ruby']), 4, [false, true, false, false])).toBe(
+      false,
+    );
   });
 
   it('does not cap partial, mixed, or empty tubes', () => {
-    expect(isCapped(['ruby', 'ruby'], 4)).toBe(false); // not full
-    expect(isCapped(['ruby', 'amber', 'ruby', 'ruby'], 4)).toBe(false); // mixed
-    expect(isCapped([], 4)).toBe(false); // empty
+    expect(isCapped(tube(['ruby', 'ruby']), 4)).toBe(false); // not full
+    expect(isCapped(tube(['ruby', 'amber', 'ruby', 'ruby']), 4)).toBe(false); // mixed
+    expect(isCapped(tube([]), 4)).toBe(false); // empty
   });
 });
 

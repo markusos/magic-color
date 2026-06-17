@@ -3,10 +3,10 @@
  * and immutable: `pour` returns a brand new `GameState` rather than mutating its input,
  * which keeps undo history and React rendering simple.
  */
-import type { Bottle, GameState, Move } from './types';
+import type { Bottle, Color, GameState, Move } from './types';
 
 /** The top (pourable) color of a bottle, or `null` if the bottle is empty. */
-export function topColor(bottle: Bottle): string | null {
+export function topColor(bottle: Bottle): Color | null {
   return bottle.length > 0 ? bottle[bottle.length - 1]! : null;
 }
 
@@ -85,7 +85,7 @@ export function pour(
   const color = topColor(src)!;
 
   const newSrc = src.slice(0, src.length - count);
-  const newDst = [...dst, ...Array<string>(count).fill(color)];
+  const newDst = [...dst, ...Array<Color>(count).fill(color)];
 
   const bottles = state.bottles.map((bottle, i) => {
     if (i === from) return newSrc;

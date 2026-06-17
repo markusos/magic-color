@@ -18,7 +18,7 @@
  */
 import { isComplete, pour } from './engine';
 import { mulberry32 } from './rng';
-import type { GameState, Move } from './types';
+import type { Bottle, GameState, Move } from './types';
 
 /**
  * Number of pour ACTIONS to play out `solution` under the real interaction rules — pours capped
@@ -68,7 +68,7 @@ export function anyHidden(hidden: HiddenGrid): boolean {
  * finished: no liquid may be poured in or out. A full single-color tube that still hides a cell
  * is NOT capped, so the player can pour from it to surface that cell.
  */
-export function isCapped(bottle: string[], capacity: number, hiddenCol?: boolean[]): boolean {
+export function isCapped(bottle: Bottle, capacity: number, hiddenCol?: boolean[]): boolean {
   // Full + single-color is exactly `isComplete` for a non-empty bottle; capping additionally
   // requires every cell revealed (a tube hiding a "?" can still be poured to surface it).
   if (bottle.length !== capacity) return false;
@@ -136,7 +136,7 @@ export function revealExposed(state: GameState, hidden: HiddenGrid): HiddenGrid 
  * engine from bulk-pouring hidden segments the player can't see. The top is never concealed, so
  * a non-empty bottle always yields at least 1.
  */
-export function knownTopRun(bottle: string[], hiddenCol: boolean[] | undefined): number {
+export function knownTopRun(bottle: Bottle, hiddenCol: boolean[] | undefined): number {
   if (bottle.length === 0) return 0;
   const color = bottle[bottle.length - 1];
   let run = 0;

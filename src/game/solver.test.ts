@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { canonical, solve, isSolvable, isUnsolvable, search, bfsOptimal } from './solver';
 import { isWon, isDeadlocked, legalMoves, pour } from './engine';
-import type { GameState, Move } from './types';
+import type { Bottle, GameState, Move } from './types';
 
-const state = (bottles: string[][], capacity = 4): GameState => ({ bottles, capacity });
+const state = (bottles: string[][], capacity = 4): GameState =>
+  ({ bottles: bottles as Bottle[], capacity });
 
 /** Replay a solution against a state and return the final board. */
 function replay(start: GameState, moves: Move[]): GameState {
