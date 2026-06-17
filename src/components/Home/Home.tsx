@@ -37,9 +37,12 @@ export function Home() {
         <button className={styles.primary} onClick={onPlay}>
           {fresh ? 'Play' : `Continue · Level ${furthest}`}
         </button>
-        <button className={styles.secondary} onClick={() => navigate('levels')}>
-          Levels
-        </button>
+        {/* Only meaningful once more than one level is unlocked. */}
+        {!fresh && (
+          <button className={styles.secondary} onClick={() => navigate('levels')}>
+            Levels
+          </button>
+        )}
       </div>
     </div>
   );
