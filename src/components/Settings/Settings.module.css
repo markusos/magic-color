@@ -38,6 +38,12 @@
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--text);
+  /* Secret admin gesture: rapid taps reveal the unlock panel. Suppress the tap-highlight/select
+     so it reads as a plain, inert heading and the gesture stays undiscoverable. */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .group {
@@ -68,4 +74,59 @@
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--text-dim);
+}
+
+/* Hidden admin panel, revealed only by the secret title gesture. */
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(360px, 100%);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px dashed rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.adminTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.adminRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.adminInput {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 1rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.adminBtn {
+  padding: var(--space-2) var(--space-4);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-md);
+}
+
+.adminBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.adminBtn:disabled {
+  opacity: 0.4;
 }

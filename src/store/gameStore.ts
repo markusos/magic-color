@@ -65,6 +65,11 @@ interface GameStore {
   /** Wipe saved progress and return to level 1. */
   startOver: () => void;
   /**
+   * Admin/testing hatch: raise the unlock frontier so every level up to `level` (clamped to
+   * 1..1000) becomes playable. Never lowers progress, never touches earned stars/best scores.
+   */
+  unlockUpTo: (level: number) => void;
+  /**
    * Handle a tap on bottle `i`. First tap selects a non-empty bottle; a second tap either
    * pours (if legal), reselects, or deselects.
    */
@@ -181,6 +186,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       clearProgress();
       progress = loadProgress();
       loadLevel(1);
+    },
+
+    unlockUpTo: (level) => {
+      const target = Math.max(1, Math.min(1000, Math.floor(level)));
+      progress = { ...progress, current: Math.max(progress.current, target) };
+      saveProgress(progress);
+      set({ furthest: progress.current });
     },
 
     tapBottle: (i) => {
