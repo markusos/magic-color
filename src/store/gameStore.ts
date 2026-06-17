@@ -8,9 +8,10 @@
  * regenerated from it on demand, and the reached level + best scores are persisted to
  * localStorage.
  *
- * Deadlock detection is split by cost: a win and the cheap "zero legal moves" case are decided
- * synchronously for instant feedback, while the expensive "stuck loop" proof runs debounced in
- * a Web Worker via the deadlock monitor, flipping the status to `deadlocked` only once it returns.
+ * The board is only declared `deadlocked` when the player has NO legal move at all (a genuine
+ * wall). We deliberately do NOT proactively detect "the board is no longer winnable but moves
+ * remain" — getting stuck from an earlier mistake shouldn't end the game; the player keeps their
+ * moves and can undo or restart at will.
  */
 import { create } from 'zustand';
 import { canPour, isWon, pour } from '../game/engine';
@@ -18,19 +19,9 @@ import { generateForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
 import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
-import { createDeadlockMonitor, type DeadlockMonitor } from './deadlockMonitor';
 import { clearProgress, loadProgress, recordResult, saveProgress, type Progress } from './progress';
 
 export type GameStatus = 'playing' | 'won' | 'deadlocked';
-
-// A single monitor for the app. Swappable so tests can inject a fast, synchronous one.
-let monitor: DeadlockMonitor = createDeadlockMonitor();
-
-/** Test seam: replace the deadlock monitor (e.g. zero-debounce, in-process). */
-export function __setDeadlockMonitor(next: DeadlockMonitor): void {
-  monitor.dispose();
-  monitor = next;
-}
 
 interface GameStore {
   /** The active board. */
@@ -117,9 +108,8 @@ export const useGameStore = create<GameStore>((set, get) => {
   let progress: Progress = loadProgress();
 
   /**
-   * Commit a new board: set the synchronously-known status, then (if still playing) schedule
-   * the debounced worker check for the harder "stuck loop" case. On a win, record the best
-   * move count for the current level.
+   * Commit a new board: set the synchronously-known status. On a win, record the best result for
+   * the current level.
    */
   const commit = (current: GameState, extra: Partial<GameStore>) => {
     const hidden = (extra.hidden ?? get().hidden) as HiddenGrid;
@@ -136,17 +126,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         bestStars: progress.stars[level] ?? null,
         levelStars: progress.stars,
       });
-    }
-
-    if (status === 'playing') {
-      monitor.schedule(current, (unsolvable) => {
-        // Guard against races: only act if this board is still the live, playing one.
-        if (unsolvable && get().current === current && get().status === 'playing') {
-          set({ status: 'deadlocked' });
-        }
-      });
-    } else {
-      monitor.cancel();
     }
   };
 

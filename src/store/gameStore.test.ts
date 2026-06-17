@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useGameStore, __setDeadlockMonitor } from './gameStore';
-import { createDeadlockMonitor, type DeadlockMonitor } from './deadlockMonitor';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { useGameStore } from './gameStore';
 import { generateForLevel } from '../game/progression';
 
 const store = () => useGameStore.getState();
@@ -10,20 +9,9 @@ const store = () => useGameStore.getState();
 const LEVEL = 1;
 const reference = generateForLevel(LEVEL);
 
-// Inject a zero-debounce, in-process monitor so the async deadlock check resolves fast
-// and deterministically (no Web Worker in the test environment).
-let testMonitor: DeadlockMonitor;
-
 beforeEach(() => {
   localStorage.clear();
-  testMonitor = createDeadlockMonitor({ debounceMs: 0 });
-  __setDeadlockMonitor(testMonitor);
   store().loadLevel(LEVEL);
-});
-
-afterEach(() => {
-  // Drop any pending/in-flight check so it can't leak into the next test.
-  testMonitor.cancel();
 });
 
 /** Drive a list of engine moves through the tap interface (select source, tap target). */
@@ -265,30 +253,38 @@ describe('undo / restart', () => {
   });
 });
 
-describe('deadlock detection', () => {
-  it('ends the game when the board becomes a stuck loop (moves remain but unwinnable)', async () => {
-    // 5 reds + 5 greens at capacity 4 — unwinnable, yet bottle 0 can still pour into 2.
-    const stuck = {
-      bottles: [
+describe('deadlock detection (genuine walls only)', () => {
+  const seed = (bottles: string[][], capacity: number) => {
+    const grid = bottles.map((b) => b.map(() => false));
+    useGameStore.setState({
+      initial: { bottles, capacity },
+      initialHidden: grid,
+      hidden: grid,
+      hiddenHistory: [],
+      history: [],
+      moves: [],
+      selected: null,
+    });
+    store().restart(); // commits the seeded board and recomputes status
+  };
+
+  it('does NOT end the game when the board is unwinnable but moves remain', () => {
+    // 5 reds + 5 greens interleaved — unwinnable, yet bottle 0 can still pour into bottle 2.
+    // An earlier mistake must not auto-end the game; the player keeps their moves and can undo.
+    seed(
+      [
         ['ruby', 'emerald', 'ruby', 'emerald'],
         ['emerald', 'ruby', 'emerald', 'ruby'],
         ['ruby', 'emerald'],
       ],
-      capacity: 4,
-    };
-    // Seed it as the initial board, then restart() commits it.
-    useGameStore.setState({ initial: stuck });
-    store().restart();
-    // Status is optimistically "playing" until the debounced worker check returns...
+      4,
+    );
     expect(store().status).toBe('playing');
-    // ...then it flips to "deadlocked".
-    await vi.waitFor(() => expect(store().status).toBe('deadlocked'));
   });
 
-  it('does not flag a solvable board as deadlocked', async () => {
-    store().loadLevel(LEVEL);
-    // Give the debounced check time to run; a solvable board must stay playable.
-    await new Promise((r) => setTimeout(r, 10));
-    expect(store().status).toBe('playing');
+  it('declares deadlock only when there is genuinely no legal move', () => {
+    // Two full, mismatched tubes and no empty — nothing can be poured anywhere.
+    seed([['ruby', 'emerald'], ['emerald', 'ruby']], 2);
+    expect(store().status).toBe('deadlocked');
   });
 });

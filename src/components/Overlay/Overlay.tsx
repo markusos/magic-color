@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Undo2, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { starsFor } from '../../game/stars';
 import { Stars } from '../Stars/Stars';
@@ -14,7 +14,6 @@ export function Overlay() {
   const moves = useGameStore((s) => s.moves);
   const optimal = useGameStore((s) => s.optimal);
   const nextLevel = useGameStore((s) => s.nextLevel);
-  const undo = useGameStore((s) => s.undo);
   const restart = useGameStore((s) => s.restart);
 
   const visible = status === 'won' || status === 'deadlocked';
@@ -55,17 +54,11 @@ export function Overlay() {
             ) : (
               <>
                 <h2 className={styles.fail}>No moves left</h2>
-                <p className={styles.sub}>This board is stuck — undo a move or try again.</p>
-                <div className={styles.row}>
-                  <button onClick={undo}>
-                    <Undo2 size={18} strokeWidth={2} aria-hidden />
-                    Undo
-                  </button>
-                  <button className={styles.primary} onClick={restart}>
-                    <RotateCcw size={18} strokeWidth={2} aria-hidden />
-                    Restart Level
-                  </button>
-                </div>
+                <p className={styles.sub}>This board is stuck — restart to try again.</p>
+                <button className={styles.primary} onClick={restart}>
+                  <RotateCcw size={18} strokeWidth={2} aria-hidden />
+                  Restart Level
+                </button>
               </>
             )}
           </motion.div>
