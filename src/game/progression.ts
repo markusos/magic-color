@@ -14,6 +14,7 @@ import {
   computeHidden,
   emptyGrid,
   exposableCells,
+  optimalCappedMoves,
   type HiddenGrid,
 } from './hidden';
 import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
@@ -159,6 +160,28 @@ export function planForLevel(level: number): LevelPlan {
   };
 }
 
+/** Largest board (in bottles) for which we attempt the exact optimal at load time. */
+const EXACT_OPTIMAL_MAX_BOTTLES = 10;
+
+/**
+ * The level's star reference (achievable near-optimal player pours). For small boards (Easy /
+ * Normal) we compute the EXACT hidden-aware minimum via A*. Big boards (Hard, 15 tubes) are
+ * NP-hard to solve exactly and would stall the load, so we skip straight to a fast, safe upper
+ * bound: the stored solution replayed under the capped/reveal rules.
+ */
+function optimalFor(
+  state: GeneratedLevel['state'],
+  solution: GeneratedLevel['solution'],
+  hidden: HiddenGrid,
+  bottles: number,
+): number {
+  if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES) {
+    const exact = optimalCappedMoves(state, hidden);
+    if (exact !== null) return exact;
+  }
+  return cappedSolveMoves(state, solution, hidden);
+}
+
 /**
  * Generate the playable board for a level. Robust to the (rare) case where a seed fails to
  * yield a solvable board within the generator's retries: it deterministically bumps the salt
@@ -191,7 +214,7 @@ export function generateForLevel(level: number): PlayableLevel {
         phase: plan.phase,
         mechanics: plan.mechanics,
         hidden,
-        optimal: cappedSolveMoves(generated.state, generated.solution, hidden),
+        optimal: optimalFor(generated.state, generated.solution, hidden, generated.bottles),
       };
     } catch {
       // Extremely unlikely; try a different seed for this same level.

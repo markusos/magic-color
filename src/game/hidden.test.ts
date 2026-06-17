@@ -6,9 +6,11 @@ import {
   exposableCells,
   isCapped,
   knownTopRun,
+  optimalCappedMoves,
   revealExposed,
 } from './hidden';
 import { generateForLevel } from './progression';
+import { bfsOptimal } from './solver';
 import type { GameState, Move } from './types';
 
 const board = (bottles: string[][]): GameState => ({ bottles, capacity: 4 });
@@ -111,14 +113,36 @@ describe('cappedSolveMoves', () => {
     expect(cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden)).toBe(lvl.solution.length);
   });
 
-  it('is at least the bulk length on a hidden level and matches the level optimal', () => {
-    // Capping can only split runs, never merge them, so it never undercounts the bulk solution.
+  it('is at least the bulk length on a hidden level (runs only split, never merge)', () => {
     for (const level of [75, 90, 120, 145]) {
       const lvl = generateForLevel(level); // chapter 1 — hidden
       const capped = cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden);
       expect(capped).toBeGreaterThanOrEqual(lvl.solution.length);
-      expect(lvl.optimal).toBe(capped); // exactly what the level exposes as `optimal`
     }
+  });
+});
+
+describe('optimalCappedMoves', () => {
+  it('equals the exact bulk optimum on non-hidden boards', () => {
+    for (const level of [1, 20, 40, 60]) {
+      const lvl = generateForLevel(level);
+      expect(optimalCappedMoves(lvl.state, emptyGrid(lvl.state))).toBe(bfsOptimal(lvl.state));
+    }
+  });
+
+  it('never exceeds the capped DFS-replay upper bound when it finds an exact answer', () => {
+    for (const level of [75, 90, 110]) {
+      const lvl = generateForLevel(level); // small hidden boards — exact is found
+      const exact = optimalCappedMoves(lvl.state, lvl.hidden);
+      const upper = cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden);
+      expect(exact).not.toBeNull();
+      expect(exact!).toBeLessThanOrEqual(upper);
+    }
+  });
+
+  it('respects the node budget instead of hanging on a big board', () => {
+    const lvl = generateForLevel(145); // hard + hidden: exact is infeasible
+    expect(optimalCappedMoves(lvl.state, lvl.hidden, 2000)).toBeNull();
   });
 });
 

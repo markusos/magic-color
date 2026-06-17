@@ -1,23 +1,25 @@
 /**
- * Star rating for a solve. `optimal` is the achievable near-optimal move count for the level
- * (the stored solution replayed under the real capped/reveal rules — see `cappedSolveMoves`).
+ * Star rating for a solve. `optimal` is the level's achievable near-optimal player-pour count —
+ * for small boards the EXACT hidden-aware minimum, for big Hard boards a tight upper bound (see
+ * `optimalFor`/`optimalCappedMoves`). Because `optimal` already accounts for capping and hidden
+ * cells, the rating is just a tolerance over it — no separate hidden margin needed.
  *
- *   3 stars — a close-to-perfect solve (at or just over optimal)
+ *   3 stars — a close-to-perfect solve
  *   2 stars — at or near par
  *   1 star  — worse than par (just finishing)
  *
- * "Par" here is a small multiple of optimal; the two factors below are the only difficulty
- * dials. 3 stars is always achievable: replaying the reference solve lands at `optimal`, which
- * is within the 3-star cutoff on every level.
+ * The two factors are the only difficulty dials. Note `optimal` assumes you know the board; a
+ * first-time blind player on a hidden level pays an extra information cost that no board-derived
+ * optimal can capture — the tolerance below is what absorbs it.
  */
 
 /** A solve earns at most 3 and at least 1 star. */
 export type Stars = 1 | 2 | 3;
 
 /** 3 stars while moves stay within optimal x this. */
-const THREE_STAR_FACTOR = 1.1;
+const THREE_STAR_FACTOR = 1.5;
 /** "Par": 2 stars while moves stay within optimal x this; beyond it is 1 star. */
-const PAR_FACTOR = 1.5;
+const PAR_FACTOR = 2;
 
 /** Stars earned for solving in `moves`, given the level's `optimal` reference. */
 export function starsFor(moves: number, optimal: number): Stars {
