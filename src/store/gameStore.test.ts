@@ -4,10 +4,30 @@ import { generateForLevel } from '../game/progression';
 
 const store = () => useGameStore.getState();
 
-// Generation is deterministic by level, so the store's board for level 1 is identical to
-// this independently-generated level — including its known solution.
+// Generation is deterministic by level, so the store's board for level 1 has the same *layout*
+// as this independently-generated level — including its known solution. The displayed colors are
+// randomized per load (see recolor.ts), so board comparisons go through `sameLayout`, which checks
+// equality up to a consistent color renaming rather than exact ids.
 const LEVEL = 1;
 const reference = generateForLevel(LEVEL);
+
+/** Whether two boards are identical up to a consistent 1:1 color renaming (what recolor does). */
+function sameLayout(a: string[][], b: string[][]): boolean {
+  if (a.length !== b.length) return false;
+  const fwd = new Map<string, string>();
+  const rev = new Map<string, string>();
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]!.length !== b[i]!.length) return false;
+    for (let j = 0; j < a[i]!.length; j++) {
+      const x = a[i]![j]!;
+      const y = b[i]![j]!;
+      if ((fwd.has(x) && fwd.get(x) !== y) || (rev.has(y) && rev.get(y) !== x)) return false;
+      fwd.set(x, y);
+      rev.set(y, x);
+    }
+  }
+  return true;
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -28,7 +48,9 @@ describe('loadLevel', () => {
     expect(s.status).toBe('playing');
     expect(s.level).toBe(LEVEL);
     expect(s.optimal).toBe(reference.optimal);
-    expect(s.current.bottles).toEqual(reference.state.bottles);
+    // `initial` keeps the canonical colors; the displayed board is a recoloring of the same layout.
+    expect(s.initial.bottles).toEqual(reference.state.bottles);
+    expect(sameLayout(s.current.bottles, reference.state.bottles)).toBe(true);
     expect(s.history).toHaveLength(0);
     expect(s.selected).toBeNull();
   });
@@ -244,10 +266,10 @@ describe('undo / restart', () => {
     expect(store().history).toHaveLength(0);
   });
 
-  it('restart returns to the initial board', () => {
+  it('restart returns to the initial layout (re-rolling colors)', () => {
     playSolution();
     store().restart();
-    expect(store().current.bottles).toEqual(reference.state.bottles);
+    expect(sameLayout(store().current.bottles, reference.state.bottles)).toBe(true);
     expect(store().status).toBe('playing');
     expect(store().history).toHaveLength(0);
   });

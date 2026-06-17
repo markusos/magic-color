@@ -17,6 +17,7 @@ import { create } from 'zustand';
 import { canPour, isWon, pour } from '../game/engine';
 import { generateForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
+import { recolor } from '../game/recolor';
 import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { clearProgress, loadProgress, recordResult, saveProgress, type Progress } from './progress';
@@ -139,7 +140,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     // Replaying an earlier level must not lower the unlock frontier.
     progress = { ...progress, current: Math.max(progress.current, level) };
     saveProgress(progress);
-    commit(generated.state, {
+    // Display the board under a fresh random palette; keep `initial` in the generator's
+    // canonical colors so each Restart re-rolls the hues (see `restart`).
+    commit(recolor(generated.state), {
       initial: generated.state,
       hidden: generated.hidden,
       initialHidden: generated.hidden,
@@ -158,11 +161,13 @@ export const useGameStore = create<GameStore>((set, get) => {
     });
   };
 
-  // Initial level: resume where the player left off.
+  // Initial level: resume where the player left off. The displayed board gets fresh random
+  // hues; `initial` stays canonical so Restart re-rolls them.
   const first = generateForLevel(progress.current);
+  const firstBoard = recolor(first.state);
 
   return {
-    current: first.state,
+    current: firstBoard,
     initial: first.state,
     hidden: first.hidden,
     initialHidden: first.hidden,
@@ -170,7 +175,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     history: [],
     moves: [],
     selected: null,
-    status: syncStatus(first.state, first.hidden),
+    status: syncStatus(firstBoard, first.hidden),
     level: progress.current,
     phase: first.phase,
     mechanics: first.mechanics,
@@ -255,7 +260,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restart: () => {
-      commit(get().initial, {
+      // Re-roll the palette on every restart: same layout, new colors.
+      commit(recolor(get().initial), {
         history: [],
         hiddenHistory: [],
         hidden: get().initialHidden,
