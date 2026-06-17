@@ -14,9 +14,9 @@ import {
   computeHidden,
   emptyGrid,
   exposableCells,
-  optimalCappedMoves,
   type HiddenGrid,
 } from './hidden';
+import { optimalCappedMoves } from './search';
 import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
 
 /** One rung of the difficulty ladder: a fixed footprint plus its phase label. */

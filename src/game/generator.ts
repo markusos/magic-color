@@ -8,8 +8,12 @@
  * walk isn't reversible. Verifying with a real solver sidesteps that entirely.
  */
 import { isComplete, isWon } from './engine';
+import { mulberry32 } from './rng';
 import { bfsOptimal, solve } from './solver';
 import type { GameState, GeneratedLevel, Move, ParMode } from './types';
+
+// Re-exported for callers that historically imported the PRNG from here; its home is now rng.ts.
+export { mulberry32 };
 
 /** Default palette ids (see ../theme/colors.ts). Generation uses the first N. */
 export const PALETTE: readonly string[] = [
@@ -36,21 +40,6 @@ const MAX_RETRIES = 300;
  * generation never churns — the floor is a preference, not a hard requirement.
  */
 const PAR_SAMPLE_CAP = 50;
-
-/**
- * Mulberry32 — a tiny, fast, deterministic PRNG. Seeding makes generated levels
- * reproducible, which keeps tests stable and lets us share a level by its seed.
- */
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * Whether a (colors, bottles, capacity) combo is in the known-good, efficiently

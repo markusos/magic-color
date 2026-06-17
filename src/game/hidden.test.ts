@@ -6,9 +6,9 @@ import {
   exposableCells,
   isCapped,
   knownTopRun,
-  optimalCappedMoves,
   revealExposed,
 } from './hidden';
+import { optimalCappedMoves } from './search';
 import { generateForLevel } from './progression';
 import { bfsOptimal } from './solver';
 import type { GameState, Move } from './types';

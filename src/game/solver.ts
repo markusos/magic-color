@@ -3,19 +3,17 @@
  * actually solvable — the hard guarantee behind the generator — and (b) compute a
  * known solution and its step count. The same machinery can later power a "hint" tool.
  */
-import { canPour, isWon, legalMoves, pour } from './engine';
+import { isWon, legalMoves, pour } from './engine';
+import { stateKey } from './search';
 import type { GameState, Move } from './types';
 
 /**
- * An order-independent string key for a state. Bottles are serialized and then sorted,
- * so two boards that differ only by bottle ordering collapse to the same key — this
- * dramatically shrinks the search space.
+ * An order-independent string key for a (full-information) state — the no-concealment case of
+ * the shared {@link stateKey}. Two boards that differ only by bottle ordering collapse to the
+ * same key, which dramatically shrinks the search space.
  */
 export function canonical(state: GameState): string {
-  return state.bottles
-    .map((b) => b.join(','))
-    .sort()
-    .join('|');
+  return stateKey(state);
 }
 
 interface SolveOptions {
@@ -134,19 +132,15 @@ export function bfsOptimal(state: GameState, options: SolveOptions = {}): number
     const next: GameState[] = [];
     depth++;
     for (const current of frontier) {
-      const n = current.bottles.length;
-      for (let from = 0; from < n; from++) {
-        for (let to = 0; to < n; to++) {
-          if (!canPour(current, from, to)) continue;
-          if (!isUsefulMove(current, from, to)) continue;
-          const { state: child } = pour(current, from, to);
-          if (isWon(child)) return depth;
-          const key = canonical(child);
-          if (visited.has(key)) continue;
-          visited.add(key);
-          if (++nodes > maxNodes) return null;
-          next.push(child);
-        }
+      for (const { from, to } of legalMoves(current)) {
+        if (!isUsefulMove(current, from, to)) continue;
+        const { state: child } = pour(current, from, to);
+        if (isWon(child)) return depth;
+        const key = canonical(child);
+        if (visited.has(key)) continue;
+        visited.add(key);
+        if (++nodes > maxNodes) return null;
+        next.push(child);
       }
     }
     frontier = next;
