@@ -1,12 +1,13 @@
 /**
  * Zustand store: the bridge between the pure engine and the React UI. It owns the mutable
  * session state (current board, undo history, selection, status) and the player's campaign
- * position (which level), delegating every rule decision to the engine and every level recipe
- * to `progression`.
- *
- * Progression is a single linear track: `level` is the player's global position, the board is
- * regenerated from it on demand, and the reached level + best scores are persisted to
+ * position (which level), delegating every rule decision to the engine, every level recipe to
+ * `progression`, and all persistence to the `campaign` service — the store itself never touches
  * localStorage.
+ *
+ * Progression is a single linear track: `level` is the player's global position and the board is
+ * regenerated from it on demand. The reached level and best scores live in `campaign`, which the
+ * store mirrors into its reactive fields (`furthest`, `best`, `bestStars`, `levelStars`).
  *
  * The board is only declared `deadlocked` when the player has NO legal move at all (a genuine
  * wall). We deliberately do NOT proactively detect "the board is no longer winnable but moves
@@ -20,9 +21,12 @@ import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from
 import { recolor } from '../game/recolor';
 import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
-import { clearProgress, loadProgress, recordResult, saveProgress, type Progress } from './progress';
+import { createCampaign } from './campaign';
 
 export type GameStatus = 'playing' | 'won' | 'deadlocked';
+
+/** Upper bound for the admin level-unlock hatch (see `unlockUpTo`). */
+const MAX_UNLOCK_LEVEL = 1000;
 
 interface GameStore {
   /** The active board. */
@@ -110,12 +114,12 @@ function syncStatus(state: GameState, hidden: HiddenGrid): GameStatus {
 }
 
 export const useGameStore = create<GameStore>((set, get) => {
-  // The player's persisted campaign progress, kept in sync with the store.
-  let progress: Progress = loadProgress();
+  // The persisted campaign — the sole owner of progress + localStorage.
+  const campaign = createCampaign();
 
   /**
    * Commit a new board: set the synchronously-known status. On a win, record the best result for
-   * the current level.
+   * the current level via the campaign and mirror it into the reactive fields.
    */
   const commit = (current: GameState, extra: Partial<GameStore>) => {
     const hidden = extra.hidden ?? get().hidden;
@@ -124,22 +128,15 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     if (status === 'won') {
       const { level, moves, optimal } = get();
-      const stars = starsFor(moves.length, optimal);
-      progress = recordResult(progress, level, moves.length, stars);
-      saveProgress(progress);
-      set({
-        best: progress.best[level] ?? null,
-        bestStars: progress.stars[level] ?? null,
-        levelStars: progress.stars,
-      });
+      const record = campaign.complete(level, moves.length, starsFor(moves.length, optimal));
+      set({ ...record, levelStars: campaign.levelStars });
     }
   };
 
   const loadLevel = (level: number) => {
     const generated = generateForLevel(level);
     // Replaying an earlier level must not lower the unlock frontier.
-    progress = { ...progress, current: Math.max(progress.current, level) };
-    saveProgress(progress);
+    campaign.reach(level);
     // Display the board under a fresh random palette; keep `initial` in the generator's
     // canonical colors so each Restart re-rolls the hues (see `restart`).
     commit(recolor(generated.state), {
@@ -154,16 +151,16 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: generated.phase,
       mechanics: generated.mechanics,
       optimal: generated.optimal,
-      best: progress.best[level] ?? null,
-      bestStars: progress.stars[level] ?? null,
-      furthest: progress.current,
-      levelStars: progress.stars,
+      ...campaign.recordFor(level),
+      furthest: campaign.furthest,
+      levelStars: campaign.levelStars,
     });
   };
 
   // Initial level: resume where the player left off. The displayed board gets fresh random
   // hues; `initial` stays canonical so Restart re-rolls them.
-  const first = generateForLevel(progress.current);
+  const startLevel = campaign.furthest;
+  const first = generateForLevel(startLevel);
   const firstBoard = recolor(first.state);
 
   return {
@@ -176,28 +173,24 @@ export const useGameStore = create<GameStore>((set, get) => {
     moves: [],
     selected: null,
     status: syncStatus(firstBoard, first.hidden),
-    level: progress.current,
+    level: startLevel,
     phase: first.phase,
     mechanics: first.mechanics,
     optimal: first.optimal,
-    best: progress.best[progress.current] ?? null,
-    bestStars: progress.stars[progress.current] ?? null,
-    furthest: progress.current,
-    levelStars: progress.stars,
+    ...campaign.recordFor(startLevel),
+    furthest: campaign.furthest,
+    levelStars: campaign.levelStars,
 
     loadLevel,
     nextLevel: () => loadLevel(get().level + 1),
     startOver: () => {
-      clearProgress();
-      progress = loadProgress();
+      campaign.reset();
       loadLevel(1);
     },
 
     unlockUpTo: (level) => {
-      const target = Math.max(1, Math.min(1000, Math.floor(level)));
-      progress = { ...progress, current: Math.max(progress.current, target) };
-      saveProgress(progress);
-      set({ furthest: progress.current });
+      campaign.unlockTo(level, MAX_UNLOCK_LEVEL);
+      set({ furthest: campaign.furthest });
     },
 
     tapBottle: (i) => {
