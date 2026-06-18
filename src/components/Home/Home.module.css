@@ -34,10 +34,47 @@
   margin: 0;
   font-size: clamp(2.2rem, 11vw, 3.4rem);
   letter-spacing: 0.5px;
-  background: linear-gradient(90deg, var(--accent), #ff8fab, var(--accent));
+  /* Liquid color flow: all 12 game colors streamed through the letters. The gradient is
+     2x as wide as the text and ends on the same hue it starts (ruby), so sliding it by one
+     full text-width loops seamlessly. The angle + slow background-position drift reads as a
+     molten color current rather than a flat sweep. First/last stop must match for the loop. */
+  background: linear-gradient(
+    100deg,
+    #e02438,
+    #ef6d1a,
+    #f2b50c,
+    #9ec61a,
+    #1aa346,
+    #0bc6c2,
+    #1c9fe0,
+    #2333c4,
+    #9b6bf0,
+    #c33ad0,
+    #cf1f93,
+    #f7799b,
+    #e02438
+  );
+  background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: titleFlow 18s linear infinite;
+}
+
+@keyframes titleFlow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: -200% 50%;
+  }
+}
+
+/* Respect users who prefer reduced motion: keep the colorful gradient, drop the animation. */
+@media (prefers-reduced-motion: reduce) {
+  .title {
+    animation: none;
+  }
 }
 
 .tagline {
