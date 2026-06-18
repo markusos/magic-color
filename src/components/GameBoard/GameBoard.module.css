@@ -1,11 +1,13 @@
-/* Fills the space between header and toolbar; never scrolls (bottles are sized to fit). */
+/* Fills the space between header and toolbar. Overflow is visible so a selected tube's tilt/lift
+   can spill into the side padding instead of being clipped; the app shell's own overflow:hidden
+   still bounds everything to the screen, so this never introduces scrolling. */
 .boardArea {
   flex: 1;
   min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   width: 100%;
 }
 

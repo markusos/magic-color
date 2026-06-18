@@ -1,5 +1,5 @@
-import { motion } from 'framer-motion';
-import { AnimatePresence } from 'framer-motion';
+import { useEffect, useRef } from 'react';
+import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
 import type { Bottle as BottleData } from '../../game/types';
 import { isCapped } from '../../game/hidden';
 import { LiquidSegment } from '../LiquidSegment/LiquidSegment';
@@ -23,26 +23,87 @@ export function Bottle({ bottle, capacity, hidden, selected, isTarget, lift, onT
   const segments = bottle.slice(0, capacity);
   const capped = isCapped(bottle, capacity, hidden);
 
+  // Stagger a multi-band pour so the liquid rises bottom-to-top instead of every new band popping
+  // in at once. Bands present before this render don't re-animate (AnimatePresence keeps them), so
+  // we only delay the freshly added ones, stepped by how far above the previous fill line they are.
+  const prevFillRef = useRef(segments.length);
+  const prevFill = prevFillRef.current;
+  useEffect(() => {
+    prevFillRef.current = segments.length;
+  }, [segments.length]);
+
+  // One spring drives the tube's tilt; the liquid reads the exact negation every frame, so the
+  // counter-rotation cancels the tilt perfectly throughout the animation (two independent springs
+  // drift apart mid-transition and make the surface wobble). The liquid stays world-level.
+  const tubeRotate = useMotionValue(0);
+  const liquidRotate = useTransform(tubeRotate, (r) => -r);
+  useEffect(() => {
+    const controls = animate(tubeRotate, selected ? -6 : 0, {
+      type: 'spring',
+      stiffness: 420,
+      damping: 26,
+    });
+    return () => controls.stop();
+  }, [selected, tubeRotate]);
+
   return (
     <motion.button
       type="button"
       className={`${styles.bottle} ${isTarget ? styles.target : ''}`}
       onClick={onTap}
       aria-label={`bottle with ${bottle.length} of ${capacity} filled`}
-      animate={{ y: selected ? -lift : 0, rotate: selected ? -6 : 0 }}
+      animate={{ y: selected ? -lift : 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 26 }}
       whileTap={{ scale: 0.96 }}
       style={{ height: `calc(var(--segment-height) * ${capacity} + var(--segment-height) * 0.4)` }}
     >
-      <div className={styles.glass}>
-        <div className={styles.liquidColumn}>
-          <AnimatePresence initial={false}>
-            {segments.map((color, i) => (
-              <LiquidSegment key={i} color={color} isBottom={i === 0} hidden={hidden?.[i]} />
-            ))}
-          </AnimatePresence>
+      {/* The tube tilts here (not on the button) so its rotation is a clean motion value the liquid
+          can mirror — Framer's gesture/animate system on the button would otherwise override it. */}
+      <motion.div className={styles.tube} style={{ rotate: tubeRotate }}>
+        <div className={styles.glass}>
+        {/* Counter-rotate the liquid against the tube's tilt so its surfaces stay level with the
+            world — the tilt then reads as the liquid sloshing rather than the whole column
+            rotating rigidly. `liquidRotate` is the exact negation of the tube's rotation (shared
+            motion value), so it cancels at every instant with no wobble. The gap-covering scale
+            lives on the inner element as plain CSS. */}
+        <motion.div className={styles.liquidTilt} style={{ rotate: liquidRotate }}>
+          <div className={`${styles.liquidColumn} ${selected ? styles.tilted : ''}`}>
+            <AnimatePresence initial={false}>
+              {segments.map((color, i) => (
+                <LiquidSegment
+                  key={i}
+                  color={color}
+                  isBottom={i === 0}
+                  isTop={i === segments.length - 1}
+                  hidden={hidden?.[i]}
+                  fillDelay={i >= prevFill ? (i - prevFill) * 0.08 : 0}
+                />
+              ))}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+
+        {/* Concealed "?" marks live here, in the tube's frame (not the counter-rotated liquid), so
+            they stay centred on the tube's axis and tilt with it. Drawing them inside the liquid
+            instead pins them to the liquid's vertical centre-line, which drifts off-axis as the
+            tube tilts. Positioned by band index from the bottom. */}
+        {segments.some((_, i) => hidden?.[i]) && (
+          <div className={styles.marks} aria-hidden>
+            {segments.map((_, i) =>
+              hidden?.[i] ? (
+                <span
+                  key={i}
+                  className={styles.mark}
+                  style={{ bottom: `calc(${i} * var(--segment-height))` }}
+                >
+                  ?
+                </span>
+              ) : null,
+            )}
+          </div>
+        )}
         </div>
-      </div>
+      </motion.div>
 
       <AnimatePresence>
         {capped && (

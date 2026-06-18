@@ -23,7 +23,9 @@ export interface BottleMetrics {
 const SEG_ASPECT = 0.72; // segment height / bottle width
 const NECK_FACTOR = 0.4; // extra bottle height (neck/base) as a multiple of one segment
 const COL_GAP_F = 0.34; // column gap / width
-const ROW_GAP_F = 0.55; // row gap / width (a bit more, for the selection lift)
+// Row gap / width. Must clear the selection lift (segmentHeight*0.7 = 0.5*width) plus the tilt's
+// extra rise and the spring overshoot, or a selected lower-row tube pokes into the row above.
+const ROW_GAP_F = 0.72;
 const LIFT_ROOM_F = 0.5; // headroom above the top row for the lifted/selected bottle
 const MIN_WIDTH = 20;
 const MAX_WIDTH = 88;

@@ -3,8 +3,197 @@
   width: 100%;
   height: var(--segment-height);
   transform-origin: bottom center;
+  overflow: hidden;
+  /* Wave geometry, shared by the masks below. The band is the height over which an edge ripples;
+     amplitude is baked into the SVG paths (period 48px). Kept modest on small boards via the
+     segment-height fraction so tiny tubes don't get an exaggerated wobble. */
+  --wave-band: min(13px, calc(var(--segment-height) * 0.36));
+  /* Seamlessly tiling wave (matching slopes at x=0 and x=48). The two variants fill opposite
+     sides of the curve: --wave-bottom keeps the liquid ABOVE the curve (a wavy bottom edge),
+     --wave-top keeps it BELOW (a wavy top surface). */
+  --wave-bottom: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='13'%20viewBox='0%200%2048%2013'%3E%3Cpath%20d='M0%206.5%20C6%202.5%2018%202.5%2024%206.5%20C30%2010.5%2042%2010.5%2048%206.5%20L48%200%20L0%200%20Z'%20fill='%23000'/%3E%3C/svg%3E");
+  --wave-top: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='48'%20height='13'%20viewBox='0%200%2048%2013'%3E%3Cpath%20d='M0%206.5%20C6%202.5%2018%202.5%2024%206.5%20C30%2010.5%2042%2010.5%2048%206.5%20L48%2013%20L0%2013%20Z'%20fill='%23000'/%3E%3C/svg%3E");
+  --solid: linear-gradient(#000, #000);
   box-shadow: inset 0 6px 8px -6px rgba(255, 255, 255, 0.45),
     inset 0 -6px 8px -6px rgba(0, 0, 0, 0.35);
+}
+
+/* Internal color churn: a few soft light/dark blobs drift within the band so the fill reads as
+   uneven, moving liquid rather than a flat rectangle. Each blob is oversized (160-200%) and the
+   three drift to slightly different positions, so the tinting never settles into a static shape.
+   Sits beneath the specular highlight (::after). */
+.segment::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(45% 42% at 30% 28%, rgba(255, 255, 255, 0.16), transparent 62%),
+    radial-gradient(52% 48% at 74% 68%, rgba(0, 0, 0, 0.2), transparent 66%),
+    radial-gradient(40% 38% at 62% 22%, rgba(255, 255, 255, 0.09), transparent 60%);
+  background-repeat: no-repeat;
+  background-size: 180% 180%, 200% 200%, 165% 165%;
+  animation: liquidChurn 14s ease-in-out infinite alternate;
+}
+
+.hidden::before {
+  content: none;
+}
+
+@keyframes liquidChurn {
+  from {
+    background-position: 22% 30%, 72% 60%, 52% 20%;
+  }
+  to {
+    background-position: 42% 52%, 54% 78%, 66% 42%;
+  }
+}
+
+/* A soft specular highlight that slowly wanders across the liquid, like light catching a
+   gently-moving surface. The blob is bigger than the band (160%) so shifting its position
+   drifts it around without ever fully leaving. ease-in-out + alternate reads as a calm sway
+   rather than a repeating sweep. Per-segment delays (below) keep the tube from swaying as one. */
+.segment::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(60% 55% at 50% 35%, rgba(255, 255, 255, 0.22), transparent 70%);
+  background-repeat: no-repeat;
+  background-size: 170% 170%;
+  animation: liquidSheen 9s ease-in-out infinite alternate;
+}
+
+.hidden::after {
+  content: none;
+}
+
+@keyframes liquidSheen {
+  from {
+    background-position: 18% 25%;
+  }
+  to {
+    background-position: 82% 70%;
+  }
+}
+
+/* --- Wavy edges -------------------------------------------------------------------------------
+   The masks below reshape the rectangular band so its color edge actually follows the wave (the
+   inset box-shadows are masked too, so the highlight/shadow hug the curve). The bottom wave hangs
+   one full band BELOW the layout box (extra height + negative margin cancel out in the flex
+   column) and overlaps the layer beneath, so the two colors interlock along the wave with no gap.
+   The top wave straddles the fill line — its troughs open onto the empty glass, reading as a
+   rippling surface. Animating mask-position scrolls the wave sideways for a gentle ripple. */
+
+/* Wavy bottom only (interior layers): solid body + a wavy band overlapping the layer below. */
+.waveBottom:not(.waveTop) {
+  height: calc(var(--segment-height) + var(--wave-band));
+  margin-bottom: calc(var(--wave-band) * -1);
+  -webkit-mask-image: var(--solid), var(--wave-bottom);
+  mask-image: var(--solid), var(--wave-bottom);
+  -webkit-mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
+  mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
+  -webkit-mask-repeat: no-repeat, repeat-x;
+  mask-repeat: no-repeat, repeat-x;
+  -webkit-mask-position: top, 0 bottom;
+  mask-position: top, 0 bottom;
+  animation: waveBottomScroll 9s linear infinite;
+}
+
+/* Wavy top only (a single-layer tube): wavy open surface, straight rounded base. */
+.waveTop:not(.waveBottom) {
+  -webkit-mask-image: var(--solid), var(--wave-top);
+  mask-image: var(--solid), var(--wave-top);
+  -webkit-mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
+  mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
+  -webkit-mask-repeat: no-repeat, repeat-x;
+  mask-repeat: no-repeat, repeat-x;
+  -webkit-mask-position: bottom, 0 top;
+  mask-position: bottom, 0 top;
+  animation: waveTopScroll 9s linear infinite;
+}
+
+/* Top-most layer of a multi-layer stack: wavy surface above AND wavy interface below. */
+.waveTop.waveBottom {
+  height: calc(var(--segment-height) + var(--wave-band));
+  margin-bottom: calc(var(--wave-band) * -1);
+  -webkit-mask-image: var(--solid), var(--wave-top), var(--wave-bottom);
+  mask-image: var(--solid), var(--wave-top), var(--wave-bottom);
+  -webkit-mask-size: 100% calc(100% - 2 * var(--wave-band)), 48px var(--wave-band),
+    48px var(--wave-band);
+  mask-size: 100% calc(100% - 2 * var(--wave-band)), 48px var(--wave-band), 48px var(--wave-band);
+  -webkit-mask-repeat: no-repeat, repeat-x, repeat-x;
+  mask-repeat: no-repeat, repeat-x, repeat-x;
+  -webkit-mask-position: left center, 0 top, 0 bottom;
+  mask-position: left center, 0 top, 0 bottom;
+  animation: waveBothScroll 9s linear infinite;
+}
+
+@keyframes waveBottomScroll {
+  from {
+    -webkit-mask-position: top, 0 bottom;
+    mask-position: top, 0 bottom;
+  }
+  to {
+    -webkit-mask-position: top, 48px bottom;
+    mask-position: top, 48px bottom;
+  }
+}
+
+@keyframes waveTopScroll {
+  from {
+    -webkit-mask-position: bottom, 0 top;
+    mask-position: bottom, 0 top;
+  }
+  to {
+    -webkit-mask-position: bottom, 48px top;
+    mask-position: bottom, 48px top;
+  }
+}
+
+@keyframes waveBothScroll {
+  from {
+    -webkit-mask-position: left center, 0 top, 0 bottom;
+    mask-position: left center, 0 top, 0 bottom;
+  }
+  to {
+    -webkit-mask-position: left center, 48px top, -48px bottom;
+    mask-position: left center, 48px top, -48px bottom;
+  }
+}
+
+/* Stagger so neighbouring layers drift out of phase, for a more organic, fluid look. */
+.segment:nth-child(2n)::after {
+  animation-duration: 11s;
+  animation-delay: -3s;
+}
+.segment:nth-child(3n)::after {
+  animation-duration: 10s;
+  animation-delay: -6s;
+}
+.segment:nth-child(2n)::before {
+  animation-duration: 16s;
+  animation-delay: -5s;
+}
+.segment:nth-child(3n)::before {
+  animation-duration: 13s;
+  animation-delay: -9s;
+}
+/* Offset the wave scroll per layer so adjacent surfaces never ripple in lockstep. */
+.segment:nth-child(2n) {
+  animation-delay: -3s;
+  animation-duration: 11s;
+}
+.segment:nth-child(3n) {
+  animation-delay: -6s;
+  animation-duration: 13s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment,
+  .segment::before,
+  .segment::after {
+    animation: none;
+  }
 }
 
 .bottom {
@@ -15,15 +204,4 @@
 /* Concealed segment: a near-black band carrying a "?" until it surfaces and reveals. */
 .hidden {
   background-color: #0c0c16;
-}
-
-.mark {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: rgba(255, 255, 255, 0.92);
-  font-weight: 800;
-  font-size: calc(var(--segment-height) * 0.5);
-  line-height: 1;
 }
