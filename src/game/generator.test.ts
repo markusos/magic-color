@@ -104,24 +104,43 @@ describe('generateLevel par floor', () => {
 describe('difficulty tiers', () => {
   const tiers: Difficulty[] = ['easy', 'normal', 'hard'];
 
-  it.each(tiers)('createLevel(%s) has fixed tubes, open tubes, and colors', (tier) => {
+  it.each(tiers)('createLevel(%s) has fixed tubes, balanced colors, and bounded slack', (tier) => {
     const level = createLevel(tier, 5);
     const preset = TIERS[tier];
-    const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
     expect(level.bottles).toBe(preset.tubes); // fixed tubes per tier
-    expect(emptyTubes).toBe(preset.emptyTubes); // fixed open tubes per tier
-    expect(level.colors).toBe(preset.tubes - preset.emptyTubes); // colors = tubes - open
+    expect(level.colors).toBe(preset.tubes - preset.emptyTubes); // colors = tubes - spare
+    // Color balance is preserved: each color fills exactly `capacity` segments.
+    const counts = new Map<string, number>();
+    for (const bottle of level.state.bottles) {
+      for (const c of bottle) counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    expect(counts.size).toBe(level.colors);
+    for (const n of counts.values()) expect(n).toBe(level.capacity);
+    // Free space is a budget, not a literal empty count: at most `emptyTubes` tubes are empty.
+    const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
+    expect(emptyTubes).toBeLessThanOrEqual(preset.emptyTubes);
     expect(isWon(replay(level.state, level.solution))).toBe(true);
   });
 
-  it('each tier always has its fixed open-tube count regardless of seed', () => {
-    const expected: Record<Difficulty, number> = { easy: 1, normal: 2, hard: 3 };
+  it('scatters empty and partially filled tubes for variety across seeds', () => {
     for (const tier of tiers) {
-      for (let seed = 0; seed < 20; seed++) {
+      const preset = TIERS[tier];
+      let sawPartialTube = false;
+      let sawFewerThanMaxEmpties = false;
+      for (let seed = 0; seed < 30; seed++) {
         const level = createLevel(tier, seed);
         const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
-        expect(emptyTubes).toBe(expected[tier]);
+        // Empty count never exceeds the tier's free-space budget.
+        expect(emptyTubes).toBeLessThanOrEqual(preset.emptyTubes);
+        if (emptyTubes < preset.emptyTubes) sawFewerThanMaxEmpties = true;
+        if (level.state.bottles.some((b) => b.length > 0 && b.length < level.capacity)) {
+          sawPartialTube = true;
+        }
       }
+      // Both the new behaviors actually occur: half-full tubes, and boards with fewer (or zero)
+      // empties than the old full-tubes-plus-empties layout would have produced.
+      expect(sawPartialTube).toBe(true);
+      expect(sawFewerThanMaxEmpties).toBe(true);
     }
   });
 

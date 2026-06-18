@@ -34,12 +34,12 @@ describe('planForLevel', () => {
     expect(top.bottles).toBe(15);
   });
 
-  it('starts chapter 1 (hidden colors) at level 75, back on the easy rung', () => {
-    const last0 = planForLevel(CHAPTER_LEN); // level 74
+  it('starts chapter 1 (hidden colors) at level 31, back on the easy rung', () => {
+    const last0 = planForLevel(CHAPTER_LEN); // level 30
     expect(last0.chapter).toBe(0);
     expect(last0.mechanics).not.toContain('hidden');
 
-    const first1 = planForLevel(CHAPTER_LEN + 1); // level 75
+    const first1 = planForLevel(CHAPTER_LEN + 1); // level 31
     expect(first1.chapter).toBe(1);
     expect(first1.phase).toBe('easy');
     expect(first1.colors).toBe(3);
@@ -56,6 +56,23 @@ describe('planForLevel', () => {
     // ...but each level still gets a distinct seed, so boards stay fresh.
     expect(deep.seed).toBe(seedForLevel(CHAPTER_LEN * 5 + 3));
     expect(deep.seed).not.toBe(planForLevel(CHAPTER_LEN * 5 + 4).seed);
+  });
+
+  it('steps difficulty every 5 levels: easy 1-10, normal 11-20, hard 21-30', () => {
+    const phaseAt = (level: number) => planForLevel(level).phase;
+    // Phase boundaries.
+    for (let l = 1; l <= 10; l++) expect(phaseAt(l)).toBe('easy');
+    for (let l = 11; l <= 20; l++) expect(phaseAt(l)).toBe('normal');
+    for (let l = 21; l <= 30; l++) expect(phaseAt(l)).toBe('hard');
+    // The footprint steps up at each 5-level rung boundary (colors strictly increase).
+    const colorsAt = (level: number) => planForLevel(level).colors;
+    expect([colorsAt(1), colorsAt(6), colorsAt(11), colorsAt(16), colorsAt(21), colorsAt(26)]).toEqual(
+      [3, 4, 7, 8, 11, 12],
+    );
+    // Next chapter rolls over at 31, back to easy but with the hidden mechanic layered on.
+    expect(planForLevel(31).phase).toBe('easy');
+    expect(planForLevel(31).chapter).toBe(1);
+    expect(planForLevel(31).mechanics).toContain('hidden');
   });
 
   it('uses exact par for easy/normal and the cheap proxy for hard', () => {

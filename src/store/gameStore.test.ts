@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
 import { generateForLevel } from '../game/progression';
+import { isSolvable } from '../game/solver';
+import { optimalCappedMoves } from '../game/search';
 import { board } from '../test/board';
 
 const store = () => useGameStore.getState();
@@ -196,6 +198,8 @@ describe('hidden colors (chapter 1)', () => {
   it('a pour snapshots concealment and undo restores it; restart re-conceals', () => {
     store().loadLevel(75);
     const initialHidden = store().hidden;
+    const concealedCount = (g: boolean[][]) => g.reduce((n, col) => n + col.filter(Boolean).length, 0);
+    const startConcealed = concealedCount(initialHidden);
     const first = generateForLevel(75).solution[0]!;
 
     store().tapBottle(first.from);
@@ -204,13 +208,15 @@ describe('hidden colors (chapter 1)', () => {
 
     store().undo();
     expect(store().hiddenHistory).toHaveLength(0);
-    expect(store().hidden).toEqual(initialHidden);
+    expect(store().hidden).toEqual(initialHidden); // undo restores the grid exactly (no reshuffle)
 
     // Reveal something, then restart should bring concealment back to the start.
     store().tapBottle(first.from);
     store().tapBottle(first.to);
     store().restart();
-    expect(store().hidden).toEqual(initialHidden);
+    // Restart reshuffles tube order, so the grid isn't identical — but it re-conceals every cell,
+    // restoring the starting count of concealed cells.
+    expect(concealedCount(store().hidden)).toBe(startConcealed);
     expect(store().hiddenHistory).toHaveLength(0);
   });
 });
@@ -267,12 +273,15 @@ describe('undo / restart', () => {
     expect(store().history).toHaveLength(0);
   });
 
-  it('restart returns to the initial layout (re-rolling colors)', () => {
+  it('restart returns to the same puzzle (re-rolling colors and tube order)', () => {
     playSolution();
     store().restart();
-    expect(sameLayout(store().current.bottles, reference.state.bottles)).toBe(true);
     expect(store().status).toBe('playing');
     expect(store().history).toHaveLength(0);
+    // The board is recolored AND its tubes reordered, so positions/ids differ — but it's the same
+    // puzzle: solvable, with an identical optimal solution length (both are permutation-invariant).
+    expect(isSolvable(store().current)).toBe(true);
+    expect(optimalCappedMoves(store().current, store().hidden)).toBe(reference.optimal);
   });
 });
 

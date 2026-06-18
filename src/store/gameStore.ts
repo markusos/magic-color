@@ -19,6 +19,7 @@ import { canPour, isWon, pour } from '../game/engine';
 import { generateForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
 import { recolor } from '../game/recolor';
+import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
@@ -253,11 +254,14 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restart: () => {
-      // Re-roll the palette on every restart: same layout, new colors.
-      commit(recolor(get().initial), {
+      // Re-roll BOTH the palette and the tube order on every restart: the same puzzle, but with
+      // new colors and a new left-to-right arrangement, so a solved level can't be replayed from
+      // muscle memory. `initial`/`initialHidden` stay canonical, so each restart re-rolls afresh.
+      const shuffled = shuffleBottles(get().initial, get().initialHidden);
+      commit(recolor(shuffled.state), {
         history: [],
         hiddenHistory: [],
-        hidden: get().initialHidden,
+        hidden: shuffled.hidden,
         moves: [],
         selected: null,
       });

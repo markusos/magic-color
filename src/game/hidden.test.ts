@@ -131,8 +131,8 @@ describe('optimalCappedMoves', () => {
   });
 
   it('never exceeds the capped DFS-replay upper bound when it finds an exact answer', () => {
-    for (const level of [75, 90, 110]) {
-      const lvl = generateForLevel(level); // small hidden boards — exact is found
+    for (const level of [31, 36, 43]) {
+      const lvl = generateForLevel(level); // small hidden boards (ch.1 easy/normal) — exact is found
       const exact = optimalCappedMoves(lvl.state, lvl.hidden);
       const upper = cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden);
       expect(exact).not.toBeNull();

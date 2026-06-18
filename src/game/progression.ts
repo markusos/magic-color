@@ -28,9 +28,11 @@ interface Rung {
 }
 
 /**
- * The footprint ladder, easy -> hard. `bottles - colors` is the number of empty tubes.
- * Capacity stays at 4 for now (a per-rung field so taller-tube milestones can slot in later).
- * Tuning the curve = editing this table and `LEVELS_PER_RUNG`.
+ * The footprint ladder, easy -> hard: two rungs per phase, so difficulty steps up every
+ * `LEVELS_PER_RUNG` levels and the *phase* flips every two rungs. `bottles - colors` is the
+ * free-space budget (empty-tube equivalents). Capacity stays at 4 for now (a per-rung field so
+ * taller-tube milestones can slot in later). Tuning the curve = editing this table, `LEVELS_PER_RUNG`,
+ * and `CHAPTER_LEN`.
  */
 const LADDER: readonly Rung[] = [
   // Easy: fixed 5 tubes. 2 empty -> 1 empty.
@@ -39,20 +41,21 @@ const LADDER: readonly Rung[] = [
   // Normal: fixed 10 tubes. 3 empty -> 2 empty.
   { colors: 7, bottles: 10, capacity: 4, phase: 'normal' },
   { colors: 8, bottles: 10, capacity: 4, phase: 'normal' },
-  // Hard: fixed 15 tubes. Only 3 empty (12 colors) is possible — 2 empty would need 13
-  // colors, one more than the palette holds.
+  // Hard: fixed 15 tubes. 4 empty -> 3 empty (12 colors is the palette max; 2 empty would need
+  // 13 colors, one more than the palette holds).
+  { colors: 11, bottles: 15, capacity: 4, phase: 'hard' },
   { colors: 12, bottles: 15, capacity: 4, phase: 'hard' },
 ];
 
 /** How many seed-varied levels are spent on each rung before stepping up. */
-const LEVELS_PER_RUNG = 17;
+const LEVELS_PER_RUNG = 5;
 
 /**
- * Levels in one Easy -> Hard sweep (one chapter). Chapter 1 therefore begins at level
- * `CHAPTER_LEN + 1` (= 75). The last rung simply absorbs whatever levels remain in the chapter
- * when this isn't a clean multiple of `LADDER.length * LEVELS_PER_RUNG`.
+ * Levels in one Easy -> Hard sweep (one chapter): exactly `LADDER.length * LEVELS_PER_RUNG`
+ * (6 rungs x 5 = 30). So the phase reaches Normal after level 10, Hard after level 20, and the
+ * next chapter (which layers on a new mechanic) begins at level `CHAPTER_LEN + 1` (= 31).
  */
-export const CHAPTER_LEN = 74;
+export const CHAPTER_LEN = 30;
 
 /**
  * Cumulative mechanic sets, indexed by chapter. Chapter 0 is the base game; chapter 1 adds the
@@ -160,14 +163,22 @@ export function planForLevel(level: number): LevelPlan {
   };
 }
 
-/** Largest board (in bottles) for which we attempt the exact optimal at load time. */
-const EXACT_OPTIMAL_MAX_BOTTLES = 10;
+/**
+ * Largest board (in bottles) for which we attempt the exact optimal at load time. Set to keep only
+ * the small Easy boards (5 tubes) on the exact path: the exact A* stays cheap there, but on 10-tube
+ * boards it costs tens-to-hundreds of ms — and on hidden 10-tube boards the per-node concealment
+ * work explodes to ~0.5s, often hitting the node cap and falling back anyway. Generation itself is
+ * sub-millisecond; this load-time A* was the entire slow tail (see scripts/benchmark-generation.ts).
+ */
+const EXACT_OPTIMAL_MAX_BOTTLES = 8;
 
 /**
- * The level's star reference (achievable near-optimal player pours). For small boards (Easy /
- * Normal) we compute the EXACT hidden-aware minimum via A*. Big boards (Hard, 15 tubes) are
- * NP-hard to solve exactly and would stall the load, so we skip straight to a fast, safe upper
- * bound: the stored solution replayed under the capped/reveal rules.
+ * The level's star reference (achievable near-optimal player pours). For the small Easy boards we
+ * compute the EXACT hidden-aware minimum via A*. Larger boards (Normal 10-tube, Hard 15-tube) are
+ * expensive — NP-hard in general, and brutal under concealment — and would stall the load, so we
+ * skip straight to a fast, safe upper bound: the stored solution replayed under the capped/reveal
+ * rules. Stars there are thus slightly more lenient than the true optimum, which is fine for a
+ * casual game (and the Hard tier already worked this way).
  */
 function optimalFor(
   state: GeneratedLevel['state'],

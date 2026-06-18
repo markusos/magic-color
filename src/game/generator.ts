@@ -43,10 +43,10 @@ const PAR_SAMPLE_CAP = 50;
 
 /**
  * Whether a (colors, bottles, capacity) combo is in the known-good, efficiently
- * solvable space. Requires at least one empty bottle and caps colors at the palette
- * size. Note: with only 1 empty, random shuffles are frequently unsolvable, so the
- * generator's rejection sampling churns — callers should prefer >= 2 empties for fast,
- * reliable generation (see the tier presets in levels.ts).
+ * solvable space. Requires at least one tube's worth of free space and caps colors at the
+ * palette size. Note: with only 1 tube of slack, random layouts are frequently unsolvable,
+ * so the generator's rejection sampling churns — callers should prefer >= 2 spare tubes for
+ * fast, reliable generation (see the tier presets in levels.ts).
  */
 export function isValidCombo(colors: number, bottles: number, capacity = DEFAULT_CAPACITY): boolean {
   if (!Number.isInteger(colors) || !Number.isInteger(bottles)) return false;
@@ -67,13 +67,56 @@ function shuffle<T>(arr: T[], rng: () => number): T[] {
   return arr;
 }
 
-/** Deal a flat list of segments into `colors` full bottles, leaving `empties` empty. */
-function deal(segments: Color[], colors: number, empties: number, capacity: number): GameState {
-  const bottles: Color[][] = [];
-  for (let i = 0; i < colors; i++) {
-    bottles.push(segments.slice(i * capacity, i * capacity + capacity));
+/**
+ * Build a randomized fill profile: how many segments each of `bottles` tubes starts with.
+ * The fills sum to the total liquid (`colors * capacity`) and each sits in [0, capacity], so
+ * the board still resolves into `colors` complete bottles.
+ *
+ * Unlike the old "full tubes plus trailing empties" layout, this scatters partially filled and
+ * empty tubes for variety: a random number of tubes (0..empties) are left completely empty, and
+ * whatever free space is left over is sprinkled across the remaining tubes as partial fills.
+ * Picking the reserved-empty count freshly each attempt also keeps generation robust — when a
+ * sparse, partial-heavy layout turns out unsolvable, a later attempt may reserve more empties and
+ * fall back toward the easy classic shape. Tube positions are shuffled so empties land anywhere.
+ */
+function randomFillProfile(
+  colors: number,
+  bottles: number,
+  capacity: number,
+  rng: () => number,
+): number[] {
+  const empties = bottles - colors;
+  const freeSpace = empties * capacity;
+
+  // Reserve a random number of fully-empty tubes. Reserving more keeps the board easier and
+  // generation more reliable; reserving fewer trades that for partial-tube variety.
+  const reserved = Math.floor(rng() * (empties + 1));
+
+  const fills = new Array<number>(bottles).fill(capacity);
+  for (let i = 0; i < reserved; i++) fills[i] = 0;
+
+  // Spread the leftover free space across the non-reserved tubes as partial fills, keeping each
+  // of them at >= 1 segment so the empty-tube count stays exactly `reserved`.
+  let toRemove = freeSpace - reserved * capacity;
+  while (toRemove > 0) {
+    const i = reserved + Math.floor(rng() * (bottles - reserved));
+    if (fills[i]! > 1) {
+      fills[i]!--;
+      toRemove--;
+    }
   }
-  for (let i = 0; i < empties; i++) bottles.push([]);
+
+  return shuffle(fills, rng);
+}
+
+/** Deal a flat list of segments into bottles sized by `fills` (segments must sum to the fills). */
+function deal(segments: Color[], fills: number[], capacity: number): GameState {
+  const bottles: Color[][] = [];
+  let offset = 0;
+  for (const fill of fills) {
+    bottles.push(segments.slice(offset, offset + fill));
+    offset += fill;
+  }
   return { bottles, capacity };
 }
 
@@ -124,7 +167,6 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
     throw new Error(`Invalid combo: ${colors} colors / ${bottles} bottles / cap ${capacity}`);
   }
 
-  const empties = bottles - colors;
   const baseSeed = options.seed ?? (Math.random() * 2 ** 32) >>> 0;
   const parMode: ParMode = options.parMode ?? 'proxy';
   const minPar = options.minPar;
@@ -152,7 +194,8 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
   let solvableSeen = 0;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const state = deal(shuffle([...template], rng), colors, empties, capacity);
+    const fills = randomFillProfile(colors, bottles, capacity, rng);
+    const state = deal(shuffle([...template], rng), fills, capacity);
     if (isDegenerate(state)) continue;
 
     const solution = solve(state);

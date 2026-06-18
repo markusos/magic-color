@@ -1,14 +1,17 @@
 /**
- * Difficulty tiers. Each tier has a FIXED number of tubes and a FIXED number of empty
- * ("open") tubes; the remaining tubes each start full of one color, so the color count is
- * simply tubes - emptyTubes.
+ * Difficulty tiers. Each tier has a FIXED number of tubes and a FIXED free-space budget,
+ * expressed as a count of spare ("open") tubes. The color count is simply tubes - emptyTubes.
  *
- *   easy:   5 tubes,  1 open -> 4 colors
- *   normal: 10 tubes, 2 open -> 8 colors
- *   hard:   15 tubes, 3 open -> 12 colors (palette max)
+ *   easy:   5 tubes,  1 spare -> 4 colors
+ *   normal: 10 tubes, 2 spare -> 8 colors
+ *   hard:   15 tubes, 3 spare -> 12 colors (palette max)
  *
- * These were all measured to generate instantly. (Fewer open tubes is harder to generate:
- * 1 open at 15 tubes is effectively impossible, which is why open-tube counts scale up.)
+ * `emptyTubes` sets how much slack a board carries, not how it looks: the generator scatters
+ * that slack as a mix of fully-empty and partially filled tubes, so a level may show anywhere
+ * from 0 up to `emptyTubes` completely empty tubes (see randomFillProfile in generator.ts).
+ *
+ * These were all measured to generate instantly. (Less slack is harder to generate: 1 spare at
+ * 15 tubes is effectively impossible, which is why the spare-tube budget scales up.)
  */
 import { generateLevel, DEFAULT_CAPACITY } from './generator';
 import type { Difficulty, GeneratedLevel, LevelDef } from './types';
@@ -16,7 +19,7 @@ import type { Difficulty, GeneratedLevel, LevelDef } from './types';
 interface TierPreset {
   /** Fixed number of tubes for this tier. */
   tubes: number;
-  /** Fixed number of empty ("open") tubes; the rest each hold one color. */
+  /** Free-space budget, in spare tubes; sets color count and total slack, not literal empties. */
   emptyTubes: number;
 }
 
