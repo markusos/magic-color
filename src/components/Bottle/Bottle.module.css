@@ -28,8 +28,21 @@
   border-radius: 14% 14% 26% 26%;
   background: var(--glass);
   overflow: hidden;
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), inset 0 0 12px rgba(255, 255, 255, 0.08);
+}
+
+/* Phones drop the per-tube backdrop blur: a Hard board stacks up to 60 of these glass layers, and
+   each `backdrop-filter` re-samples everything behind it every frame — the dominant mobile cost. A
+   static frosted gradient stands in for the blur so the tube still reads as glass. Desktop (fine
+   pointer / hover) keeps the real blur for the full effect. */
+@media (hover: none) and (pointer: coarse) {
+  .glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+  }
 }
 
 /* Glass highlight stripe */
