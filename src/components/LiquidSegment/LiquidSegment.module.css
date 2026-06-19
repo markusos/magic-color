@@ -8,6 +8,21 @@
      amplitude is baked into the SVG paths (period 48px). Kept modest on small boards via the
      segment-height fraction so tiny tubes don't get an exaggerated wobble. */
   --wave-band: min(13px, calc(var(--segment-height) * 0.36));
+  /* Vertical fade applied to the per-band churn/sheen so it dies out at each band's top & bottom
+     edges (see .segment::before). Keeps neighbouring bands seam-free without flattening the texture
+     in the centre. */
+  --churn-fade: linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%);
+  /* Tiny overlap used to close the seams between separately-masked bands. Two adjacent bands each
+     anti-alias their own edge at the join; under the selected tube's tilt transform (and fractional
+     mobile DPR) those edges no longer cover the boundary pixels and a faint dashed line shows
+     through. It's applied two ways: the solid body mask overlaps its own wave band by this much
+     (below), and every band with a neighbour above underlaps it by this much (.waveBottom / .bottom
+     rules) so its solid backs that neighbour's wavy edge. The wave shape itself is unchanged.
+
+     Sized so the body always reaches just past the surface wave's deepest trough: at less than ~3px
+     the solid stops short of the troughs and the empty glass shows through there as a faint dashed
+     line just under the surface — most visible on light fills (yellow/orange). */
+  --wave-overlap: 3px;
   /* Seamlessly tiling wave (matching slopes at x=0 and x=48). The two variants fill opposite
      sides of the curve: --wave-bottom keeps the liquid ABOVE the curve (a wavy bottom edge),
      --wave-top keeps it BELOW (a wavy top surface). */
@@ -35,7 +50,13 @@
 /* Internal color churn: a few soft light/dark blobs drift within the band so the fill reads as
    uneven, moving liquid rather than a flat rectangle. Each blob is oversized (160-200%) and the
    three drift to slightly different positions, so the tinting never settles into a static shape.
-   Sits beneath the specular highlight (::after). */
+   Sits beneath the specular highlight (::after).
+
+   --churn-fade masks the churn to nothing at the band's top & bottom edges so two same-colour bands
+   meet at identical (zero) shading. Without it, each band is shaded slightly differently at its
+   rim, and that per-band discontinuity reads as a faint line at every join — which the selected
+   tube's tilt transform (and fractional mobile DPR) re-samples into a hard dashed divider. The
+   centre keeps the full churn, so the moving-liquid look is unchanged. */
 .segment::before {
   content: '';
   position: absolute;
@@ -46,6 +67,8 @@
     radial-gradient(40% 38% at 62% 22%, rgba(255, 255, 255, 0.09), transparent 60%);
   background-repeat: no-repeat;
   background-size: 180% 180%, 200% 200%, 165% 165%;
+  -webkit-mask-image: var(--churn-fade);
+  mask-image: var(--churn-fade);
   animation: liquidChurn 14s ease-in-out infinite alternate;
 }
 
@@ -74,6 +97,8 @@
   background: radial-gradient(60% 55% at 50% 35%, rgba(255, 255, 255, 0.22), transparent 70%);
   background-repeat: no-repeat;
   background-size: 170% 170%;
+  -webkit-mask-image: var(--churn-fade);
+  mask-image: var(--churn-fade);
   animation: liquidSheen 9s ease-in-out infinite alternate;
 }
 
@@ -100,12 +125,14 @@
 
 /* Wavy bottom only (interior layers): solid body + a wavy band overlapping the layer below. */
 .waveBottom:not(.waveTop) {
-  height: calc(var(--segment-height) + var(--wave-band));
+  height: calc(var(--segment-height) + var(--wave-band) + var(--wave-overlap));
+  /* Underlap the band above (see --wave-overlap) so this band's solid backs its wavy edge. */
+  margin-top: calc(-1 * var(--wave-overlap));
   margin-bottom: calc(var(--wave-band) * -1);
   -webkit-mask-image: var(--solid), var(--wave-bottom);
   mask-image: var(--solid), var(--wave-bottom);
-  -webkit-mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
-  mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
+  -webkit-mask-size: 100% calc(100% - var(--wave-band) + var(--wave-overlap)), 48px var(--wave-band);
+  mask-size: 100% calc(100% - var(--wave-band) + var(--wave-overlap)), 48px var(--wave-band);
   -webkit-mask-repeat: no-repeat, repeat-x;
   mask-repeat: no-repeat, repeat-x;
   -webkit-mask-position: top, 0 bottom;
@@ -117,8 +144,8 @@
 .waveTop:not(.waveBottom) {
   -webkit-mask-image: var(--solid), var(--wave-top);
   mask-image: var(--solid), var(--wave-top);
-  -webkit-mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
-  mask-size: 100% calc(100% - var(--wave-band)), 48px var(--wave-band);
+  -webkit-mask-size: 100% calc(100% - var(--wave-band) + var(--wave-overlap)), 48px var(--wave-band);
+  mask-size: 100% calc(100% - var(--wave-band) + var(--wave-overlap)), 48px var(--wave-band);
   -webkit-mask-repeat: no-repeat, repeat-x;
   mask-repeat: no-repeat, repeat-x;
   -webkit-mask-position: bottom, 0 top;
@@ -132,9 +159,10 @@
   margin-bottom: calc(var(--wave-band) * -1);
   -webkit-mask-image: var(--solid), var(--wave-top), var(--wave-bottom);
   mask-image: var(--solid), var(--wave-top), var(--wave-bottom);
-  -webkit-mask-size: 100% calc(100% - 2 * var(--wave-band)), 48px var(--wave-band),
+  -webkit-mask-size: 100% calc(100% - 2 * var(--wave-band) + 2 * var(--wave-overlap)),
+    48px var(--wave-band), 48px var(--wave-band);
+  mask-size: 100% calc(100% - 2 * var(--wave-band) + 2 * var(--wave-overlap)), 48px var(--wave-band),
     48px var(--wave-band);
-  mask-size: 100% calc(100% - 2 * var(--wave-band)), 48px var(--wave-band), 48px var(--wave-band);
   -webkit-mask-repeat: no-repeat, repeat-x, repeat-x;
   mask-repeat: no-repeat, repeat-x, repeat-x;
   -webkit-mask-position: left center, 0 top, 0 bottom;
@@ -227,6 +255,14 @@
 .bottom {
   border-bottom-left-radius: 26%;
   border-bottom-right-radius: 26%;
+}
+
+/* The base band of a multi-band tube underlaps the band above it (see --wave-overlap) so its solid
+   backs that band's wavy edge. A single-band tube (.bottom.waveTop) is excluded — its top is the
+   open surface, not a join. */
+.bottom:not(.waveTop) {
+  height: calc(var(--segment-height) + var(--wave-overlap));
+  margin-top: calc(-1 * var(--wave-overlap));
 }
 
 /* Concealed segment: a near-black band carrying a "?" until it surfaces and reveals. */
