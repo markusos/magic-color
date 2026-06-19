@@ -54,6 +54,14 @@
   margin: 0 auto;
 }
 
+/* Card wrapper for the shared install content (icon + copy + Android button / iOS steps). */
+.install {
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 0.5px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+}
+
 .danger {
   padding: var(--space-3) var(--space-4);
   font-size: 1rem;

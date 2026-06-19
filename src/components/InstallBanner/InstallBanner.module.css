@@ -1,0 +1,104 @@
+/* Install card pinned to the bottom of the Home screen. The Home layout centers its content, so
+   this sits in the bottom safe-area without disturbing that. Styled as an iOS-style promo card:
+   app icon + title/subtitle, a circular top-right dismiss, and a full-width action button. */
+.banner {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-4);
+  text-align: left;
+  background: var(--panel);
+  border: 0.5px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Shared inner layout (also used inside the Settings card). */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* App glyph, rendered like a rounded iOS app icon. */
+.appIcon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.copy {
+  flex: 1;
+  min-width: 0;
+  /* Keep the first line clear of the absolute top-right dismiss button. */
+  padding-right: var(--space-5);
+}
+
+.title {
+  margin: 0 0 2px;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+/* Inline glyphs sit on the text baseline so the iOS steps read as a sentence. */
+.inlineIcon {
+  vertical-align: -2px;
+  margin: 0 3px;
+  color: var(--text);
+}
+
+/* Full-width action, mirroring the Home screen's primary gold button. */
+.installBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1c1340;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 6px 18px rgba(255, 183, 3, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* iOS-style filled circular dismiss in the top-right corner. */
+.close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+}
+
+.close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text);
+}

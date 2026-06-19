@@ -1,6 +1,7 @@
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
+import { InstallBanner } from '../InstallBanner/InstallBanner';
 import styles from './Home.module.css';
 
 /**
@@ -44,6 +45,8 @@ export function Home() {
           </button>
         )}
       </div>
+
+      <InstallBanner />
     </div>
   );
 }

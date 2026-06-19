@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
+import { useInstall } from '../../install/useInstall';
+import { InstallInstructions } from '../InstallBanner/InstallInstructions';
 import styles from './Settings.module.css';
 
 /** Number of rapid title taps that reveals the hidden admin level-unlock panel. */
@@ -22,6 +24,9 @@ export function Settings() {
   const furthest = useGameStore((s) => s.furthest);
   const startOver = useGameStore((s) => s.startOver);
   const unlockUpTo = useGameStore((s) => s.unlockUpTo);
+  // Surface the same install affordance as the home banner, but always (no dismissal) when the app
+  // isn't already installed and the platform can offer it.
+  const { platform, install } = useInstall();
   // "Progress" means the unlock frontier, not the level being actively played (you may be
   // replaying an earlier one). Nothing to reset only when the frontier is still level 1.
   const fresh = furthest <= 1;
@@ -70,6 +75,14 @@ export function Settings() {
           Settings
         </h1>
       </header>
+
+      {platform && (
+        <section className={styles.group}>
+          <div className={styles.install}>
+            <InstallInstructions platform={platform} install={install} />
+          </div>
+        </section>
+      )}
 
       <section className={styles.group}>
         <button className={styles.danger} onClick={onStartOver} disabled={fresh}>
