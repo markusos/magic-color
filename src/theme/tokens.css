@@ -8,6 +8,10 @@
   --text-dim: #b9b2d6;
   --accent: #ffd166;
   --accent-strong: #ffb703;
+  /* Lighter gold for hovering the primary gold buttons — a brighter lift rather than the
+     default translucent-white hover, which dulls the gold over the dark background. */
+  --accent-hover: #ffde8a;
+  --accent-strong-hover: #ffc933;
   --danger: #ff5d73;
   --success: #4ade80;
 

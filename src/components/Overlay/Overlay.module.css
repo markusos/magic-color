@@ -58,3 +58,8 @@
   border-color: var(--accent-strong);
   font-weight: 600;
 }
+
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-strong-hover);
+}
