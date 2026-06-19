@@ -46,6 +46,14 @@ interface GameStore {
   hiddenHistory: HiddenGrid[];
   /** Currently selected source bottle, or null. */
   selected: number | null;
+  /**
+   * Bumped whenever a whole new board is installed (level load or restart) — never on a pour or
+   * undo. The UI folds it into the bottles' React keys so a fresh board remounts rather than
+   * diffing into the old one, which keeps the liquid fill animation to actual pours: a remounted
+   * `AnimatePresence` treats its segments as already-present (initial), so they appear instantly
+   * instead of animating in (and the outgoing board's segments don't animate out).
+   */
+  boardNonce: number;
   status: GameStatus;
   /** The player's global campaign position (1-based). */
   level: number;
@@ -148,6 +156,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       history: [],
       moves: [],
       selected: null,
+      boardNonce: get().boardNonce + 1,
       level,
       phase: generated.phase,
       mechanics: generated.mechanics,
@@ -173,6 +182,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     history: [],
     moves: [],
     selected: null,
+    boardNonce: 0,
     status: syncStatus(firstBoard, first.hidden),
     level: startLevel,
     phase: first.phase,
@@ -264,6 +274,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         hidden: shuffled.hidden,
         moves: [],
         selected: null,
+        boardNonce: get().boardNonce + 1,
       });
     },
   };

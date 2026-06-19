@@ -11,6 +11,9 @@ export function GameBoard() {
   const selected = useGameStore((s) => s.selected);
   const hidden = useGameStore((s) => s.hidden);
   const tapBottle = useGameStore((s) => s.tapBottle);
+  // Bumped on every level load / restart (never on a pour or undo). Folding it into the bottle
+  // keys remounts the board on a fresh load, so the liquid fill animation is reserved for pours.
+  const boardNonce = useGameStore((s) => s.boardNonce);
 
   const areaRef = useRef<HTMLDivElement>(null);
   const metrics = useBottleMetrics(areaRef, current.bottles.length, current.capacity);
@@ -30,7 +33,7 @@ export function GameBoard() {
       >
         {current.bottles.map((bottle, i) => (
           <Bottle
-            key={i}
+            key={`${boardNonce}-${i}`}
             bottle={bottle}
             capacity={current.capacity}
             hidden={hidden[i]}
