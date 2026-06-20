@@ -17,7 +17,7 @@
 import { create } from 'zustand';
 import { canPour, isWon, pour } from '../game/engine';
 import { DEFAULT_CAPACITY } from '../game/generator';
-import { generateRandomHard, getLevel, hasBakedLevel } from '../game/levelLoader';
+import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
 import { mechanicsForLevel, phaseForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
 import { recolor } from '../game/recolor';
@@ -28,11 +28,11 @@ import { createCampaign } from './campaign';
 
 export type GameStatus = 'playing' | 'won' | 'deadlocked';
 
-/** Campaign play (the numbered track) vs. the post-campaign endless "Random Hard" challenge. */
+/** Campaign play (the numbered track) vs. the post-campaign "Random" challenge. */
 export type GameMode = 'campaign' | 'endless';
 
-/** Upper bound for the admin level-unlock hatch (see `unlockUpTo`). */
-const MAX_UNLOCK_LEVEL = 1000;
+/** Upper bound for the admin level-unlock hatch (see `unlockUpTo`) — the full baked campaign. */
+const MAX_UNLOCK_LEVEL = BAKED_LEVEL_COUNT;
 
 interface GameStore {
   /** The active board. */
@@ -81,26 +81,28 @@ interface GameStore {
   bestStars: Stars | null;
   /** Highest level reached (the unlock frontier) — the level selector lists 1..furthest. */
   furthest: number;
+  /** Whether every baked campaign level is cleared — the random mode replaces Continue on Home. */
+  campaignComplete: boolean;
   /** Best star rating per reached level, for the level selector. */
   levelStars: Record<number, Stars>;
-  /** Campaign vs. endless "Random Hard" play. */
+  /** Campaign vs. post-campaign "Random" play. */
   mode: GameMode;
-  /** Consecutive random-hard wins in the current endless session (0 in campaign mode). */
+  /** Consecutive random-board wins in the current endless session (0 in campaign mode). */
   endlessStreak: number;
-  /** Longest random-hard win streak ever (persisted). */
+  /** Longest random-board win streak ever (persisted). */
   endlessBestStreak: number;
 
   /** Load a specific level into play (regenerates its board) and persist it as reached. */
   loadLevel: (level: number) => void;
-  /** Advance: next campaign level, or a fresh random-hard board in endless mode. */
+  /** Advance: next campaign level, the random mode after the last campaign level, or a fresh random board in endless mode. */
   nextLevel: () => void;
-  /** Start the post-campaign endless "Random Hard" mode (resets the current streak). */
-  playRandomHard: () => void;
+  /** Start the post-campaign "Play Random" mode (resets the current streak). */
+  playRandom: () => void;
   /** Wipe saved progress and return to level 1. */
   startOver: () => void;
   /**
-   * Admin/testing hatch: raise the unlock frontier so every level up to `level` (clamped to
-   * 1..1000) becomes playable. Never lowers progress, never touches earned stars/best scores.
+   * Admin/testing hatch: raise the unlock frontier so every level up to `level` (clamped to the
+   * baked campaign) becomes playable. Never lowers progress, never touches earned stars/best scores.
    */
   unlockUpTo: (level: number) => void;
   /**
@@ -164,7 +166,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     } else {
       const { level, moves, optimal } = get();
       const record = campaign.complete(level, moves.length, starsFor(moves.length, optimal));
-      set({ ...record, levelStars: campaign.levelStars });
+      // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
+      set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
     }
   };
 
@@ -192,13 +195,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       optimal: generated.optimal,
       ...campaign.recordFor(level),
       furthest: campaign.furthest,
+      campaignComplete: campaign.campaignComplete,
       levelStars: campaign.levelStars,
     });
   };
 
-  /** Generate and commit a fresh random-hard board (endless mode). Mirrors `applyLevel`. */
-  const applyRandomHard = (seed: number) => {
-    const generated = generateRandomHard(seed);
+  /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
+  const applyRandom = (seed: number) => {
+    const generated = generateRandomLevel(seed);
     commit(recolor(generated.state), {
       initial: generated.state,
       hidden: generated.hidden,
@@ -210,15 +214,15 @@ export const useGameStore = create<GameStore>((set, get) => {
       boardNonce: get().boardNonce + 1,
       loading: false,
       mode: 'endless',
-      phase: 'hard',
+      phase: generated.phase, // varies normal→hard per board
       mechanics: generated.mechanics,
       optimal: generated.optimal,
-      best: null, // endless boards are random — no per-level best/stars
+      best: null, // random boards have no per-level best/stars
       bestStars: null,
     });
   };
 
-  /** A fresh 32-bit seed for a random-hard board. */
+  /** A fresh 32-bit seed for a random board. */
   const randomSeed = () => (Math.random() * 2 ** 32) >>> 0;
 
   /**
@@ -243,10 +247,11 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 
   /**
-   * Enter the endless "Random Hard" mode: reset the session streak and generate a fresh random-hard
+   * Enter the post-campaign "Play Random" mode: reset the session streak and generate a fresh random
    * board behind the spinner (always live, so always deferred — same pattern as a tail `loadLevel`).
+   * `phase` is a provisional label for the spinner header; `applyRandom` sets the board's real phase.
    */
-  const playRandomHard = () => {
+  const playRandom = () => {
     const seed = randomSeed();
     set({
       loading: true,
@@ -256,7 +261,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: 'hard',
       mechanics: mechanicsForLevel(MAX_UNLOCK_LEVEL),
     });
-    setTimeout(() => applyRandomHard(seed), 0);
+    setTimeout(() => applyRandom(seed), 0);
   };
 
   // Initial level: resume where the player left off. The displayed board gets fresh random hues;
@@ -287,6 +292,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     optimal: first?.optimal ?? 0,
     ...campaign.recordFor(startLevel),
     furthest: campaign.furthest,
+    campaignComplete: campaign.campaignComplete,
     levelStars: campaign.levelStars,
     mode: 'campaign',
     endlessStreak: 0,
@@ -295,15 +301,20 @@ export const useGameStore = create<GameStore>((set, get) => {
     loadLevel,
     nextLevel: () => {
       if (get().mode === 'endless') {
-        // Keep the streak going; just re-roll a new random-hard board.
+        // Keep the streak going; just re-roll a new random board.
         const seed = randomSeed();
         set({ loading: true, selected: null });
-        setTimeout(() => applyRandomHard(seed), 0);
+        setTimeout(() => applyRandom(seed), 0);
+        return;
+      }
+      // Past the last baked level the campaign doesn't continue — flow into the random mode.
+      if (get().level >= BAKED_LEVEL_COUNT) {
+        playRandom();
         return;
       }
       loadLevel(get().level + 1);
     },
-    playRandomHard,
+    playRandom,
     startOver: () => {
       campaign.reset();
       loadLevel(1);

@@ -7,51 +7,48 @@
  * count. The result is committed as static data (`src/game/levels.data.ts`) the app loads instead of
  * generating on device, plus a debug-only provenance sidecar (`scripts/levels.provenance.json`).
  *
- * Run: `npm run build:levels [-- count perShape nodeBudget deadEndSamples]`
+ * Run: `npm run build:levels [-- count perShape nodeBudget deadEndSamples concurrency]`
  *   count          how many levels to bake (default 60 = chapters 0 + 1)
  *   perShape       candidates sampled per shape per chapter (default 80; raise for higher quality)
  *   nodeBudget     exact-optimal A* node budget per candidate (default 150k)
  *   deadEndSamples random playouts per candidate for the dead-end estimate (default 24)
+ *   concurrency    worker threads to run in parallel (default: CPU count − 1)
  *
  * Quality over bake time is the explicit tradeoff (PLAN.md) — generous sampling is fine; this is a
  * manual, offline step whose output is reviewed and committed.
+ *
+ * The heavy work (generate + measure each candidate) is split into independent (chapter, shape)
+ * jobs run across a worker pool (build-levels.worker.ts). Results are reassembled in canonical
+ * (chapter, shape, candidate) order before scoring, so the committed output is byte-identical to a
+ * serial bake — parallelism only shortens wall time. The long pole is the most expensive single
+ * shape (the deepest tall board), so speedup is sub-linear in core count.
  */
 import { writeFileSync } from 'node:fs';
+import { cpus } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Worker } from 'node:worker_threads';
 
 import type { BakedLevel } from '../src/game/baked';
-import { assignSlots, compositeScores, measureMetrics, type Metrics } from '../src/game/difficulty';
-import { generateCandidates } from '../src/game/generator';
-import { computeHidden, emptyGrid, exposableCells, type HiddenGrid } from '../src/game/hidden';
+import { assignSlots, compositeScores, type Metrics } from '../src/game/difficulty';
 import {
   CHAPTER_LEN,
   mechanicsForLevel,
   phaseForLevel,
-  seedForLevel,
   SHAPES,
   targetPercentile,
 } from '../src/game/progression';
-import type { GameState, Mechanic, Move } from '../src/game/types';
 import { currentGeneratorVersion } from './levelVersion';
+import type { Candidate, ShapeJob } from './build-levels.worker';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const WORKER = join(ROOT, 'scripts/build-levels.worker.ts');
 
 const COUNT = Number(process.argv[2] ?? 60);
 const PER_SHAPE = Number(process.argv[3] ?? 80);
 const NODE_BUDGET = Number(process.argv[4] ?? 150_000);
 const DEAD_END_SAMPLES = Number(process.argv[5] ?? 24);
-
-interface Candidate {
-  state: GameState;
-  solution: Move[];
-  hidden: HiddenGrid;
-  metrics: Metrics;
-  family: string;
-  bottles: number;
-  capacity: number;
-  par: number;
-}
+const CONCURRENCY = Number(process.argv[6] ?? Math.max(1, cpus().length - 1));
 
 interface Provenance {
   level: number;
@@ -64,55 +61,90 @@ interface Provenance {
   metrics: Metrics;
 }
 
-/** Build the scored candidate pool for one chapter, across every shape. */
-function poolForChapter(chapter: number, mechanics: readonly Mechanic[]): Candidate[] {
-  const isHidden = mechanics.includes('hidden');
-  const pool: Candidate[] = [];
+/**
+ * Run all jobs across a pool of `concurrency` workers, returning each job's candidates indexed by
+ * job order. Workers are reused (dispatched the next job as each result lands) to amortize the
+ * per-worker tsx/module startup cost.
+ */
+function runJobs(jobs: ShapeJob[], concurrency: number): Promise<Candidate[][]> {
+  const results: Candidate[][] = new Array<Candidate[]>(jobs.length);
+  const poolSize = Math.min(jobs.length, Math.max(1, concurrency));
+  let next = 0;
+  let done = 0;
 
-  SHAPES.forEach((shape, si) => {
-    const seed = seedForLevel(50_000 + chapter * 100 + si);
-    const candidates = generateCandidates(
-      { colors: shape.colors, bottles: shape.bottles, capacity: shape.capacity, seed },
-      PER_SHAPE,
-    );
-    candidates.forEach((c, ci) => {
-      const tag = chapter * 1_000_000 + si * 10_000 + ci;
-      const hidden = isHidden
-        ? computeHidden(c.state, seedForLevel(tag), exposableCells(c.state, c.solution))
-        : emptyGrid(c.state);
-      const metrics = measureMetrics(c.state, hidden, c.solution, {
-        optimalNodeBudget: NODE_BUDGET,
-        deadEndSamples: DEAD_END_SAMPLES,
-        deadEndSeed: tag,
+  return new Promise((resolve, reject) => {
+    const workers: Worker[] = [];
+    const finish = (err?: Error) => {
+      workers.forEach((w) => void w.terminate());
+      if (err) reject(err);
+      else resolve(results);
+    };
+    const dispatch = (w: Worker) => {
+      if (next >= jobs.length) return;
+      const id = next++;
+      w.postMessage({ ...jobs[id]!, id });
+    };
+
+    for (let i = 0; i < poolSize; i++) {
+      // Inherit the parent's execArgv so the tsx loader carries into the worker and it can run the
+      // .ts worker file directly (no separate compile step).
+      const worker = new Worker(WORKER, { execArgv: process.execArgv });
+      worker.on('message', (msg: { id: number; candidates: Candidate[] }) => {
+        results[msg.id] = msg.candidates;
+        if (++done === jobs.length) finish();
+        else dispatch(worker);
       });
-      pool.push({
-        state: c.state,
-        solution: c.solution,
-        hidden,
-        metrics,
-        family: shape.family,
-        bottles: shape.bottles,
-        capacity: shape.capacity,
-        par: c.par,
-      });
-    });
+      worker.on('error', finish);
+      workers.push(worker);
+      dispatch(worker);
+    }
   });
-  return pool;
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const baked: BakedLevel[] = [];
   const provenance: Provenance[] = [];
   const wallStart = performance.now();
 
-  for (let chapter = 0; chapter * CHAPTER_LEN < COUNT; chapter++) {
+  const chapters: number[] = [];
+  for (let chapter = 0; chapter * CHAPTER_LEN < COUNT; chapter++) chapters.push(chapter);
+
+  // One job per (chapter, shape), flattened across chapters so cheap shapes from one chapter can
+  // fill cores while another chapter's deep tall board is still running.
+  const jobs: ShapeJob[] = [];
+  for (const chapter of chapters) {
+    const isHidden = mechanicsForLevel(chapter * CHAPTER_LEN + 1).includes('hidden');
+    SHAPES.forEach((_, si) => {
+      jobs.push({
+        chapter,
+        si,
+        isHidden,
+        perShape: PER_SHAPE,
+        nodeBudget: NODE_BUDGET,
+        deadEndSamples: DEAD_END_SAMPLES,
+      });
+    });
+  }
+
+  console.log(
+    `Baking ${COUNT} levels: ${jobs.length} shape-pools (${SHAPES.length} shapes × ${chapters.length} chapters)` +
+      ` across ${Math.min(jobs.length, CONCURRENCY)} workers…`,
+  );
+  const jobResults = await runJobs(jobs, CONCURRENCY);
+
+  for (const chapter of chapters) {
     const firstLevel = chapter * CHAPTER_LEN + 1;
     const lastLevel = Math.min((chapter + 1) * CHAPTER_LEN, COUNT);
     const levels = Array.from({ length: lastLevel - firstLevel + 1 }, (_, i) => firstLevel + i);
     const mechanics = mechanicsForLevel(firstLevel);
 
+    // Reassemble the chapter's pool in (shape index, candidate index) order — identical to serial.
+    const pool: Candidate[] = [];
+    jobs.forEach((job, ji) => {
+      if (job.chapter === chapter) pool.push(...jobResults[ji]!);
+    });
+
     console.log(`\nChapter ${chapter} (levels ${firstLevel}–${lastLevel}, mechanics [${mechanics.join(',')}])`);
-    const pool = poolForChapter(chapter, mechanics);
     const scores = compositeScores(pool.map((c) => c.metrics));
     const targets = levels.map((l) => targetPercentile(l));
     const slotIdx = assignSlots(
@@ -178,4 +210,7 @@ function main(): void {
   );
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

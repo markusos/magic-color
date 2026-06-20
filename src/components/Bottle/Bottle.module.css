@@ -99,13 +99,11 @@
   line-height: 1;
 }
 
-/* While the tube is selected, over-scale just enough that the upright (counter-rotated) block
-   always covers the tilted glass interior (the glass clips the overflow). Kept modest — scaleY
-   especially, since it shifts the liquid level and a large value reads as the liquid jumping when
-   it reverses. Plain CSS so Framer's layout system (the `layout` segments) stays out of it. */
-.tilted {
-  transform: scaleX(1.35) scaleY(1.05);
-}
+/* While selected, the upright (counter-rotated) liquid block is over-scaled to keep covering the
+   tilted glass interior (the glass clips the overflow). The scaleX is set inline and derived from
+   capacity (see Bottle.tsx `coverScaleX`) — tall tubes need far more widening than short ones.
+   scaleY is kept modest there since it shifts the liquid level and a large value reads as the
+   liquid jumping when it reverses. The `transition` above animates it. */
 
 @media (prefers-reduced-motion: reduce) {
   .liquidColumn {

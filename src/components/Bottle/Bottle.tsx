@@ -18,6 +18,25 @@ interface Props {
   onTap: () => void;
 }
 
+/** Tube tilt when selected (deg) — must match the spring target in the effect below. */
+const TILT_DEG = 6;
+const SEG_ASPECT = 0.72; // segment height / bottle width, mirrors useBottleMetrics
+const NECK_FACTOR = 0.4; // extra tube height (neck/base) in segments, mirrors useBottleMetrics
+
+/**
+ * Horizontal over-scale for the upright liquid block so it keeps covering the tilted glass
+ * interior (the glass clips the overflow). The liquid counter-rotates to stay world-level while
+ * the glass tilts by TILT_DEG, so the block has to widen by cos θ + aspect·sin θ to reach the
+ * tilted corners. The aspect term means tall tubes need much more than short ones — a fixed scale
+ * (e.g. 1.35, right for capacity 4) leaves the glass showing on capacity-10 tubes. Small margin
+ * for the glass border. Excess width is clipped, so erring large is harmless.
+ */
+function coverScaleX(capacity: number): number {
+  const tilt = (TILT_DEG * Math.PI) / 180;
+  const aspect = SEG_ASPECT * (capacity + NECK_FACTOR);
+  return Math.cos(tilt) + aspect * Math.sin(tilt) + 0.05;
+}
+
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
 export function Bottle({ bottle, capacity, hidden, selected, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
@@ -38,7 +57,7 @@ export function Bottle({ bottle, capacity, hidden, selected, isTarget, lift, onT
   const tubeRotate = useMotionValue(0);
   const liquidRotate = useTransform(tubeRotate, (r) => -r);
   useEffect(() => {
-    const controls = animate(tubeRotate, selected ? -6 : 0, {
+    const controls = animate(tubeRotate, selected ? -TILT_DEG : 0, {
       type: 'spring',
       stiffness: 420,
       damping: 26,
@@ -67,7 +86,10 @@ export function Bottle({ bottle, capacity, hidden, selected, isTarget, lift, onT
             motion value), so it cancels at every instant with no wobble. The gap-covering scale
             lives on the inner element as plain CSS. */}
         <motion.div className={styles.liquidTilt} style={{ rotate: liquidRotate }}>
-          <div className={`${styles.liquidColumn} ${selected ? styles.tilted : ''}`}>
+          <div
+            className={styles.liquidColumn}
+            style={{ transform: selected ? `scaleX(${coverScaleX(capacity)}) scaleY(1.05)` : undefined }}
+          >
             <AnimatePresence initial={false}>
               {segments.map((color, i) => (
                 <LiquidSegment

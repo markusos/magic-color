@@ -30,9 +30,9 @@ export function GameScreen() {
         <div className={styles.levelInfo}>
           {mode === 'endless' ? (
             <>
-              <span className={styles.level}>Random Hard</span>
-              <span className={styles.phase} data-phase="hard">
-                {endlessStreak > 0 ? `Streak ${endlessStreak}` : 'Hard'}
+              <span className={styles.level}>Random</span>
+              <span className={styles.phase} data-phase={phase}>
+                {endlessStreak > 0 ? `Streak ${endlessStreak}` : PHASE_LABEL[phase]}
               </span>
             </>
           ) : (

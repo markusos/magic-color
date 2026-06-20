@@ -30,10 +30,12 @@ export interface Shape {
 
 /**
  * The shape menu (v2): the footprints the offline bake samples candidates from, spanning small,
- * tall (5-tube only, capacity swept up to 12 — a compact hard variation), medium, and large. This
+ * tall (5-tube only, capacity swept up to 10 — a compact hard variation), medium, and large. This
  * is NOT a difficulty ladder — difficulty comes from the curve + per-board scoring; this is purely
  * the variety of board shapes that can appear at any difficulty. Every entry keeps `bottles - colors
- * >= 1` (at least one empty tube) so it's generatable.
+ * >= 1` (at least one empty tube) so it's generatable. Capacity is capped at 10: a capacity-12 tube
+ * gets too cramped and can clip/crowd neighbours on small screens, so it's served nowhere — baked or
+ * live (see LIVE_SHAPES/RANDOM_SHAPES, which also enforce the cap).
  */
 export const SHAPES: readonly Shape[] = [
   // Small classic (5 tubes, standard height).
@@ -44,20 +46,22 @@ export const SHAPES: readonly Shape[] = [
   { family: 'tall', bottles: 5, colors: 4, capacity: 6 },
   { family: 'tall', bottles: 5, colors: 4, capacity: 8 },
   { family: 'tall', bottles: 5, colors: 4, capacity: 10 },
-  { family: 'tall', bottles: 5, colors: 4, capacity: 12 },
-  // Medium.
-  { family: 'medium', bottles: 9, colors: 7, capacity: 4 },
+  // Medium. Tube counts are restricted to multiples of the 5-per-row grid (5/10/15) so every board
+  // fills whole rows — 9- or 13-tube boards leave a ragged last row on mobile.
   { family: 'medium', bottles: 10, colors: 7, capacity: 4 },
   { family: 'medium', bottles: 10, colors: 8, capacity: 4 },
   // Large.
-  { family: 'large', bottles: 13, colors: 11, capacity: 4 },
   { family: 'large', bottles: 15, colors: 11, capacity: 4 },
   { family: 'large', bottles: 15, colors: 12, capacity: 4 },
 ];
 
-/** Shapes the live path (plateau tail + endless mode + un-baked fallback) draws from — hard-leaning. */
+/**
+ * Shapes the live path (plateau tail + endless mode + un-baked fallback) draws from — hard-leaning.
+ * Tall tubes are capped at capacity 10 (the baked campaign's max height): capacity-12 tubes get too
+ * cramped and can clip or crowd neighbours on small screens, so the live path never serves them.
+ */
 const LIVE_SHAPES: readonly Shape[] = SHAPES.filter(
-  (s) => s.family === 'large' || (s.family === 'tall' && s.capacity >= 8),
+  (s) => s.family === 'large' || (s.family === 'tall' && s.capacity >= 8 && s.capacity <= 10),
 );
 
 /** Number of levels per chapter. Levels 1..CHAPTER_LEN are chapter 0, etc. */

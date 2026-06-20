@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
-import { getLevel } from '../game/levelLoader';
+import { BAKED_LEVEL_COUNT, getLevel } from '../game/levelLoader';
 import { isSolvable, solve } from '../game/solver';
 import { optimalCappedMoves } from '../game/search';
 import { board } from '../test/board';
@@ -109,9 +109,9 @@ describe('live-level loading state (drives the spinner)', () => {
   });
 });
 
-describe('endless "Random Hard" mode', () => {
+describe('post-campaign "Play Random" mode', () => {
   it('enters endless mode (deferred, spinner) and generates a board', async () => {
-    store().playRandomHard();
+    store().playRandom();
     expect(store().mode).toBe('endless');
     expect(store().loading).toBe(true);
     expect(store().endlessStreak).toBe(0);
@@ -145,11 +145,41 @@ describe('endless "Random Hard" mode', () => {
   });
 
   it('returns to campaign mode when a level is loaded', async () => {
-    store().playRandomHard();
+    store().playRandom();
     await flushLoad(); // let the deferred endless board finish (no dangling timer)
     expect(store().mode).toBe('endless');
     store().loadLevel(1); // baked — synchronous
     expect(store().mode).toBe('campaign');
+  });
+
+  it('flows into the random mode (not a campaign level 61) after the last baked level', async () => {
+    // Land on the final baked level and clear it the cheap way: set a trivially-winnable board.
+    store().loadLevel(BAKED_LEVEL_COUNT);
+    useGameStore.setState({
+      current: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      initial: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      hidden: [[false, false, false], [false], []],
+      initialHidden: [[false, false, false], [false], []],
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      selected: null,
+      status: 'playing',
+      optimal: 1,
+    });
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().campaignComplete).toBe(true);
+    // The frontier never advances past the baked campaign.
+    expect(store().furthest).toBe(BAKED_LEVEL_COUNT);
+
+    store().nextLevel();
+    expect(store().mode).toBe('endless');
+    expect(store().level).toBe(BAKED_LEVEL_COUNT); // not a phantom 61
+    await flushLoad();
+    expect(store().loading).toBe(false);
+    expect(store().current.bottles.length).toBeGreaterThan(0);
   });
 });
 

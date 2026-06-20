@@ -1,23 +1,22 @@
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
-import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
 import { navigate } from '../../useHashRoute';
 import { InstallBanner } from '../InstallBanner/InstallBanner';
 import styles from './Home.module.css';
 
 /**
- * Start screen: resume the campaign (Continue / Play), open the level selector, and a cog
- * linking to Settings. Difficulty is driven by the level number now (no tier selector).
+ * Start screen: resume the campaign (Continue / Play) — or, once the campaign is cleared, jump
+ * straight into the post-campaign "Play Random" mode — plus the level selector and a Settings cog.
+ * Difficulty is driven by the level number now (no tier selector).
  */
 export function Home() {
   const level = useGameStore((s) => s.level);
   const furthest = useGameStore((s) => s.furthest);
   const loadLevel = useGameStore((s) => s.loadLevel);
-  const playRandomHard = useGameStore((s) => s.playRandomHard);
+  const playRandom = useGameStore((s) => s.playRandom);
+  const campaignComplete = useGameStore((s) => s.campaignComplete);
   const endlessBestStreak = useGameStore((s) => s.endlessBestStreak);
   const fresh = furthest <= 1;
-  // The endless challenge unlocks once every baked campaign level has been cleared.
-  const endlessUnlocked = furthest > BAKED_LEVEL_COUNT;
 
   // Resume the campaign frontier; only reload if we're not already on it (preserves an
   // in-progress board when continuing the furthest level).
@@ -26,8 +25,8 @@ export function Home() {
     navigate('play');
   };
 
-  const onPlayRandomHard = () => {
-    playRandomHard();
+  const onPlayRandom = () => {
+    playRandom();
     navigate('play');
   };
 
@@ -45,20 +44,25 @@ export function Home() {
       <p className={styles.tagline}>Sort the colors. One tube at a time.</p>
 
       <div className={styles.actions}>
-        <button className={styles.primary} onClick={onPlay}>
-          {fresh ? 'Play' : `Continue · Level ${furthest}`}
-        </button>
+        {/* Once the campaign is cleared, the primary action becomes "Play Random" — the campaign
+            no longer continues past the baked levels. */}
+        {campaignComplete ? (
+          <button className={styles.primary} onClick={onPlayRandom}>
+            Play Random
+          </button>
+        ) : (
+          <button className={styles.primary} onClick={onPlay}>
+            {fresh ? 'Play' : `Continue · Level ${furthest}`}
+          </button>
+        )}
         {/* Only meaningful once more than one level is unlocked. */}
         {!fresh && (
           <button className={styles.secondary} onClick={() => navigate('levels')}>
             Levels
           </button>
         )}
-        {/* Endless challenge — unlocked after every baked level is cleared. */}
-        {endlessUnlocked && (
-          <button className={styles.secondary} onClick={onPlayRandomHard}>
-            Play Random Hard{endlessBestStreak > 0 ? ` · Best streak ${endlessBestStreak}` : ''}
-          </button>
+        {campaignComplete && endlessBestStreak > 0 && (
+          <p className={styles.streak}>Best streak {endlessBestStreak}</p>
         )}
       </div>
 

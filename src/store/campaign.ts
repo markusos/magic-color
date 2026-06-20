@@ -16,6 +16,7 @@ import {
   saveProgress,
   type Progress,
 } from './progress';
+import { BAKED_LEVEL_COUNT } from '../game/levelLoader';
 import type { Stars } from '../game/stars';
 
 /** A player's saved result for a single level. */
@@ -27,8 +28,14 @@ export interface LevelRecord {
 }
 
 export interface Campaign {
-  /** The unlock frontier — the highest level reached (the level selector lists 1..furthest). */
+  /**
+   * The unlock frontier — the highest level reached, clamped to the baked campaign (the level
+   * selector lists 1..furthest). The campaign no longer extends past the baked levels; once they're
+   * all cleared, play continues in the random mode (see `campaignComplete`).
+   */
   readonly furthest: number;
+  /** Whether the player has completed the last baked campaign level (unlocks the random mode). */
+  readonly campaignComplete: boolean;
   /** Best star rating per reached level, for the level selector. */
   readonly levelStars: Record<number, Stars>;
   /** Longest win streak in the endless "Random Hard" mode. */
@@ -61,7 +68,12 @@ export function createCampaign(): Campaign {
 
   return {
     get furthest() {
-      return progress.current;
+      // Clamp legacy saves that advanced past the baked range (the campaign used to keep going).
+      return Math.min(progress.current, BAKED_LEVEL_COUNT);
+    },
+    get campaignComplete() {
+      // Beating the last baked level records a best for it — the signal that the campaign is done.
+      return progress.best[BAKED_LEVEL_COUNT] !== undefined;
     },
     get levelStars() {
       return progress.stars;

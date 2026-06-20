@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
 import { useInstall } from '../../install/useInstall';
+import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
 import { InstallInstructions } from '../InstallBanner/InstallInstructions';
 import styles from './Settings.module.css';
 
@@ -10,7 +11,8 @@ import styles from './Settings.module.css';
 const ADMIN_TAP_COUNT = 7;
 /** Taps must land within this window (ms) of each other to count toward the streak. */
 const ADMIN_TAP_WINDOW = 600;
-const MAX_LEVEL = 1000;
+/** Admin unlock tops out at the full baked campaign — there are no numbered levels past it. */
+const MAX_LEVEL = BAKED_LEVEL_COUNT;
 
 /**
  * Settings screen: app-level actions ("Start Over"), plus a hidden admin hatch for testing.

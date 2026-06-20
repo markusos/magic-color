@@ -27,7 +27,7 @@ import {
   targetPercentile,
 } from './progression';
 import { optimalCappedMoves } from './search';
-import type { Color, GameState, GeneratedLevel } from './types';
+import type { Color, Difficulty, GameState, GeneratedLevel } from './types';
 
 /**
  * Largest board (in bottles) for which we attempt the exact optimal at load time. Kept to small,
@@ -168,31 +168,62 @@ function generateBestLevel(level: number): PlayableLevel {
   return result;
 }
 
-/** Hard-leaning shapes the endless mode draws from (mirrors progression's live-shape filter). */
-const HARD_SHAPES = SHAPES.filter((s) => s.family === 'large' || (s.family === 'tall' && s.capacity >= 8));
+/** Hard-leaning shapes the random mode draws from (mirrors progression's live-shape filter, incl. the capacity-10 cap). */
+const RANDOM_SHAPES = SHAPES.filter(
+  (s) => s.family === 'large' || (s.family === 'tall' && s.capacity >= 8 && s.capacity <= 10),
+);
+
+/** The normal→hard slice of the difficulty curve the post-campaign random boards target. */
+const RANDOM_TARGET_MIN = 0.45;
+const RANDOM_TARGET_MAX = 0.95;
 
 /**
- * A one-off "random hard" board for the post-campaign endless mode: a hard-shaped footprint (varied
- * by `seed`) carrying the UNION of every defined chapter's mechanics, picked best-of-N near the top
- * of the difficulty curve. NOT memoized — each call is a fresh random board. The union is just the
- * last defined chapter's mechanic set, since `MECHANIC_SETS` is cumulative.
+ * The difficulty bucket for a raw curve percentile (0..1). Mirrors `phaseForLevel`'s thirds, but
+ * lives here (the load path) rather than `progression.ts` so deriving a random board's phase doesn't
+ * touch the bake-hashed config and force a campaign re-bake.
  */
-export function generateRandomHard(seed: number): PlayableLevel {
-  const shape = HARD_SHAPES[Math.abs(seed) % HARD_SHAPES.length]!;
-  const allMechanics = mechanicsForLevel(CHAPTER_LEN * 1_000_000); // clamps to the last defined chapter
+function phaseForTarget(p: number): Difficulty {
+  if (p < 1 / 3) return 'easy';
+  if (p < 2 / 3) return 'normal';
+  return 'hard';
+}
+
+/** A deterministic fraction in [0, 1) from `seed`, decorrelated per `stream` so independent draws don't track each other. */
+function seedFraction(seed: number, stream: number): number {
+  let h = (seed ^ Math.imul(stream, 0x9e3779b1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  return h / 2 ** 32;
+}
+
+/**
+ * A one-off board for the post-campaign "Play Random" mode: a hard-shaped footprint (varied by
+ * `seed`) at a normal→hard difficulty drawn from the curve, with the hidden-colors mechanic toggled
+ * per board so the run isn't a relentless wall of the same max-difficulty board. NOT memoized — each
+ * call is a fresh random board, picked best-of-N at its sampled target.
+ */
+export function generateRandomLevel(seed: number): PlayableLevel {
+  const shape = RANDOM_SHAPES[Math.abs(seed) % RANDOM_SHAPES.length]!;
+  // Spread difficulty across the normal→hard band instead of pinning every board to the top.
+  const target = RANDOM_TARGET_MIN + seedFraction(seed, 1) * (RANDOM_TARGET_MAX - RANDOM_TARGET_MIN);
+  // Vary the mechanics per board: ≈half carry the (cumulative top-chapter) hidden-colors set, the
+  // rest run plain — genuine variety rather than the hardest mechanic on every board.
+  const full = mechanicsForLevel(CHAPTER_LEN * 1_000_000); // clamps to the last defined chapter
+  const mechanics = seedFraction(seed, 2) < 0.5 ? full : full.filter((m) => m !== 'hidden');
   const plan: LevelPlan = {
-    level: 0, // sentinel — endless boards are not campaign levels
+    level: 0, // sentinel — random boards are not campaign levels
     chapter: chapterForLevel(CHAPTER_LEN * 1_000_000),
-    phase: 'hard',
+    phase: phaseForTarget(target),
     colors: shape.colors,
     bottles: shape.bottles,
     capacity: shape.capacity,
     seed: seed >>> 0,
     minPar: 0,
     parMode: 'proxy',
-    mechanics: allMechanics,
+    mechanics,
   };
-  return pickBest(0, plan, 0.97);
+  return pickBest(0, plan, target);
 }
 
 /** Whether a level has a committed pre-baked board (vs. being generated live). */

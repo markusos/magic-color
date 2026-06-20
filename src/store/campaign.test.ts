@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createCampaign } from './campaign';
+import { BAKED_LEVEL_COUNT } from '../game/levelLoader';
 
 beforeEach(() => {
   localStorage.clear();
@@ -42,12 +43,25 @@ describe('createCampaign', () => {
 
   it('unlockTo clamps to 1..max and only raises the frontier', () => {
     const c = createCampaign();
-    c.unlockTo(50, 1000);
-    expect(c.furthest).toBe(50);
-    c.unlockTo(5000, 1000); // above max -> clamped
-    expect(c.furthest).toBe(1000);
-    c.unlockTo(2, 1000); // below current frontier -> no demotion
-    expect(c.furthest).toBe(1000);
+    c.unlockTo(30, BAKED_LEVEL_COUNT);
+    expect(c.furthest).toBe(30);
+    c.unlockTo(5000, BAKED_LEVEL_COUNT); // above max -> clamped
+    expect(c.furthest).toBe(BAKED_LEVEL_COUNT);
+    c.unlockTo(2, BAKED_LEVEL_COUNT); // below current frontier -> no demotion
+    expect(c.furthest).toBe(BAKED_LEVEL_COUNT);
+  });
+
+  it('furthest never exceeds the baked campaign, even for a legacy save past it', () => {
+    const a = createCampaign();
+    a.reach(999); // a legacy save that advanced into the old endless tail
+    expect(a.furthest).toBe(BAKED_LEVEL_COUNT);
+  });
+
+  it('campaignComplete flips once the last baked level is completed', () => {
+    const c = createCampaign();
+    expect(c.campaignComplete).toBe(false);
+    c.complete(BAKED_LEVEL_COUNT, 20, 2);
+    expect(c.campaignComplete).toBe(true);
   });
 
   it('reset wipes progress back to level 1', () => {
