@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { generateLevel, isValidCombo, mulberry32 } from './generator';
-import { createLevel, TIERS } from './levels';
 import { isWon, pour } from './engine';
 import { isSolvable } from './solver';
-import type { Difficulty, GameState, Move } from './types';
+import type { GameState, Move } from './types';
 
 function replay(start: GameState, moves: Move[]): GameState {
   return moves.reduce((s, m) => pour(s, m.from, m.to).state, start);
@@ -101,55 +100,29 @@ describe('generateLevel par floor', () => {
   });
 });
 
-describe('difficulty tiers', () => {
-  const tiers: Difficulty[] = ['easy', 'normal', 'hard'];
+describe('fill variety (randomFillProfile)', () => {
+  it('scatters partially filled tubes and varies the empty count across seeds', () => {
+    const colors = 7;
+    const bottles = 10; // 3 tubes of slack
+    const maxEmpties = bottles - colors;
+    let sawPartialTube = false;
+    let sawFewerThanMaxEmpties = false;
 
-  it.each(tiers)('createLevel(%s) has fixed tubes, balanced colors, and bounded slack', (tier) => {
-    const level = createLevel(tier, 5);
-    const preset = TIERS[tier];
-    expect(level.bottles).toBe(preset.tubes); // fixed tubes per tier
-    expect(level.colors).toBe(preset.tubes - preset.emptyTubes); // colors = tubes - spare
-    // Color balance is preserved: each color fills exactly `capacity` segments.
-    const counts = new Map<string, number>();
-    for (const bottle of level.state.bottles) {
-      for (const c of bottle) counts.set(c, (counts.get(c) ?? 0) + 1);
-    }
-    expect(counts.size).toBe(level.colors);
-    for (const n of counts.values()) expect(n).toBe(level.capacity);
-    // Free space is a budget, not a literal empty count: at most `emptyTubes` tubes are empty.
-    const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
-    expect(emptyTubes).toBeLessThanOrEqual(preset.emptyTubes);
-    expect(isWon(replay(level.state, level.solution))).toBe(true);
-  });
-
-  it('scatters empty and partially filled tubes for variety across seeds', () => {
-    for (const tier of tiers) {
-      const preset = TIERS[tier];
-      let sawPartialTube = false;
-      let sawFewerThanMaxEmpties = false;
-      for (let seed = 0; seed < 30; seed++) {
-        const level = createLevel(tier, seed);
-        const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
-        // Empty count never exceeds the tier's free-space budget.
-        expect(emptyTubes).toBeLessThanOrEqual(preset.emptyTubes);
-        if (emptyTubes < preset.emptyTubes) sawFewerThanMaxEmpties = true;
-        if (level.state.bottles.some((b) => b.length > 0 && b.length < level.capacity)) {
-          sawPartialTube = true;
-        }
+    for (let seed = 0; seed < 30; seed++) {
+      const level = generateLevel({ colors, bottles, seed });
+      const emptyTubes = level.state.bottles.filter((b) => b.length === 0).length;
+      // The empty count never exceeds the free-space budget.
+      expect(emptyTubes).toBeLessThanOrEqual(maxEmpties);
+      if (emptyTubes < maxEmpties) sawFewerThanMaxEmpties = true;
+      if (level.state.bottles.some((b) => b.length > 0 && b.length < level.capacity)) {
+        sawPartialTube = true;
       }
-      // Both the new behaviors actually occur: half-full tubes, and boards with fewer (or zero)
-      // empties than the old full-tubes-plus-empties layout would have produced.
-      expect(sawPartialTube).toBe(true);
-      expect(sawFewerThanMaxEmpties).toBe(true);
+      expect(isWon(replay(level.state, level.solution))).toBe(true);
     }
-  });
 
-  it('every tier generates a solvable board across many seeds (incl. 15-tube hard)', () => {
-    for (const tier of tiers) {
-      for (let seed = 0; seed < 12; seed++) {
-        const level = createLevel(tier, seed);
-        expect(isWon(replay(level.state, level.solution))).toBe(true);
-      }
-    }
+    // Both behaviors occur: half-full tubes, and boards with fewer empties than the slack budget
+    // (rather than the old full-tubes-plus-trailing-empties layout).
+    expect(sawPartialTube).toBe(true);
+    expect(sawFewerThanMaxEmpties).toBe(true);
   });
 });

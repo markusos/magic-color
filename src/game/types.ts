@@ -54,16 +54,6 @@ export type Mechanic = 'hidden';
  */
 export type ParMode = 'optimal' | 'proxy';
 
-/** Parameters that define how to generate a level. */
-export interface LevelDef {
-  colors: number;
-  bottles: number;
-  capacity: number;
-  difficulty: Difficulty;
-  /** Optional seed for reproducible generation. */
-  seed?: number;
-}
-
 /** A concrete, verified-solvable level produced by the generator. */
 export interface GeneratedLevel {
   state: GameState;
