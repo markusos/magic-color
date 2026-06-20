@@ -50,8 +50,15 @@ export type HiddenGrid = boolean[][];
 
 /** Fraction of eligible bottom-layer cells that start concealed (seeded). Tunable. */
 export const HIDDEN_PROB = 0.65;
-/** Only the bottom N layers may be concealed; the top is always known. */
-const CONCEALABLE_LAYERS = 3;
+
+/**
+ * How many bottom layers may be concealed for a tube of the given capacity (the top is always
+ * known). Scales with height so TALL tubes hide proportionally more — a 12-high tube concealing only
+ * its bottom 3 cells would barely feel hidden. Standard 4-high tubes keep the original 3.
+ */
+function concealableLayers(capacity: number): number {
+  return Math.min(capacity - 1, Math.max(3, Math.round(capacity * 0.6)));
+}
 
 /** An all-visible grid shaped to the board (used for chapter-0 levels and resets). */
 export function emptyGrid(state: GameState): HiddenGrid {
@@ -94,17 +101,18 @@ export function exposableCells(state: GameState, solution: Move[]): boolean[][] 
 }
 
 /**
- * Choose which cells start concealed: a seed-driven subset of the bottom `CONCEALABLE_LAYERS`
+ * Choose which cells start concealed: a seed-driven subset of the bottom `concealableLayers(capacity)`
  * layers, restricted to cells the solution surfaces (`exposable`) and never the top. A draw is
  * consumed for every cell so the stream stays aligned regardless of eligibility.
  */
 export function computeHidden(state: GameState, seed: number, exposable: boolean[][]): HiddenGrid {
   const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  const layers = concealableLayers(state.capacity);
   return state.bottles.map((bottle, b) =>
     bottle.map((_, i) => {
       const conceal = rng() < HIDDEN_PROB;
       const isTop = i === bottle.length - 1;
-      const eligible = i < CONCEALABLE_LAYERS && !isTop && (exposable[b]?.[i] ?? false);
+      const eligible = i < layers && !isTop && (exposable[b]?.[i] ?? false);
       return eligible && conceal;
     }),
   );

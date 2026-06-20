@@ -15,10 +15,19 @@ export function Overlay() {
   const optimal = useGameStore((s) => s.optimal);
   const nextLevel = useGameStore((s) => s.nextLevel);
   const restart = useGameStore((s) => s.restart);
+  const mode = useGameStore((s) => s.mode);
+  const endlessStreak = useGameStore((s) => s.endlessStreak);
 
+  const endless = mode === 'endless';
   const visible = status === 'won' || status === 'deadlocked';
   const stars = starsFor(moves.length, optimal);
-  const praise = stars === 3 ? 'Perfect!' : stars === 2 ? 'Nicely done!' : 'Level Complete!';
+  const praise = endless
+    ? `Streak ${endlessStreak}!`
+    : stars === 3
+      ? 'Perfect!'
+      : stars === 2
+        ? 'Nicely done!'
+        : 'Level Complete!';
 
   return (
     <AnimatePresence>
@@ -48,7 +57,7 @@ export function Overlay() {
                 </motion.div>
                 <h2 className={styles.win}>{praise}</h2>
                 <button className={styles.primary} onClick={nextLevel}>
-                  Next Level
+                  {endless ? 'Next Board' : 'Next Level'}
                 </button>
               </>
             ) : (

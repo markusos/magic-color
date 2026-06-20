@@ -9,7 +9,7 @@
  */
 import { isComplete, isWon } from './engine';
 import { mulberry32 } from './rng';
-import { bfsOptimal, solve } from './solver';
+import { bfsOptimal, canonical, solve } from './solver';
 import type { Color, GameState, GeneratedLevel, Move, ParMode } from './types';
 
 // Re-exported for callers that historically imported the PRNG from here; its home is now rng.ts.
@@ -155,6 +155,35 @@ function measurePar(state: GameState, solution: Move[], mode: ParMode): number {
   return solution.length;
 }
 
+/** The balanced multiset for a footprint: `capacity` copies of each of the first `colors` ids. */
+function colorTemplate(colors: number, capacity: number): Color[] {
+  const template: Color[] = [];
+  for (let c = 0; c < colors; c++) {
+    for (let k = 0; k < capacity; k++) template.push(PALETTE[c]!);
+  }
+  return template;
+}
+
+/**
+ * One generation attempt: scatter the template into a random fill profile and verify solvability.
+ * Returns the board and a proof solution, or `null` if the layout is degenerate or unsolvable.
+ * Shared by `generateLevel` (rejection sampling) and `generateCandidates` (offline bake).
+ */
+function attemptBoard(
+  template: Color[],
+  colors: number,
+  bottles: number,
+  capacity: number,
+  rng: () => number,
+): { state: GameState; solution: Move[] } | null {
+  const fills = randomFillProfile(colors, bottles, capacity, rng);
+  const state = deal(shuffle([...template], rng), fills, capacity);
+  if (isDegenerate(state)) return null;
+  const solution = solve(state);
+  if (!solution) return null;
+  return { state, solution };
+}
+
 /**
  * Generate a verified-solvable level. Throws if the combo is invalid, or (extremely
  * unlikely) if no solvable board is found within the retry cap.
@@ -171,12 +200,7 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
   const parMode: ParMode = options.parMode ?? 'proxy';
   const minPar = options.minPar;
   const rng = mulberry32(baseSeed);
-
-  // The balanced multiset: `capacity` copies of each of the first `colors` palette ids.
-  const template: Color[] = [];
-  for (let c = 0; c < colors; c++) {
-    for (let k = 0; k < capacity; k++) template.push(PALETTE[c]!);
-  }
+  const template = colorTemplate(colors, capacity);
 
   const build = (state: GameState, solution: Move[]): GeneratedLevel => ({
     state,
@@ -194,12 +218,9 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
   let solvableSeen = 0;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const fills = randomFillProfile(colors, bottles, capacity, rng);
-    const state = deal(shuffle([...template], rng), fills, capacity);
-    if (isDegenerate(state)) continue;
-
-    const solution = solve(state);
-    if (!solution) continue;
+    const board = attemptBoard(template, colors, bottles, capacity, rng);
+    if (!board) continue;
+    const { state, solution } = board;
 
     // Legacy fast path: no floor requested, accept the first solvable board.
     if (minPar === undefined) return build(state, solution);
@@ -216,4 +237,50 @@ export function generateLevel(options: GenerateOptions): GeneratedLevel {
   throw new Error(
     `Failed to generate a solvable ${colors}/${bottles} level after ${MAX_RETRIES} attempts`,
   );
+}
+
+/**
+ * Collect up to `count` distinct, verified-solvable boards for a footprint — the candidate pool the
+ * offline bake (`scripts/build-levels.ts`) scores and selects from. Unlike `generateLevel`, this
+ * does not stop at the first acceptable board: it keeps sampling so a difficulty scorer can choose
+ * the best fit for a target curve. Deduplicates by canonical board key, and bounds total work with
+ * `maxAttempts` so an over-large `count` can never spin forever (returns however many it found).
+ *
+ * Par here is the cheap proxy (solution length); the bake computes its own exact difficulty metrics
+ * per candidate, so paying for `optimal` par on every sampled board would be wasted work.
+ */
+export function generateCandidates(
+  options: Pick<GenerateOptions, 'colors' | 'bottles' | 'capacity' | 'seed'>,
+  count: number,
+  maxAttempts = count * 40,
+): GeneratedLevel[] {
+  const capacity = options.capacity ?? DEFAULT_CAPACITY;
+  const { colors, bottles } = options;
+  if (!isValidCombo(colors, bottles, capacity)) {
+    throw new Error(`Invalid combo: ${colors} colors / ${bottles} bottles / cap ${capacity}`);
+  }
+
+  const rng = mulberry32(options.seed ?? (Math.random() * 2 ** 32) >>> 0);
+  const template = colorTemplate(colors, capacity);
+
+  const seen = new Set<string>();
+  const candidates: GeneratedLevel[] = [];
+  for (let attempt = 0; attempt < maxAttempts && candidates.length < count; attempt++) {
+    const board = attemptBoard(template, colors, bottles, capacity, rng);
+    if (!board) continue;
+    const key = canonical(board.state);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    candidates.push({
+      state: board.state,
+      colors,
+      bottles,
+      capacity,
+      solution: board.solution,
+      minMoves: board.solution.length,
+      par: board.solution.length,
+      seed: options.seed ?? 0,
+    });
+  }
+  return candidates;
 }

@@ -1,66 +1,71 @@
 /**
- * The campaign: a single linear track of levels. The global level number (1-based) maps
- * deterministically to a board via a **footprint ladder** that sweeps Easy -> Normal -> Hard
- * by growing tubes/colors, and to a **chapter** that re-runs the ladder under a cumulative
- * mechanic set. Everything here is pure — `planForLevel` is a total function of the level
- * number, so a given level is the same board for everyone, forever (modulo generator
- * versioning).
+ * The campaign CONFIG: the bake-relevant pure definition of a single linear track of levels grouped
+ * into **chapters** (each chapter adds a cumulative mechanic). Difficulty is **decoupled from board
+ * size** (v2, see PLAN.md): a level's difficulty comes from where it sits on the per-chapter ease-in
+ * curve (`targetPercentile`), NOT from its tube count. Board *shape* is just variety —
+ * small/tall/medium/large all appear across a chapter, mixed within each difficulty band.
  *
- * Persistence stores only the level number; the board is regenerated from its seed on demand.
+ * Levels 1..N are **pre-baked** offline (`scripts/build-levels.ts` → `levels.data.ts`) by generating
+ * a big pool across all shapes (the `SHAPES` menu), scoring each by a size-normalized difficulty
+ * score, and assigning boards to the curve. Past the baked range (the plateau tail) and for the
+ * endless mode, boards are generated live from the shape menu at high difficulty.
+ *
+ * Everything here feeds the bake's board OUTPUT, so the staleness guard (`scripts/levelVersion.ts`)
+ * hashes this file. The runtime LOADING path (`getLevel`, the live generator, baked deserialization)
+ * lives in `levelLoader.ts` so that tuning it does NOT force a re-bake.
  */
-import { generateLevel } from './generator';
-import {
-  cappedSolveMoves,
-  computeHidden,
-  emptyGrid,
-  exposableCells,
-  type HiddenGrid,
-} from './hidden';
-import { optimalCappedMoves } from './search';
+import { DEFAULT_CAPACITY } from './generator';
+import type { HiddenGrid } from './hidden';
 import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
 
-/** One rung of the difficulty ladder: a fixed footprint plus its phase label. */
-interface Rung {
-  colors: number;
+/** A board footprint the bake draws candidates from. `family` groups shapes for variety rotation. */
+export interface Shape {
+  family: 'small' | 'tall' | 'medium' | 'large';
+  /** Number of tubes. */
   bottles: number;
+  /** Number of distinct colors (each fills `capacity` cells). */
+  colors: number;
   capacity: number;
-  phase: Difficulty;
 }
 
 /**
- * The footprint ladder, easy -> hard: two rungs per phase, so difficulty steps up every
- * `LEVELS_PER_RUNG` levels and the *phase* flips every two rungs. `bottles - colors` is the
- * free-space budget (empty-tube equivalents). Capacity stays at 4 for now (a per-rung field so
- * taller-tube milestones can slot in later). Tuning the curve = editing this table, `LEVELS_PER_RUNG`,
- * and `CHAPTER_LEN`.
+ * The shape menu (v2): the footprints the offline bake samples candidates from, spanning small,
+ * tall (5-tube only, capacity swept up to 12 — a compact hard variation), medium, and large. This
+ * is NOT a difficulty ladder — difficulty comes from the curve + per-board scoring; this is purely
+ * the variety of board shapes that can appear at any difficulty. Every entry keeps `bottles - colors
+ * >= 1` (at least one empty tube) so it's generatable.
  */
-const LADDER: readonly Rung[] = [
-  // Easy: fixed 5 tubes. 2 empty -> 1 empty.
-  { colors: 3, bottles: 5, capacity: 4, phase: 'easy' },
-  { colors: 4, bottles: 5, capacity: 4, phase: 'easy' },
-  // Normal: fixed 10 tubes. 3 empty -> 2 empty.
-  { colors: 7, bottles: 10, capacity: 4, phase: 'normal' },
-  { colors: 8, bottles: 10, capacity: 4, phase: 'normal' },
-  // Hard: fixed 15 tubes. 4 empty -> 3 empty (12 colors is the palette max; 2 empty would need
-  // 13 colors, one more than the palette holds).
-  { colors: 11, bottles: 15, capacity: 4, phase: 'hard' },
-  { colors: 12, bottles: 15, capacity: 4, phase: 'hard' },
+export const SHAPES: readonly Shape[] = [
+  // Small classic (5 tubes, standard height).
+  { family: 'small', bottles: 5, colors: 3, capacity: 4 },
+  { family: 'small', bottles: 5, colors: 4, capacity: 4 },
+  // Small TALL (5 tubes only): few tubes, very dense — hard in a compact footprint.
+  { family: 'tall', bottles: 5, colors: 3, capacity: 6 },
+  { family: 'tall', bottles: 5, colors: 4, capacity: 6 },
+  { family: 'tall', bottles: 5, colors: 4, capacity: 8 },
+  { family: 'tall', bottles: 5, colors: 4, capacity: 10 },
+  { family: 'tall', bottles: 5, colors: 4, capacity: 12 },
+  // Medium.
+  { family: 'medium', bottles: 9, colors: 7, capacity: 4 },
+  { family: 'medium', bottles: 10, colors: 7, capacity: 4 },
+  { family: 'medium', bottles: 10, colors: 8, capacity: 4 },
+  // Large.
+  { family: 'large', bottles: 13, colors: 11, capacity: 4 },
+  { family: 'large', bottles: 15, colors: 11, capacity: 4 },
+  { family: 'large', bottles: 15, colors: 12, capacity: 4 },
 ];
 
-/** How many seed-varied levels are spent on each rung before stepping up. */
-const LEVELS_PER_RUNG = 5;
+/** Shapes the live path (plateau tail + endless mode + un-baked fallback) draws from — hard-leaning. */
+const LIVE_SHAPES: readonly Shape[] = SHAPES.filter(
+  (s) => s.family === 'large' || (s.family === 'tall' && s.capacity >= 8),
+);
 
-/**
- * Levels in one Easy -> Hard sweep (one chapter): exactly `LADDER.length * LEVELS_PER_RUNG`
- * (6 rungs x 5 = 30). So the phase reaches Normal after level 10, Hard after level 20, and the
- * next chapter (which layers on a new mechanic) begins at level `CHAPTER_LEN + 1` (= 31).
- */
+/** Number of levels per chapter. Levels 1..CHAPTER_LEN are chapter 0, etc. */
 export const CHAPTER_LEN = 30;
 
 /**
  * Cumulative mechanic sets, indexed by chapter. Chapter 0 is the base game; chapter 1 adds the
- * hidden-colors mechanic and re-runs the Easy->Hard ladder with it on top. Past the last
- * defined chapter, play plateaus at that chapter's top rung (see `planForLevel`).
+ * hidden-colors mechanic. Past the last defined chapter, play plateaus in the final chapter.
  */
 const MECHANIC_SETS: readonly (readonly Mechanic[])[] = [
   [], // chapter 0 — base game
@@ -69,6 +74,27 @@ const MECHANIC_SETS: readonly (readonly Mechanic[])[] = [
 
 /** Highest chapter we actually have content for. */
 const DEFINED_CHAPTERS = MECHANIC_SETS.length;
+
+/** The chapter a level belongs to (clamped to the last defined chapter — the plateau). */
+export function chapterForLevel(level: number): number {
+  const idx = Math.max(0, Math.floor(level) - 1);
+  return Math.min(Math.floor(idx / CHAPTER_LEN), DEFINED_CHAPTERS - 1);
+}
+
+/** The mechanics active at a level (its chapter's cumulative set). */
+export function mechanicsForLevel(level: number): readonly Mechanic[] {
+  return MECHANIC_SETS[chapterForLevel(level)]!;
+}
+
+/** Chapter index and within-chapter position (0-based), with plateau clamping past defined chapters. */
+function chapterPos(level: number): { chapter: number; pos: number } {
+  const idx = Math.max(0, Math.floor(level) - 1);
+  const rawChapter = Math.floor(idx / CHAPTER_LEN);
+  if (rawChapter >= DEFINED_CHAPTERS) {
+    return { chapter: DEFINED_CHAPTERS - 1, pos: CHAPTER_LEN - 1 }; // plateau at the chapter's end
+  }
+  return { chapter: rawChapter, pos: idx % CHAPTER_LEN };
+}
 
 /**
  * xmur3 string hash -> a 32-bit seed. Mixing the level number (rather than using it raw)
@@ -98,7 +124,47 @@ function parFloorFor(colors: number, posInChapter: number): number {
   return base + ramp;
 }
 
-/** The full recipe for a level: footprint, chapter/phase, seed, and par/generation knobs. */
+/**
+ * Offline-bake difficulty curve (consumed by `scripts/build-levels.ts`, not the runtime).
+ *
+ * Returns where a level should sit on the difficulty curve as a PERCENTILE (0..1) of the chapter's
+ * scored candidate pool — a self-calibrating target, so we don't predict absolute difficulty. The
+ * curve EASES IN within each chapter (gentle openers) and starts from a HIGHER FLOOR in later
+ * chapters, so even the early levels of the hidden chapter are harder than the base chapter's. The
+ * three knobs below are the dials (see PLAN.md). Past the last defined chapter the percentile
+ * plateaus.
+ */
+const CURVE = {
+  /** Percentile of the very first level (chapter 0, position 0). */
+  baseFloor: 0.15,
+  /** How much higher each subsequent chapter's floor (and thus its whole curve) sits. */
+  chapterFloorStep: 0.12,
+  /** How far the percentile climbs from a chapter's start to its end. */
+  span: 0.7,
+  /** Ease-in exponent: >1 makes the opening levels ramp gently and the back half steeper. */
+  easeExp: 1.6,
+} as const;
+
+export function targetPercentile(level: number): number {
+  const { chapter, pos } = chapterPos(level);
+  const t = CHAPTER_LEN <= 1 ? 0 : pos / (CHAPTER_LEN - 1);
+  const eased = Math.pow(t, CURVE.easeExp);
+  const p = CURVE.baseFloor + chapter * CURVE.chapterFloorStep + eased * CURVE.span;
+  return Math.min(1, Math.max(0, p));
+}
+
+/**
+ * The level's difficulty label — one of three buckets derived from its position on the curve, NOT
+ * from tube count (v2). A pure function of the level, so the bake and the live path agree.
+ */
+export function phaseForLevel(level: number): Difficulty {
+  const p = targetPercentile(level);
+  if (p < 1 / 3) return 'easy';
+  if (p < 2 / 3) return 'normal';
+  return 'hard';
+}
+
+/** The recipe for generating a level LIVE: a footprint plus chapter/phase, seed, and par knobs. */
 export interface LevelPlan {
   level: number;
   chapter: number;
@@ -129,108 +195,26 @@ export interface PlayableLevel extends GeneratedLevel {
 }
 
 /**
- * Pure level -> recipe mapping. Beyond the last *defined* chapter we deliberately do NOT
- * restart the ladder (that would feel like a demotion with no new mechanic to justify it):
- * instead we clamp to the final chapter's top rung, so play plateaus at Hard with endless
- * seed variety until a new mechanic ships.
+ * Recipe for generating a level LIVE (the plateau tail past the baked range, and the safety
+ * fallback for any un-baked level). Baked levels do NOT go through this — their board comes straight
+ * from `levels.data.ts`. The live path picks a hard-leaning shape (rotated by level for variety),
+ * since live levels only occur at/after the plateau where play sits at Hard.
  */
 export function planForLevel(level: number): LevelPlan {
-  const idx = Math.max(0, Math.floor(level) - 1);
-  let chapter = Math.floor(idx / CHAPTER_LEN);
-  let posInChapter = idx % CHAPTER_LEN;
-
-  if (chapter >= DEFINED_CHAPTERS) {
-    chapter = DEFINED_CHAPTERS - 1;
-    posInChapter = CHAPTER_LEN - 1; // pin to the top rung (plateau)
-  }
-
-  const rungIndex = Math.min(Math.floor(posInChapter / LEVELS_PER_RUNG), LADDER.length - 1);
-  const rung = LADDER[rungIndex]!;
+  const { chapter, pos } = chapterPos(level);
+  const shape = LIVE_SHAPES[Math.max(0, Math.floor(level) - 1) % LIVE_SHAPES.length]!;
 
   return {
     level,
     chapter,
-    phase: rung.phase,
-    colors: rung.colors,
-    bottles: rung.bottles,
-    capacity: rung.capacity,
+    phase: phaseForLevel(level),
+    colors: shape.colors,
+    bottles: shape.bottles,
+    capacity: shape.capacity,
     seed: seedForLevel(level),
-    minPar: parFloorFor(rung.colors, posInChapter),
-    // Exact par only for the small Easy boards (5 tubes); exact BFS explodes on the bigger
-    // Normal/Hard boards (especially with extra empty tubes), so they use the cheap DFS proxy.
-    parMode: rung.bottles <= 6 ? 'optimal' : 'proxy',
+    minPar: parFloorFor(shape.colors, pos),
+    // Exact par only for small, standard-height boards; exact BFS explodes on bigger or taller ones.
+    parMode: shape.bottles <= 6 && shape.capacity <= DEFAULT_CAPACITY ? 'optimal' : 'proxy',
     mechanics: MECHANIC_SETS[chapter]!,
   };
-}
-
-/**
- * Largest board (in bottles) for which we attempt the exact optimal at load time. Set to keep only
- * the small Easy boards (5 tubes) on the exact path: the exact A* stays cheap there, but on 10-tube
- * boards it costs tens-to-hundreds of ms — and on hidden 10-tube boards the per-node concealment
- * work explodes to ~0.5s, often hitting the node cap and falling back anyway. Generation itself is
- * sub-millisecond; this load-time A* was the entire slow tail (see scripts/benchmark-generation.ts).
- */
-const EXACT_OPTIMAL_MAX_BOTTLES = 8;
-
-/**
- * The level's star reference (achievable near-optimal player pours). For the small Easy boards we
- * compute the EXACT hidden-aware minimum via A*. Larger boards (Normal 10-tube, Hard 15-tube) are
- * expensive — NP-hard in general, and brutal under concealment — and would stall the load, so we
- * skip straight to a fast, safe upper bound: the stored solution replayed under the capped/reveal
- * rules. Stars there are thus slightly more lenient than the true optimum, which is fine for a
- * casual game (and the Hard tier already worked this way).
- */
-function optimalFor(
-  state: GeneratedLevel['state'],
-  solution: GeneratedLevel['solution'],
-  hidden: HiddenGrid,
-  bottles: number,
-): number {
-  if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES) {
-    const exact = optimalCappedMoves(state, hidden);
-    if (exact !== null) return exact;
-  }
-  return cappedSolveMoves(state, solution, hidden);
-}
-
-/**
- * Generate the playable board for a level. Robust to the (rare) case where a seed fails to
- * yield a solvable board within the generator's retries: it deterministically bumps the salt
- * and retries, so no level number is ever a dead end.
- */
-export function generateForLevel(level: number): PlayableLevel {
-  const plan = planForLevel(level);
-
-  for (let salt = 0; salt < 8; salt++) {
-    try {
-      const generated = generateLevel({
-        colors: plan.colors,
-        bottles: plan.bottles,
-        capacity: plan.capacity,
-        seed: salt === 0 ? plan.seed : seedForLevel(level, salt),
-        minPar: plan.minPar,
-        parMode: plan.parMode,
-      });
-      const hidden = plan.mechanics.includes('hidden')
-        ? computeHidden(
-            generated.state,
-            plan.seed,
-            exposableCells(generated.state, generated.solution),
-          )
-        : emptyGrid(generated.state);
-      return {
-        ...generated,
-        level,
-        chapter: plan.chapter,
-        phase: plan.phase,
-        mechanics: plan.mechanics,
-        hidden,
-        optimal: optimalFor(generated.state, generated.solution, hidden, generated.bottles),
-      };
-    } catch {
-      // Extremely unlikely; try a different seed for this same level.
-    }
-  }
-
-  throw new Error(`Failed to generate level ${level} after salting`);
 }

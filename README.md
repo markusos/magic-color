@@ -25,24 +25,45 @@ and dispatches taps.
 ```
 src/
   game/                 # pure engine — the heart of the game
-    types.ts            # Color, Bottle, GameState, Move, LevelDef, GeneratedLevel
+    types.ts            # Color, Bottle, GameState, Move, GeneratedLevel
     engine.ts           # canPour, pour, isComplete, isWon, isDeadlocked
-    solver.ts           # solve() (DFS), bfsOptimal(), canonical state key
-    generator.ts        # isValidCombo(), generateLevel() — guaranteed solvable
-    levels.ts           # difficulty tiers (normal / hard / superHard)
+    solver.ts           # solve() (DFS), bfsOptimal(), usefulMoves()
+    search.ts           # shared graph search + optimalCappedMoves (hidden-aware A*)
+    generator.ts        # generateLevel() / generateCandidates() — guaranteed solvable
+    hidden.ts           # the "hidden colors" mechanic (concealed cells, capping)
+    difficulty.ts       # offline difficulty metrics, composite score, slot assignment
+    progression.ts      # campaign CONFIG: shape menu, chapters, difficulty curve (bake-hashed)
+    levelLoader.ts      # runtime: getLevel() — baked board, else live generation; random-hard
+    levels.data.ts      # AUTO-GENERATED baked campaign (npm run build:levels)
   store/
-    gameStore.ts        # Zustand store: selection, pour, undo, restart, add-tube
-  components/           # Bottle, LiquidSegment, GameBoard, Toolbar, Overlay
+    gameStore.ts        # Zustand store: selection, pour, undo, restart, level/endless modes
+    campaign.ts/progress.ts  # persisted progress (localStorage)
+  components/           # Bottle, LiquidSegment, GameBoard, Loader, Toolbar, Overlay, Home, …
   theme/                # color palette + design tokens
+scripts/
+  build-levels.ts       # offline bake: generate a pool, score, assign to the curve
 ```
+
+### Progression: difficulty-first, with pre-baked levels
+
+Difficulty is **decoupled from board size**. A level's difficulty comes from where it sits on a
+per-chapter ease-in curve, not from its tube count — so a tricky 5-tube board can be "harder" than a
+sprawling 15-tube one. **Chapters** layer cumulative mechanics (chapter 1 adds *hidden colors*).
+
+The first **60 levels are pre-baked offline** (`npm run build:levels`): the script generates a large
+pool of boards across a *shape menu* (small / tall 5-tube up to 12-high / medium / large), scores each
+with a **size-normalized composite** (exact optimal, forced-move ratio, dead-end density, dig depth),
+and assigns boards to the curve with shape variety. The result is committed to `levels.data.ts`; a
+staleness test re-stamps it if the bake logic changes. Levels past 60 — and the post-campaign
+**Play Random Hard** endless mode — are generated **live** (best-of-N within a ~1–2s budget, behind a
+spinner). Persistence stores only the level number; boards are baked or regenerated on demand.
 
 ### Guaranteed-solvable level generation
 
-`generateLevel` never emits an unsolvable board. It builds a balanced multiset of color
-segments (4 of each color), shuffles with a seeded PRNG, deals into bottles, and then
-**verifies with the solver** (rejection sampling). The accepted board ships with a known
-solution and its step count (`minMoves`). Generation is restricted to "known-good" combos
-(`isValidCombo`): 1–2 empty bottles, 2–12 colors. Seeds make levels reproducible.
+`generateLevel` never emits an unsolvable board. It builds a balanced multiset of color segments
+(`capacity` of each color), shuffles with a seeded PRNG, deals into bottles, and then **verifies with
+the solver** (rejection sampling). The accepted board ships with a known solution and its step count
+(`minMoves`). Seeds make generation reproducible.
 
 ## Deployment (GitHub Pages)
 

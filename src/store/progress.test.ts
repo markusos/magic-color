@@ -1,11 +1,19 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { clearProgress, loadProgress, recordResult, saveProgress, type Progress } from './progress';
+import {
+  clearProgress,
+  loadProgress,
+  recordRandomHardStreak,
+  recordResult,
+  saveProgress,
+  type Progress,
+} from './progress';
 
 const base = (over: Partial<Progress> = {}): Progress => ({
   version: 1,
   current: 1,
   best: {},
   stars: {},
+  randomHardBestStreak: 0,
   ...over,
 });
 
@@ -13,12 +21,28 @@ describe('progress persistence', () => {
   beforeEach(() => localStorage.clear());
 
   it('returns fresh defaults when nothing is stored', () => {
-    expect(loadProgress()).toEqual({ version: 1, current: 1, best: {}, stars: {} });
+    expect(loadProgress()).toEqual({ version: 1, current: 1, best: {}, stars: {}, randomHardBestStreak: 0 });
   });
 
   it('round-trips through localStorage', () => {
-    saveProgress(base({ current: 7, best: { 3: 18 }, stars: { 3: 2 } }));
-    expect(loadProgress()).toEqual({ version: 1, current: 7, best: { 3: 18 }, stars: { 3: 2 } });
+    saveProgress(base({ current: 7, best: { 3: 18 }, stars: { 3: 2 }, randomHardBestStreak: 4 }));
+    expect(loadProgress()).toEqual({
+      version: 1,
+      current: 7,
+      best: { 3: 18 },
+      stars: { 3: 2 },
+      randomHardBestStreak: 4,
+    });
+  });
+
+  it('defaults the random-hard streak to 0 for older saves that lack it', () => {
+    localStorage.setItem('magic-color:v1', JSON.stringify({ version: 1, current: 5, best: {}, stars: {} }));
+    expect(loadProgress().randomHardBestStreak).toBe(0);
+  });
+
+  it('keeps the longest random-hard streak only', () => {
+    expect(recordRandomHardStreak(base({ randomHardBestStreak: 3 }), 5).randomHardBestStreak).toBe(5);
+    expect(recordRandomHardStreak(base({ randomHardBestStreak: 6 }), 4).randomHardBestStreak).toBe(6);
   });
 
   it('falls back to defaults on a version mismatch or garbage', () => {

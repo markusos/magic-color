@@ -43,6 +43,16 @@ function isUsefulMove(state: GameState, from: number, to: number): boolean {
   return true;
 }
 
+/**
+ * The legal moves worth considering from a state — `legalMoves` minus the ones `isUsefulMove`
+ * prunes (disturbing a finished solid block, or pouring into a redundant empty). This is the
+ * branching the search actually explores, so difficulty metrics (branching factor, forced-move
+ * ratio in `difficulty.ts`) measure against it rather than the raw legal-move count.
+ */
+export function usefulMoves(state: GameState): Array<{ from: number; to: number }> {
+  return legalMoves(state).filter(({ from, to }) => isUsefulMove(state, from, to));
+}
+
 export interface SolveResult {
   /** A winning move sequence, or `null` if none was found. */
   solution: Move[] | null;

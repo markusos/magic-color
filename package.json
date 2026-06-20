@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "bench": "tsx scripts/benchmark-generation.ts"
+    "bench": "tsx scripts/benchmark-generation.ts",
+    "build:levels": "tsx scripts/build-levels.ts"
   },
   "dependencies": {
     "framer-motion": "^11.11.0",
@@ -24,6 +25,7 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^20.19.43",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

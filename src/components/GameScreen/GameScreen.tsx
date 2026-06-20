@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { GameBoard } from '../GameBoard/GameBoard';
+import { Loader } from '../Loader/Loader';
 import { Stats } from '../Stats/Stats';
 import { InfoButton } from '../InfoButton/InfoButton';
 import { Toolbar } from '../Toolbar/Toolbar';
@@ -16,6 +17,9 @@ const PHASE_LABEL: Record<Difficulty, string> = { easy: 'Easy', normal: 'Normal'
 export function GameScreen() {
   const level = useGameStore((s) => s.level);
   const phase = useGameStore((s) => s.phase);
+  const loading = useGameStore((s) => s.loading);
+  const mode = useGameStore((s) => s.mode);
+  const endlessStreak = useGameStore((s) => s.endlessStreak);
 
   return (
     <>
@@ -24,16 +28,27 @@ export function GameScreen() {
           <ChevronLeft size={26} strokeWidth={2} aria-hidden />
         </button>
         <div className={styles.levelInfo}>
-          <span className={styles.level}>Level {level}</span>
-          <span className={styles.phase} data-phase={phase}>
-            {PHASE_LABEL[phase]}
-          </span>
+          {mode === 'endless' ? (
+            <>
+              <span className={styles.level}>Random Hard</span>
+              <span className={styles.phase} data-phase="hard">
+                {endlessStreak > 0 ? `Streak ${endlessStreak}` : 'Hard'}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className={styles.level}>Level {level}</span>
+              <span className={styles.phase} data-phase={phase}>
+                {PHASE_LABEL[phase]}
+              </span>
+            </>
+          )}
         </div>
         <InfoButton />
         <Stats />
       </header>
 
-      <GameBoard />
+      {loading ? <Loader /> : <GameBoard />}
 
       <footer className={appStyles.footer}>
         <Toolbar />

@@ -9,7 +9,8 @@ import {
   revealExposed,
 } from './hidden';
 import { optimalCappedMoves } from './search';
-import { generateForLevel } from './progression';
+import { generateForLevel } from './levelLoader';
+import { generateLevel } from './generator';
 import { bfsOptimal } from './solver';
 import type { GameState, Move } from './types';
 import { board, color, tube } from '../test/board';
@@ -123,26 +124,29 @@ describe('cappedSolveMoves', () => {
 });
 
 describe('optimalCappedMoves', () => {
-  it('equals the exact bulk optimum on non-hidden boards', () => {
-    for (const level of [1, 20, 40, 60]) {
-      const lvl = generateForLevel(level);
+  // Sizes are set explicitly here (not via campaign level numbers) so the cases stay valid
+  // regardless of which shapes the campaign happens to place at a given level.
+  it('equals the exact bulk optimum on small non-hidden boards', () => {
+    for (const seed of [1, 2, 3]) {
+      const lvl = generateLevel({ colors: 4, bottles: 6, capacity: 4, seed }); // small — exact feasible
       expect(optimalCappedMoves(lvl.state, emptyGrid(lvl.state))).toBe(bfsOptimal(lvl.state));
     }
   });
 
   it('never exceeds the capped DFS-replay upper bound when it finds an exact answer', () => {
-    for (const level of [31, 36, 43]) {
-      const lvl = generateForLevel(level); // small hidden boards (ch.1 easy/normal) — exact is found
-      const exact = optimalCappedMoves(lvl.state, lvl.hidden);
-      const upper = cappedSolveMoves(lvl.state, lvl.solution, lvl.hidden);
+    for (const seed of [1, 2, 3]) {
+      const lvl = generateLevel({ colors: 4, bottles: 6, capacity: 4, seed }); // small — exact is found
+      const hidden = computeHidden(lvl.state, seed, exposableCells(lvl.state, lvl.solution));
+      const exact = optimalCappedMoves(lvl.state, hidden);
+      const upper = cappedSolveMoves(lvl.state, lvl.solution, hidden);
       expect(exact).not.toBeNull();
       expect(exact!).toBeLessThanOrEqual(upper);
     }
   });
 
   it('respects the node budget instead of hanging on a big board', () => {
-    const lvl = generateForLevel(145); // hard + hidden: exact is infeasible
-    expect(optimalCappedMoves(lvl.state, lvl.hidden, 2000)).toBeNull();
+    const lvl = generateLevel({ colors: 12, bottles: 15, capacity: 4, seed: 1 }); // exact is infeasible
+    expect(optimalCappedMoves(lvl.state, emptyGrid(lvl.state), 2000)).toBeNull();
   });
 });
 

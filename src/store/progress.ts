@@ -17,10 +17,12 @@ export interface Progress {
   best: Record<number, number>;
   /** Best star rating (1-3) keyed by level number, for completed levels. */
   stars: Record<number, Stars>;
+  /** Longest win streak in the post-campaign endless "Random Hard" mode. */
+  randomHardBestStreak: number;
 }
 
 function defaults(): Progress {
-  return { version: VERSION, current: 1, best: {}, stars: {} };
+  return { version: VERSION, current: 1, best: {}, stars: {}, randomHardBestStreak: 0 };
 }
 
 function asRecord<T>(value: unknown): Record<number, T> {
@@ -39,6 +41,9 @@ export function loadProgress(): Progress {
       current: Math.max(1, Math.floor(parsed.current)),
       best: asRecord<number>(parsed.best),
       stars: asRecord<Stars>(parsed.stars),
+      // Additive field — older saves (which lack it) just default to 0, no version bump needed.
+      randomHardBestStreak:
+        typeof parsed.randomHardBestStreak === 'number' ? Math.max(0, Math.floor(parsed.randomHardBestStreak)) : 0,
     };
   } catch {
     return defaults();
@@ -70,6 +75,12 @@ export function recordResult(
   const starMap =
     prevStars !== undefined && prevStars >= stars ? progress.stars : { ...progress.stars, [level]: stars };
   return { ...progress, best, stars: starMap };
+}
+
+/** Keep the longest random-hard win streak seen. Returns the updated progress (immutably). */
+export function recordRandomHardStreak(progress: Progress, streak: number): Progress {
+  if (streak <= progress.randomHardBestStreak) return progress;
+  return { ...progress, randomHardBestStreak: streak };
 }
 
 /** Clear all saved progress (the Home screen's "Start Over"). */

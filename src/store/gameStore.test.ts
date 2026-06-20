@@ -1,18 +1,27 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
-import { generateForLevel } from '../game/progression';
-import { isSolvable } from '../game/solver';
+import { getLevel } from '../game/levelLoader';
+import { isSolvable, solve } from '../game/solver';
 import { optimalCappedMoves } from '../game/search';
 import { board } from '../test/board';
 
 const store = () => useGameStore.getState();
 
-// Generation is deterministic by level, so the store's board for level 1 has the same *layout*
-// as this independently-generated level — including its known solution. The displayed colors are
-// randomized per load (see recolor.ts), so board comparisons go through `sameLayout`, which checks
-// equality up to a consistent color renaming rather than exact ids.
+// The store loads levels through `getLevel`, so the reference board comes from there too (a baked
+// board for level 1, not a fresh generation). Baked levels carry no stored solution, so we solve the
+// board independently to get a winning line. The displayed colors are randomized per load (see
+// recolor.ts), so board comparisons go through `sameLayout`, which checks equality up to a consistent
+// color renaming rather than exact ids.
 const LEVEL = 1;
-const reference = generateForLevel(LEVEL);
+const reference = getLevel(LEVEL);
+const referenceSolution = solve(reference.state)!;
+
+/**
+ * Live (un-baked) levels generate asynchronously: `loadLevel` flips on `loading` and defers the
+ * blocking generation to a macrotask so the UI can paint a spinner. Tests that load such a level
+ * await this to let that deferred work run. Baked levels load synchronously and need no flush.
+ */
+const flushLoad = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 /** Whether two boards are identical up to a consistent 1:1 color renaming (what recolor does). */
 function sameLayout(a: string[][], b: string[][]): boolean {
@@ -39,7 +48,7 @@ beforeEach(() => {
 
 /** Drive a list of engine moves through the tap interface (select source, tap target). */
 function playSolution() {
-  for (const move of reference.solution) {
+  for (const move of referenceSolution) {
     store().tapBottle(move.from);
     store().tapBottle(move.to);
   }
@@ -61,12 +70,12 @@ describe('loadLevel', () => {
 
 describe('progression', () => {
   it('records a best score on win and advances with nextLevel', () => {
-    for (const move of reference.solution) {
+    for (const move of referenceSolution) {
       store().tapBottle(move.from);
       store().tapBottle(move.to);
     }
     expect(store().status).toBe('won');
-    expect(store().best).toBe(reference.solution.length);
+    expect(store().best).toBe(referenceSolution.length);
 
     store().nextLevel();
     expect(store().level).toBe(LEVEL + 1);
@@ -79,6 +88,68 @@ describe('progression', () => {
     expect(store().level).toBe(5);
     store().startOver();
     expect(store().level).toBe(1);
+  });
+});
+
+describe('live-level loading state (drives the spinner)', () => {
+  it('loads baked levels synchronously with no loading flash', () => {
+    store().loadLevel(1); // baked
+    expect(store().loading).toBe(false);
+  });
+
+  it('flags loading synchronously for a live level, then clears it after generation', async () => {
+    store().loadLevel(75); // live tail — deferred generation
+    // Header info updates immediately so the spinner screen shows the right level…
+    expect(store().loading).toBe(true);
+    expect(store().level).toBe(75);
+    // …and the board arrives once generation finishes.
+    await flushLoad();
+    expect(store().loading).toBe(false);
+    expect(store().current.bottles.length).toBeGreaterThan(0);
+  });
+});
+
+describe('endless "Random Hard" mode', () => {
+  it('enters endless mode (deferred, spinner) and generates a board', async () => {
+    store().playRandomHard();
+    expect(store().mode).toBe('endless');
+    expect(store().loading).toBe(true);
+    expect(store().endlessStreak).toBe(0);
+    await flushLoad();
+    expect(store().loading).toBe(false);
+    expect(store().current.bottles.length).toBeGreaterThan(0);
+  });
+
+  it('counts an endless win toward the streak and persists the best', () => {
+    // Put the store in endless mode one pour from a win (a plain, fully-revealed board).
+    useGameStore.setState({
+      mode: 'endless',
+      endlessStreak: 2,
+      endlessBestStreak: 2,
+      current: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      initial: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      hidden: [[false, false, false], [false], []],
+      initialHidden: [[false, false, false], [false], []],
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      selected: null,
+      status: 'playing',
+      optimal: 1,
+    });
+    store().tapBottle(1); // pour the lone ruby onto the stack → completes the board
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().endlessStreak).toBe(3);
+    expect(store().endlessBestStreak).toBeGreaterThanOrEqual(3);
+  });
+
+  it('returns to campaign mode when a level is loaded', async () => {
+    store().playRandomHard();
+    await flushLoad(); // let the deferred endless board finish (no dangling timer)
+    expect(store().mode).toBe('endless');
+    store().loadLevel(1); // baked — synchronous
+    expect(store().mode).toBe('campaign');
   });
 });
 
@@ -166,21 +237,24 @@ describe('capped (finished) tubes', () => {
 describe('hidden colors (chapter 1)', () => {
   const anyHidden = (g: boolean[][]) => g.some((col) => col.some(Boolean));
 
-  it('chapter-0 levels conceal nothing; chapter-1 levels do', () => {
-    store().loadLevel(1);
+  it('chapter-0 levels conceal nothing; chapter-1 levels do', async () => {
+    store().loadLevel(1); // baked — synchronous
     expect(anyHidden(store().hidden)).toBe(false);
-    store().loadLevel(75);
+    store().loadLevel(75); // live tail — deferred
+    await flushLoad();
     expect(anyHidden(store().hidden)).toBe(true);
   });
 
   // The key guarantee: even though pours are capped to the visible run, a hidden level is
   // still beatable. We drive the full-info solution as repeated capped pours — each concealed
   // cell in a run is the same color, so it reveals and pours on the next tap.
-  it.each([75, 145])('hidden level %i is solvable through the capped tap interface', (level) => {
+  it.each([75, 145])('hidden level %i is solvable through the capped tap interface', async (level) => {
     store().loadLevel(level);
+    await flushLoad();
     expect(anyHidden(store().hidden)).toBe(true);
 
-    for (const move of generateForLevel(level).solution) {
+    // The store loads this level via `getLevel`, so drive that exact board's solution.
+    for (const move of getLevel(level).solution) {
       for (let k = 0; k < move.count; k++) {
         const before = store().moves.length;
         store().tapBottle(move.from);
@@ -195,12 +269,13 @@ describe('hidden colors (chapter 1)', () => {
     expect(anyHidden(store().hidden)).toBe(false); // everything revealed by the end
   });
 
-  it('a pour snapshots concealment and undo restores it; restart re-conceals', () => {
+  it('a pour snapshots concealment and undo restores it; restart re-conceals', async () => {
     store().loadLevel(75);
+    await flushLoad();
     const initialHidden = store().hidden;
     const concealedCount = (g: boolean[][]) => g.reduce((n, col) => n + col.filter(Boolean).length, 0);
     const startConcealed = concealedCount(initialHidden);
-    const first = generateForLevel(75).solution[0]!;
+    const first = getLevel(75).solution[0]!;
 
     store().tapBottle(first.from);
     store().tapBottle(first.to);
@@ -242,7 +317,7 @@ describe('tapBottle selection', () => {
 
 describe('pour via taps', () => {
   it('records history and a move when a legal pour is tapped', () => {
-    const first = reference.solution[0]!;
+    const first = referenceSolution[0]!;
     store().tapBottle(first.from);
     store().tapBottle(first.to);
     expect(store().history).toHaveLength(1);
@@ -259,7 +334,7 @@ describe('pour via taps', () => {
 describe('undo / restart', () => {
   it('undo reverts the last pour', () => {
     const before = store().current.bottles;
-    const first = reference.solution[0]!;
+    const first = referenceSolution[0]!;
     store().tapBottle(first.from);
     store().tapBottle(first.to);
     store().undo();

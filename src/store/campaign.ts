@@ -11,6 +11,7 @@
 import {
   clearProgress,
   loadProgress,
+  recordRandomHardStreak,
   recordResult,
   saveProgress,
   type Progress,
@@ -30,12 +31,16 @@ export interface Campaign {
   readonly furthest: number;
   /** Best star rating per reached level, for the level selector. */
   readonly levelStars: Record<number, Stars>;
+  /** Longest win streak in the endless "Random Hard" mode. */
+  readonly randomHardBestStreak: number;
   /** The player's saved record for a level. */
   recordFor: (level: number) => LevelRecord;
   /** Mark a level as reached (raises the frontier, never lowers it) and persist. */
   reach: (level: number) => void;
   /** Record a completed level's result (keeps the best moves/stars) and persist. */
   complete: (level: number, moves: number, stars: Stars) => LevelRecord;
+  /** Record a random-hard win streak (keeps the longest seen) and persist; returns the best. */
+  recordRandomHard: (streak: number) => number;
   /** Raise the frontier toward `level` (clamped to 1..`max`) for the admin unlock; persist. */
   unlockTo: (level: number, max: number) => void;
   /** Wipe all saved progress and reset to level 1. */
@@ -61,6 +66,9 @@ export function createCampaign(): Campaign {
     get levelStars() {
       return progress.stars;
     },
+    get randomHardBestStreak() {
+      return progress.randomHardBestStreak;
+    },
     recordFor,
     reach(level) {
       progress = { ...progress, current: Math.max(progress.current, level) };
@@ -70,6 +78,11 @@ export function createCampaign(): Campaign {
       progress = recordResult(progress, level, moves, stars);
       saveProgress(progress);
       return recordFor(level);
+    },
+    recordRandomHard(streak) {
+      progress = recordRandomHardStreak(progress, streak);
+      saveProgress(progress);
+      return progress.randomHardBestStreak;
     },
     unlockTo(level, max) {
       const target = Math.max(1, Math.min(max, Math.floor(level)));
