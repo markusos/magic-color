@@ -12,7 +12,7 @@
 import { isWon, pour } from './engine';
 import { cappedSolveMoves, type HiddenGrid } from './hidden';
 import { mulberry32 } from './rng';
-import { optimalCappedMoves } from './search';
+import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import { isUnsolvable, usefulMoves } from './solver';
 import type { GameState, Move } from './types';
 
@@ -29,6 +29,8 @@ export interface Metrics {
   optimal: number;
   /** Whether `optimal` is the exact A* result (false ⇒ proxy fallback was used). */
   optimalExact: boolean;
+  /** 2★ ceiling: the adjusted near-optimal band's upper bound (always `> optimal`). See `stars.ts`. */
+  twoStarMax: number;
   /** Fraction of solution-path states with ≤1 useful move. Lower ⇒ more choices ⇒ harder. */
   forcedMoveRatio: number;
   /** Fraction of random playouts that wander into an unrecoverable state. Higher ⇒ more punishing. */
@@ -44,6 +46,11 @@ export interface Metrics {
 export interface MetricOptions {
   /** Node budget for the exact-optimal A*. */
   optimalNodeBudget?: number;
+  /**
+   * Node budget for the near-optimal tier sweep that yields `twoStarMax` (heavier than the A* — no
+   * global dedup — so it gets its own, typically larger, budget). Defaults to `OPTIMAL_NODE_BUDGET`.
+   */
+  tierNodeBudget?: number;
   /** Random playouts for the dead-end estimate (0 disables; deadEndDensity becomes 0). */
   deadEndSamples?: number;
   /** Node budget for each dead-end solvability check (a hit cap counts as "not proven dead"). */
@@ -135,9 +142,16 @@ export function measureMetrics(
   const colors = new Set<string>(state.bottles.flat()).size;
   const exact = optimalCappedMoves(state, hidden, opts.optimalNodeBudget ?? OPTIMAL_NODE_BUDGET);
   const optimal = exact ?? cappedSolveMoves(state, solution, hidden);
+  // Adjusted 2★ ceiling. The tier sweep finds its own optimal; only trust its band when that matches
+  // the (exact) optimal above — otherwise (proxy fallback, or the sweep overflowed) use optimal + 2.
+  // A 0 budget disables it (the live scoring path doesn't use twoStarMax and can't afford the sweep).
+  const tierBudget = opts.tierNodeBudget ?? OPTIMAL_NODE_BUDGET;
+  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget) : null;
+  const twoStarMax = tiers && tiers.optimal === optimal ? tiers.twoStarMax : optimal + 2;
   return {
     optimal,
     optimalExact: exact !== null,
+    twoStarMax,
     forcedMoveRatio: forcedMoveRatio(state, solution),
     deadEndDensity: deadEndDensity(
       state,

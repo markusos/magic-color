@@ -47,6 +47,7 @@ describe('baked levels', () => {
       }
 
       expect(baked.optimal).toBeGreaterThan(0);
+      expect(baked.twoStarMax).toBeGreaterThan(baked.optimal); // 2★ band sits strictly above optimal
       expect(isSolvable(board(baked.bottles, baked.capacity))).toBe(true);
     }
   });

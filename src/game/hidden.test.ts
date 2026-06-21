@@ -8,7 +8,7 @@ import {
   knownTopRun,
   revealExposed,
 } from './hidden';
-import { optimalCappedMoves } from './search';
+import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import { generateForLevel } from './levelLoader';
 import { generateLevel } from './generator';
 import { bfsOptimal } from './solver';
@@ -147,6 +147,23 @@ describe('optimalCappedMoves', () => {
   it('respects the node budget instead of hanging on a big board', () => {
     const lvl = generateLevel({ colors: 12, bottles: 15, capacity: 4, seed: 1 }); // exact is infeasible
     expect(optimalCappedMoves(lvl.state, emptyGrid(lvl.state), 2000)).toBeNull();
+  });
+});
+
+describe('nearOptimalCutoffs', () => {
+  it('reports an optimal matching the A* and a strictly-larger 2★ ceiling', () => {
+    for (const seed of [1, 2, 3]) {
+      const lvl = generateLevel({ colors: 4, bottles: 6, capacity: 4, seed }); // small — exact feasible
+      const cutoffs = nearOptimalCutoffs(lvl.state, emptyGrid(lvl.state));
+      expect(cutoffs).not.toBeNull();
+      expect(cutoffs!.optimal).toBe(optimalCappedMoves(lvl.state, emptyGrid(lvl.state)));
+      expect(cutoffs!.twoStarMax).toBeGreaterThan(cutoffs!.optimal);
+    }
+  });
+
+  it('returns null when the node budget is exhausted before the optimal is found', () => {
+    const lvl = generateLevel({ colors: 12, bottles: 15, capacity: 4, seed: 1 }); // exact is infeasible
+    expect(nearOptimalCutoffs(lvl.state, emptyGrid(lvl.state), 2000)).toBeNull();
   });
 });
 

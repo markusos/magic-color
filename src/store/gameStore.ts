@@ -73,8 +73,10 @@ interface GameStore {
   phase: Difficulty;
   /** Board mechanics active this level (empty in chapter 0). */
   mechanics: readonly Mechanic[];
-  /** Achievable near-optimal move count for the current level — basis for the star rating. */
+  /** Achievable near-optimal move count for the current level (3★ cutoff) — basis for the star rating. */
   optimal: number;
+  /** 2★ ceiling for the current level (adjusted near-optimal band; always `> optimal`). */
+  twoStarMax: number;
   /** The player's best (fewest) moves for the current level, or null if never solved. */
   best: number | null;
   /** The player's best star rating for the current level, or null if never solved. */
@@ -164,8 +166,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       const streak = get().endlessStreak + 1;
       set({ endlessStreak: streak, endlessBestStreak: campaign.recordRandomHard(streak) });
     } else {
-      const { level, moves, optimal } = get();
-      const record = campaign.complete(level, moves.length, starsFor(moves.length, optimal));
+      const { level, moves, optimal, twoStarMax } = get();
+      const record = campaign.complete(level, moves.length, starsFor(moves.length, optimal, twoStarMax));
       // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
       set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
     }
@@ -193,6 +195,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: generated.phase,
       mechanics: generated.mechanics,
       optimal: generated.optimal,
+      twoStarMax: generated.twoStarMax,
       ...campaign.recordFor(level),
       furthest: campaign.furthest,
       campaignComplete: campaign.campaignComplete,
@@ -217,6 +220,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: generated.phase, // varies normal→hard per board
       mechanics: generated.mechanics,
       optimal: generated.optimal,
+      twoStarMax: generated.twoStarMax,
       best: null, // random boards have no per-level best/stars
       bestStars: null,
     });
@@ -290,6 +294,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     phase: first?.phase ?? phaseForLevel(startLevel),
     mechanics: first?.mechanics ?? mechanicsForLevel(startLevel),
     optimal: first?.optimal ?? 0,
+    twoStarMax: first?.twoStarMax ?? 2,
     ...campaign.recordFor(startLevel),
     furthest: campaign.furthest,
     campaignComplete: campaign.campaignComplete,

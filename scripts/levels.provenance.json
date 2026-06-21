@@ -1,5 +1,5 @@
 {
-  "version": "d1af170374f2bd8a",
+  "version": "f60c9eca7bc5cee1",
   "count": 60,
   "perShape": 80,
   "levels": [
@@ -14,6 +14,7 @@
       "metrics": {
         "optimal": 16,
         "optimalExact": true,
+        "twoStarMax": 18,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -32,6 +33,7 @@
       "metrics": {
         "optimal": 7,
         "optimalExact": true,
+        "twoStarMax": 9,
         "forcedMoveRatio": 0.375,
         "deadEndDensity": 0.25,
         "digDepth": 0,
@@ -50,6 +52,7 @@
       "metrics": {
         "optimal": 11,
         "optimalExact": true,
+        "twoStarMax": 13,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -68,6 +71,7 @@
       "metrics": {
         "optimal": 19,
         "optimalExact": true,
+        "twoStarMax": 21,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -86,6 +90,7 @@
       "metrics": {
         "optimal": 18,
         "optimalExact": true,
+        "twoStarMax": 20,
         "forcedMoveRatio": 0.5238095238095238,
         "deadEndDensity": 0.125,
         "digDepth": 0,
@@ -104,6 +109,7 @@
       "metrics": {
         "optimal": 21,
         "optimalExact": true,
+        "twoStarMax": 23,
         "forcedMoveRatio": 0.02564102564102564,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -122,6 +128,7 @@
       "metrics": {
         "optimal": 9,
         "optimalExact": true,
+        "twoStarMax": 11,
         "forcedMoveRatio": 0.4,
         "deadEndDensity": 0.25,
         "digDepth": 0,
@@ -140,6 +147,7 @@
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
+        "twoStarMax": 14,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -158,6 +166,7 @@
       "metrics": {
         "optimal": 21,
         "optimalExact": true,
+        "twoStarMax": 23,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -176,6 +185,7 @@
       "metrics": {
         "optimal": 30,
         "optimalExact": true,
+        "twoStarMax": 32,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -194,6 +204,7 @@
       "metrics": {
         "optimal": 23,
         "optimalExact": true,
+        "twoStarMax": 25,
         "forcedMoveRatio": 0.030303030303030304,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -212,6 +223,7 @@
       "metrics": {
         "optimal": 13,
         "optimalExact": true,
+        "twoStarMax": 15,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -230,6 +242,7 @@
       "metrics": {
         "optimal": 23,
         "optimalExact": true,
+        "twoStarMax": 25,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -248,6 +261,7 @@
       "metrics": {
         "optimal": 32,
         "optimalExact": true,
+        "twoStarMax": 34,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -266,6 +280,7 @@
       "metrics": {
         "optimal": 18,
         "optimalExact": true,
+        "twoStarMax": 20,
         "forcedMoveRatio": 0.4090909090909091,
         "deadEndDensity": 0.125,
         "digDepth": 0,
@@ -284,6 +299,7 @@
       "metrics": {
         "optimal": 23,
         "optimalExact": true,
+        "twoStarMax": 25,
         "forcedMoveRatio": 0.08823529411764706,
         "deadEndDensity": 0.125,
         "digDepth": 0,
@@ -302,6 +318,7 @@
       "metrics": {
         "optimal": 50,
         "optimalExact": false,
+        "twoStarMax": 52,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -320,6 +337,7 @@
       "metrics": {
         "optimal": 22,
         "optimalExact": true,
+        "twoStarMax": 24,
         "forcedMoveRatio": 0.03125,
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0,
@@ -338,6 +356,7 @@
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
+        "twoStarMax": 14,
         "forcedMoveRatio": 0.46153846153846156,
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0,
@@ -356,6 +375,7 @@
       "metrics": {
         "optimal": 15,
         "optimalExact": true,
+        "twoStarMax": 17,
         "forcedMoveRatio": 0.5,
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0,
@@ -374,6 +394,7 @@
       "metrics": {
         "optimal": 47,
         "optimalExact": false,
+        "twoStarMax": 49,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0,
@@ -392,6 +413,7 @@
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
+        "twoStarMax": 14,
         "forcedMoveRatio": 0.6153846153846154,
         "deadEndDensity": 0.7083333333333334,
         "digDepth": 0,
@@ -410,6 +432,7 @@
       "metrics": {
         "optimal": 19,
         "optimalExact": true,
+        "twoStarMax": 21,
         "forcedMoveRatio": 0.4090909090909091,
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0,
@@ -428,6 +451,7 @@
       "metrics": {
         "optimal": 52,
         "optimalExact": false,
+        "twoStarMax": 54,
         "forcedMoveRatio": 0.038461538461538464,
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0,
@@ -446,6 +470,7 @@
       "metrics": {
         "optimal": 26,
         "optimalExact": true,
+        "twoStarMax": 28,
         "forcedMoveRatio": 0.075,
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0,
@@ -464,6 +489,7 @@
       "metrics": {
         "optimal": 54,
         "optimalExact": false,
+        "twoStarMax": 56,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.375,
         "digDepth": 0,
@@ -482,6 +508,7 @@
       "metrics": {
         "optimal": 27,
         "optimalExact": true,
+        "twoStarMax": 29,
         "forcedMoveRatio": 0.06976744186046512,
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0,
@@ -500,6 +527,7 @@
       "metrics": {
         "optimal": 25,
         "optimalExact": true,
+        "twoStarMax": 27,
         "forcedMoveRatio": 0.4117647058823529,
         "deadEndDensity": 0.625,
         "digDepth": 0,
@@ -518,6 +546,7 @@
       "metrics": {
         "optimal": 23,
         "optimalExact": true,
+        "twoStarMax": 25,
         "forcedMoveRatio": 0.06060606060606061,
         "deadEndDensity": 0.75,
         "digDepth": 0,
@@ -536,6 +565,7 @@
       "metrics": {
         "optimal": 50,
         "optimalExact": false,
+        "twoStarMax": 52,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.6666666666666666,
         "digDepth": 0,
@@ -554,6 +584,7 @@
       "metrics": {
         "optimal": 22,
         "optimalExact": true,
+        "twoStarMax": 24,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.26785714285714285,
@@ -572,6 +603,7 @@
       "metrics": {
         "optimal": 14,
         "optimalExact": true,
+        "twoStarMax": 16,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.21296296296296294,
@@ -590,6 +622,7 @@
       "metrics": {
         "optimal": 23,
         "optimalExact": true,
+        "twoStarMax": 25,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.25892857142857145,
@@ -608,6 +641,7 @@
       "metrics": {
         "optimal": 14,
         "optimalExact": true,
+        "twoStarMax": 16,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.2314814814814815,
@@ -626,6 +660,7 @@
       "metrics": {
         "optimal": 34,
         "optimalExact": true,
+        "twoStarMax": 36,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.26704545454545453,
@@ -644,6 +679,7 @@
       "metrics": {
         "optimal": 14,
         "optimalExact": true,
+        "twoStarMax": 16,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.2592592592592593,
@@ -662,6 +698,7 @@
       "metrics": {
         "optimal": 47,
         "optimalExact": false,
+        "twoStarMax": 49,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.1534090909090909,
@@ -680,6 +717,7 @@
       "metrics": {
         "optimal": 24,
         "optimalExact": true,
+        "twoStarMax": 26,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.33035714285714285,
@@ -698,6 +736,7 @@
       "metrics": {
         "optimal": 16,
         "optimalExact": true,
+        "twoStarMax": 18,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.25,
@@ -716,6 +755,7 @@
       "metrics": {
         "optimal": 10,
         "optimalExact": true,
+        "twoStarMax": 12,
         "forcedMoveRatio": 0.4,
         "deadEndDensity": 0.4166666666666667,
         "digDepth": 0.171875,
@@ -734,6 +774,7 @@
       "metrics": {
         "optimal": 49,
         "optimalExact": false,
+        "twoStarMax": 51,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.24431818181818182,
@@ -752,6 +793,7 @@
       "metrics": {
         "optimal": 30,
         "optimalExact": true,
+        "twoStarMax": 32,
         "forcedMoveRatio": 0.4117647058823529,
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.15,
@@ -770,6 +812,7 @@
       "metrics": {
         "optimal": 53,
         "optimalExact": false,
+        "twoStarMax": 55,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.26136363636363635,
@@ -788,6 +831,7 @@
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
+        "twoStarMax": 14,
         "forcedMoveRatio": 0.25,
         "deadEndDensity": 0.3333333333333333,
         "digDepth": 0.234375,
@@ -806,6 +850,7 @@
       "metrics": {
         "optimal": 54,
         "optimalExact": false,
+        "twoStarMax": 56,
         "forcedMoveRatio": 0.05555555555555555,
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.3352272727272727,
@@ -824,6 +869,7 @@
       "metrics": {
         "optimal": 24,
         "optimalExact": true,
+        "twoStarMax": 26,
         "forcedMoveRatio": 0.46153846153846156,
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.2109375,
@@ -842,6 +888,7 @@
       "metrics": {
         "optimal": 59,
         "optimalExact": false,
+        "twoStarMax": 61,
         "forcedMoveRatio": 0.034482758620689655,
         "deadEndDensity": 0.125,
         "digDepth": 0.2604166666666667,
@@ -860,6 +907,7 @@
       "metrics": {
         "optimal": 13,
         "optimalExact": true,
+        "twoStarMax": 15,
         "forcedMoveRatio": 0.35714285714285715,
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.203125,
@@ -878,6 +926,7 @@
       "metrics": {
         "optimal": 36,
         "optimalExact": true,
+        "twoStarMax": 38,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.4166666666666667,
         "digDepth": 0.20833333333333334,
@@ -896,6 +945,7 @@
       "metrics": {
         "optimal": 25,
         "optimalExact": true,
+        "twoStarMax": 27,
         "forcedMoveRatio": 0.21621621621621623,
         "deadEndDensity": 0.625,
         "digDepth": 0.171875,
@@ -914,6 +964,7 @@
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
+        "twoStarMax": 14,
         "forcedMoveRatio": 0.3333333333333333,
         "deadEndDensity": 0.75,
         "digDepth": 0.1875,
@@ -932,6 +983,7 @@
       "metrics": {
         "optimal": 28,
         "optimalExact": true,
+        "twoStarMax": 30,
         "forcedMoveRatio": 0.4074074074074074,
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0.26171875,
@@ -950,6 +1002,7 @@
       "metrics": {
         "optimal": 50,
         "optimalExact": false,
+        "twoStarMax": 52,
         "forcedMoveRatio": 0.02040816326530612,
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.20833333333333334,
@@ -968,6 +1021,7 @@
       "metrics": {
         "optimal": 28,
         "optimalExact": true,
+        "twoStarMax": 30,
         "forcedMoveRatio": 0.40625,
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.24609375,
@@ -986,6 +1040,7 @@
       "metrics": {
         "optimal": 25,
         "optimalExact": true,
+        "twoStarMax": 27,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.6666666666666666,
         "digDepth": 0.3046875,
@@ -1004,6 +1059,7 @@
       "metrics": {
         "optimal": 34,
         "optimalExact": true,
+        "twoStarMax": 36,
         "forcedMoveRatio": 0.3888888888888889,
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.195,
@@ -1022,6 +1078,7 @@
       "metrics": {
         "optimal": 13,
         "optimalExact": true,
+        "twoStarMax": 15,
         "forcedMoveRatio": 0.16666666666666666,
         "deadEndDensity": 1,
         "digDepth": 0.125,
@@ -1040,6 +1097,7 @@
       "metrics": {
         "optimal": 25,
         "optimalExact": true,
+        "twoStarMax": 27,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.875,
         "digDepth": 0.25,
@@ -1058,6 +1116,7 @@
       "metrics": {
         "optimal": 27,
         "optimalExact": true,
+        "twoStarMax": 29,
         "forcedMoveRatio": 0.3793103448275862,
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.1953125,
@@ -1076,6 +1135,7 @@
       "metrics": {
         "optimal": 27,
         "optimalExact": true,
+        "twoStarMax": 29,
         "forcedMoveRatio": 0.03125,
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.296875,

@@ -11,10 +11,11 @@ import styles from './Stats.module.css';
 export function Stats() {
   const moves = useGameStore((s) => s.moves.length);
   const optimal = useGameStore((s) => s.optimal);
+  const twoStarMax = useGameStore((s) => s.twoStarMax);
 
   return (
     <div className={styles.stats}>
-      <Stars value={starsFor(moves, optimal)} size={20} />
+      <Stars value={starsFor(moves, optimal, twoStarMax)} size={20} />
     </div>
   );
 }

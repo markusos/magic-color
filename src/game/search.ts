@@ -83,6 +83,52 @@ export function runsHeuristic(state: GameState): number {
   return runs - colors.size;
 }
 
+/** A successor (board, concealment) state reached by one capped pour. */
+interface CappedSuccessor {
+  state: GameState;
+  hidden: HiddenGrid;
+}
+
+/**
+ * The (board, concealment) states reachable by one CAPPED player pour, under the same rules the
+ * player plays: each pour is limited to the visible top run, concealed cells reveal as they surface,
+ * finished/capped tubes can't be poured from, and the obviously-pointless moves are pruned
+ * (interchangeable empties collapsed; relocating a fully-revealed solid block to an empty tube
+ * dropped). Shared by `optimalCappedMoves` (exact A*) and `nearOptimalCutoffs` (tier BFS) so both
+ * explore the identical move graph.
+ */
+function cappedSuccessors(state: GameState, hidden: HiddenGrid): CappedSuccessor[] {
+  const out: CappedSuccessor[] = [];
+  const n = state.bottles.length;
+  const firstEmpty = state.bottles.findIndex((b) => b.length === 0);
+  for (let from = 0; from < n; from++) {
+    const src = state.bottles[from]!;
+    // A capped (finished) tube can't be poured from — same rule the player plays under.
+    if (src.length === 0 || isCapped(src, state.capacity, hidden[from])) continue;
+    const cap = knownTopRun(src, hidden[from]);
+    const srcUniform = src.every((c) => c === src[0]);
+    const srcConcealed = hidden[from]?.some(Boolean) ?? false;
+    for (let to = 0; to < n; to++) {
+      if (from === to) continue;
+      const dst = state.bottles[to]!;
+      if (dst.length === 0) {
+        if (to !== firstEmpty) continue; // empties are interchangeable
+        // Relocating a fully-revealed solid block to an empty tube is never progress.
+        if (srcUniform && !srcConcealed) continue;
+      }
+      if (!canPour(state, from, to)) continue;
+      const { state: next } = pour(state, from, to, cap);
+      out.push({ state: next, hidden: revealExposed(next, hidden) });
+    }
+  }
+  return out;
+}
+
+/** A fully-solved, fully-revealed board — the search goal. */
+function isSolved(state: GameState, hidden: HiddenGrid): boolean {
+  return isWon(state) && !anyHidden(hidden);
+}
+
 /**
  * The exact minimum number of player pours to fully solve a board: A* over (board, concealment)
  * states where moves are CAPPED pours (limited to the visible run, concealed cells revealing as
@@ -113,37 +159,85 @@ export function optimalCappedMoves(
   while (heap.size > 0) {
     const cur = heap.pop()!;
     if ((bestG.get(cur.key) ?? Infinity) < cur.g) continue; // stale heap entry
-    if (isWon(cur.state) && !anyHidden(cur.hidden)) return cur.g;
+    if (isSolved(cur.state, cur.hidden)) return cur.g;
     if (++nodes > maxNodes) return null;
 
-    const n = cur.state.bottles.length;
-    const firstEmpty = cur.state.bottles.findIndex((b) => b.length === 0);
-    for (let from = 0; from < n; from++) {
-      const src = cur.state.bottles[from]!;
-      // A capped (finished) tube can't be poured from — same rule the player plays under.
-      if (src.length === 0 || isCapped(src, cur.state.capacity, cur.hidden[from])) continue;
-      const cap = knownTopRun(src, cur.hidden[from]);
-      const srcUniform = src.every((c) => c === src[0]);
-      const srcConcealed = cur.hidden[from]?.some(Boolean) ?? false;
-      for (let to = 0; to < n; to++) {
-        if (from === to) continue;
-        const dst = cur.state.bottles[to]!;
-        if (dst.length === 0) {
-          if (to !== firstEmpty) continue; // empties are interchangeable
-          // Relocating a fully-revealed solid block to an empty tube is never progress.
-          if (srcUniform && !srcConcealed) continue;
-        }
-        if (!canPour(cur.state, from, to)) continue;
-        const { state: next } = pour(cur.state, from, to, cap);
-        const nextHidden = revealExposed(next, cur.hidden);
-        const nextKey = stateKey(next, nextHidden);
-        const ng = cur.g + 1;
-        if (ng < (bestG.get(nextKey) ?? Infinity)) {
-          bestG.set(nextKey, ng);
-          heap.push({ state: next, hidden: nextHidden, g: ng, f: ng + runsHeuristic(next), key: nextKey });
-        }
+    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden)) {
+      const nextKey = stateKey(next, nextHidden);
+      const ng = cur.g + 1;
+      if (ng < (bestG.get(nextKey) ?? Infinity)) {
+        bestG.set(nextKey, ng);
+        heap.push({ state: next, hidden: nextHidden, g: ng, f: ng + runsHeuristic(next), key: nextKey });
       }
     }
   }
   return null;
+}
+
+/** Star-rating cutoffs for a board: the exact optimal (3★) and the adjusted near-optimal 2★ ceiling. */
+export interface StarCutoffs {
+  /** Exact minimum player pours — the 3★ cutoff (same value `optimalCappedMoves` returns). */
+  optimal: number;
+  /**
+   * Largest move count still worth 2★: the *second* distinct achievable solution length above
+   * `optimal` ("1–2 steps from optimal"), snapped to what the board actually offers. Always
+   * `> optimal`.
+   */
+  twoStarMax: number;
+}
+
+/**
+ * The star cutoffs for a board, computed by enumerating the shortest few *distinct* solution lengths
+ * under the same capped/reveal move rules as {@link optimalCappedMoves}. A layered breadth-first
+ * sweep (states deduplicated within each depth, but a state may recur across depths so genuinely
+ * longer solutions are seen) records the depths at which a fully-solved board first becomes
+ * reachable: the first is the exact optimal, and the third — i.e. two tiers up — is the 2★ ceiling.
+ *
+ * "Adjusted for available sub-optimal solutions": rather than a flat `optimal + 2`, the band snaps to
+ * the lengths this particular board can actually be solved in, so a tightly-forced board (whose only
+ * near-optimal alternatives are a few moves up) gets a correspondingly wider 2★ band than one rich in
+ * one-move-longer lines.
+ *
+ * Returns `null` if the node budget is exhausted before even the optimal is found (extremely tangled
+ * board), so callers fall back to a cheaper estimate. If the budget runs out *after* the optimal is
+ * known but before two sub-optimal tiers are seen, `twoStarMax` falls back to `optimal + 2`.
+ */
+export function nearOptimalCutoffs(
+  state0: GameState,
+  hidden0: HiddenGrid,
+  maxNodes = 200_000,
+): StarCutoffs | null {
+  // One layer = every state reachable in exactly `depth` capped pours (deduped within the layer).
+  let layer = new Map<string, CappedSuccessor>([[stateKey(state0, hidden0), { state: state0, hidden: hidden0 }]]);
+  const goalDepths: number[] = [];
+  let depth = 0;
+  let nodes = 0;
+
+  const finalize = (): StarCutoffs | null => {
+    if (goalDepths.length === 0) return null;
+    const optimal = goalDepths[0]!;
+    // Two tiers up if we found them; otherwise a safe generous default above optimal.
+    return { optimal, twoStarMax: goalDepths[2] ?? goalDepths[1] ?? optimal + 2 };
+  };
+
+  while (layer.size > 0) {
+    if ([...layer.values()].some(({ state, hidden }) => isSolved(state, hidden))) {
+      goalDepths.push(depth);
+      if (goalDepths.length >= 3) break; // optimal + two sub-optimal tiers is all we need
+    }
+
+    const next = new Map<string, CappedSuccessor>();
+    for (const { state, hidden } of layer.values()) {
+      if (isSolved(state, hidden)) continue; // solved boards have no useful successors
+      for (const succ of cappedSuccessors(state, hidden)) {
+        if (++nodes > maxNodes) return finalize();
+        const key = stateKey(succ.state, succ.hidden);
+        if (!next.has(key)) next.set(key, succ);
+      }
+    }
+    layer = next;
+    depth++;
+  }
+
+  return finalize();
 }

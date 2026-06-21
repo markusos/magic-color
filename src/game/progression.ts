@@ -196,6 +196,8 @@ export interface PlayableLevel extends GeneratedLevel {
    * length) on hidden levels, where capping forces more, smaller pours.
    */
   optimal: number;
+  /** 2★ ceiling: the adjusted near-optimal band's upper bound (always `> optimal`). See `stars.ts`. */
+  twoStarMax: number;
 }
 
 /**

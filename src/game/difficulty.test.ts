@@ -9,6 +9,7 @@ function m(over: Partial<Metrics>): Metrics {
   return {
     optimal: 4,
     optimalExact: true,
+    twoStarMax: 6,
     forcedMoveRatio: 0.5,
     deadEndDensity: 0.2,
     digDepth: 0,
@@ -33,6 +34,7 @@ describe('measureMetrics', () => {
 
     expect(metrics.optimal).toBeGreaterThan(0);
     expect(metrics.optimalExact).toBe(true); // tiny board resolves well within the node budget
+    expect(metrics.twoStarMax).toBeGreaterThan(metrics.optimal); // 2★ band sits strictly above optimal
     expect(metrics.forcedMoveRatio).toBeGreaterThanOrEqual(0);
     expect(metrics.forcedMoveRatio).toBeLessThanOrEqual(1);
     expect(metrics.deadEndDensity).toBeGreaterThanOrEqual(0);

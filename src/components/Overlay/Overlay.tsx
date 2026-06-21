@@ -13,6 +13,7 @@ export function Overlay() {
   const status = useGameStore((s) => s.status);
   const moves = useGameStore((s) => s.moves);
   const optimal = useGameStore((s) => s.optimal);
+  const twoStarMax = useGameStore((s) => s.twoStarMax);
   const nextLevel = useGameStore((s) => s.nextLevel);
   const restart = useGameStore((s) => s.restart);
   const mode = useGameStore((s) => s.mode);
@@ -20,7 +21,7 @@ export function Overlay() {
 
   const endless = mode === 'endless';
   const visible = status === 'won' || status === 'deadlocked';
-  const stars = starsFor(moves.length, optimal);
+  const stars = starsFor(moves.length, optimal, twoStarMax);
   const praise = endless
     ? `Streak ${endlessStreak}!`
     : stars === 3

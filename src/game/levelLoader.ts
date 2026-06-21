@@ -26,7 +26,7 @@ import {
   SHAPES,
   targetPercentile,
 } from './progression';
-import { optimalCappedMoves } from './search';
+import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import type { Color, Difficulty, GameState, GeneratedLevel } from './types';
 
 /**
@@ -58,6 +58,27 @@ function optimalFor(
   return cappedSolveMoves(state, solution, hidden);
 }
 
+/**
+ * The live level's star cutoffs (3★ `optimal`, 2★ `twoStarMax`). On small standard-height boards the
+ * tier sweep is cheap and yields the adjusted near-optimal band; on bigger/taller boards (where the
+ * sweep would stall the load) we fall back to the proxy optimal with a `+2` band — matching how the
+ * bake degrades on the few boards its own exact search can't crack.
+ */
+function cutoffsFor(
+  state: GeneratedLevel['state'],
+  solution: GeneratedLevel['solution'],
+  hidden: HiddenGrid,
+  bottles: number,
+  capacity: number,
+): { optimal: number; twoStarMax: number } {
+  const optimal = optimalFor(state, solution, hidden, bottles, capacity);
+  if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
+    const tiers = nearOptimalCutoffs(state, hidden);
+    if (tiers && tiers.optimal === optimal) return tiers;
+  }
+  return { optimal, twoStarMax: optimal + 2 };
+}
+
 /** The initial concealment overlay for a generated board (all-false outside the hidden chapter). */
 function hiddenFor(plan: LevelPlan, generated: GeneratedLevel): HiddenGrid {
   return plan.mechanics.includes('hidden')
@@ -67,6 +88,13 @@ function hiddenFor(plan: LevelPlan, generated: GeneratedLevel): HiddenGrid {
 
 /** Wrap a generated board + its concealment as a campaign-annotated `PlayableLevel`. */
 function toPlayable(level: number, plan: LevelPlan, generated: GeneratedLevel, hidden: HiddenGrid): PlayableLevel {
+  const { optimal, twoStarMax } = cutoffsFor(
+    generated.state,
+    generated.solution,
+    hidden,
+    generated.bottles,
+    generated.capacity,
+  );
   return {
     ...generated,
     level,
@@ -74,7 +102,8 @@ function toPlayable(level: number, plan: LevelPlan, generated: GeneratedLevel, h
     phase: plan.phase,
     mechanics: plan.mechanics,
     hidden,
-    optimal: optimalFor(generated.state, generated.solution, hidden, generated.bottles, generated.capacity),
+    optimal,
+    twoStarMax,
   };
 }
 
@@ -145,7 +174,11 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     const scores = compositeScores(
       // Cheap scoring: proxy optimal (no A*) and no dead-end sampling, to honor the load budget.
       built.map(({ g, hidden }) =>
-        measureMetrics(g.state, hidden, g.solution, { optimalNodeBudget: 0, deadEndSamples: 0 }),
+        measureMetrics(g.state, hidden, g.solution, {
+          optimalNodeBudget: 0,
+          tierNodeBudget: 0,
+          deadEndSamples: 0,
+        }),
       ),
     );
     const idx = assignSlots(scores.map((score) => ({ score, family: 'live' })), [target])[0]!;
@@ -261,6 +294,7 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
     mechanics: baked.mechanics,
     hidden: baked.hidden,
     optimal: baked.optimal,
+    twoStarMax: baked.twoStarMax,
   };
 }
 

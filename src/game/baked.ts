@@ -18,8 +18,10 @@ export interface BakedLevel {
   capacity: number;
   /** Concealment overlay parallel to `bottles` (all-false outside the hidden chapter). */
   hidden: boolean[][];
-  /** Exact (or proxy upper-bound) achievable optimal player pours — the star reference. */
+  /** Exact (or proxy upper-bound) achievable optimal player pours — the 3★ cutoff. */
   optimal: number;
+  /** 2★ ceiling: adjusted near-optimal band upper bound (always `> optimal`). See `stars.ts`. */
+  twoStarMax: number;
   /** Difficulty signal shown to the player (bulk solution length). */
   par: number;
   phase: Difficulty;

@@ -161,6 +161,7 @@ async function main(): Promise<void> {
         capacity: chosen.capacity,
         hidden: chosen.hidden.map((col) => [...col]),
         optimal: chosen.metrics.optimal,
+        twoStarMax: chosen.metrics.twoStarMax,
         par: chosen.par,
         phase: phaseForLevel(level),
         mechanics: [...mechanics],
@@ -181,6 +182,7 @@ async function main(): Promise<void> {
         `  L${String(level).padStart(2)} ${phaseForLevel(level).padEnd(6)} ${chosen.family.padEnd(6)}` +
           ` ${`${m.colors}c/${chosen.bottles}b×${chosen.capacity}`.padEnd(10)}` +
           ` score=${score.toFixed(2)} opt=${String(m.optimal).padStart(3)}${m.optimalExact ? ' ' : '~'}` +
+          ` 2★≤${String(m.twoStarMax).padStart(3)}` +
           ` dead=${m.deadEndDensity.toFixed(2)} forced=${m.forcedMoveRatio.toFixed(2)} dig=${m.digDepth.toFixed(2)} tgt=${targets[s]!.toFixed(2)}`,
       );
     });
