@@ -48,7 +48,10 @@ export interface Campaign {
   complete: (level: number, moves: number, stars: Stars) => LevelRecord;
   /** Record a random-hard win streak (keeps the longest seen) and persist; returns the best. */
   recordRandomHard: (streak: number) => number;
-  /** Raise the frontier toward `level` (clamped to 1..`max`) for the admin unlock; persist. */
+  /**
+   * Raise the frontier toward `level` (clamped to 1..`max`) for the admin unlock; persist.
+   * Unlocking to `max` also flips `campaignComplete`, opening "Play Random".
+   */
   unlockTo: (level: number, max: number) => void;
   /** Wipe all saved progress and reset to level 1. */
   reset: () => void;
@@ -73,6 +76,8 @@ export function createCampaign(): Campaign {
     },
     get campaignComplete() {
       // Beating the last baked level records a best for it — the signal that the campaign is done.
+      // The admin hatch forges the same signal (see `unlockTo`), so there is one source of truth:
+      // when a new chapter raises BAKED_LEVEL_COUNT, both organic and admin saves re-arm alike.
       return progress.best[BAKED_LEVEL_COUNT] !== undefined;
     },
     get levelStars() {
@@ -98,7 +103,17 @@ export function createCampaign(): Campaign {
     },
     unlockTo(level, max) {
       const target = Math.max(1, Math.min(max, Math.floor(level)));
-      progress = { ...progress, current: Math.max(progress.current, target) };
+      // Unlocking all the way to the last baked level also opens "Play Random" — there are no
+      // numbered levels past it, so the only thing left to reach is the random mode. Forge the same
+      // signal an organic finish leaves (a `best` for the last level) rather than a separate flag,
+      // so a later chapter (raising `max`) re-arms the campaign exactly like it does for everyone
+      // else. A worst-case score means a genuine win later overrides it; no star is recorded, so the
+      // selector still shows the level as unplayed.
+      const best =
+        target >= max && progress.best[max] === undefined
+          ? { ...progress.best, [max]: Number.MAX_SAFE_INTEGER }
+          : progress.best;
+      progress = { ...progress, current: Math.max(progress.current, target), best };
       saveProgress(progress);
     },
     reset() {

@@ -181,6 +181,35 @@ export const useGameStore = create<GameStore>((set, get) => {
   const campaign = createCampaign();
 
   /**
+   * Run `fn` (a blocking level generation) only AFTER the browser has painted and composited the
+   * current frame (the loading spinner). A bare `setTimeout(0)` does NOT guarantee a paint before the
+   * macrotask runs, so the generation can start before the spinner ever appears — it gets committed
+   * to the DOM and then starved, which is why the spinner was never seen. Two nested rAFs land us just
+   * after the spinner's frame has composited (its rotation runs on the compositor, so it keeps
+   * spinning through the blocking work).
+   *
+   * The `setTimeout` is a safety net, not just a non-DOM fallback: rAF is PAUSED while the tab is
+   * hidden/backgrounded, so without it a player who tabs away mid-load would be stuck on the spinner
+   * forever. Whichever fires first wins (guarded by `ran`); when foregrounded the double-rAF (~32ms)
+   * beats the timeout, so we still get a real paint.
+   */
+  const deferAfterPaint = (fn: () => void) => {
+    if (typeof requestAnimationFrame !== 'function') {
+      setTimeout(fn, 0);
+      return;
+    }
+    let ran = false;
+    const run = () => {
+      if (ran) return;
+      ran = true;
+      clearTimeout(timer);
+      fn();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(run));
+    const timer = setTimeout(run, 150);
+  };
+
+  /**
    * Commit a new board: set the synchronously-known status. On a win, record the best result for
    * the current level via the campaign and mirror it into the reactive fields.
    */
@@ -287,9 +316,9 @@ export const useGameStore = create<GameStore>((set, get) => {
   const randomSeed = () => (Math.random() * 2 ** 32) >>> 0;
 
   /**
-   * Load a level. Baked levels apply instantly; live (un-baked) levels can take up to ~1–2s to
-   * generate, so we flip on `loading` (with the new level's header info) and defer the blocking
-   * generation to a fresh macrotask — giving the UI a frame to paint the spinner first.
+   * Load a level. Baked levels apply instantly; live (un-baked) levels take up to ~1s to generate, so
+   * we flip on `loading` (with the new level's header info) and defer the blocking generation until
+   * after the spinner has painted (see `deferAfterPaint`).
    */
   const loadLevel = (level: number) => {
     if (hasBakedLevel(level)) {
@@ -304,7 +333,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: phaseForLevel(level),
       mechanics: mechanicsForLevel(level),
     });
-    setTimeout(() => applyLevel(level), 0);
+    deferAfterPaint(() => applyLevel(level));
   };
 
   /**
@@ -322,7 +351,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: 'hard',
       mechanics: mechanicsForLevel(MAX_UNLOCK_LEVEL),
     });
-    setTimeout(() => applyRandom(seed), 0);
+    deferAfterPaint(() => applyRandom(seed));
   };
 
   // Initial level: resume where the player left off. The displayed board gets fresh random hues;
@@ -337,7 +366,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   const firstFunnels: FunnelGrid = firstRecolored?.funnels ?? [];
   const firstInitialFunnels: FunnelGrid = first?.funnels ?? [];
   const firstVisited = new Set<string>([canonical(firstBoard)]);
-  if (!startBaked) setTimeout(() => applyLevel(startLevel), 0);
+  if (!startBaked) deferAfterPaint(() => applyLevel(startLevel));
 
   return {
     current: firstBoard,
@@ -374,7 +403,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         // Keep the streak going; just re-roll a new random board.
         const seed = randomSeed();
         set({ loading: true, selected: null });
-        setTimeout(() => applyRandom(seed), 0);
+        deferAfterPaint(() => applyRandom(seed));
         return;
       }
       // Past the last baked level the campaign doesn't continue — flow into the random mode.
@@ -392,7 +421,8 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     unlockUpTo: (level) => {
       campaign.unlockTo(level, MAX_UNLOCK_LEVEL);
-      set({ furthest: campaign.furthest });
+      // Unlocking to the last level also opens "Play Random" — mirror both so Home reacts.
+      set({ furthest: campaign.furthest, campaignComplete: campaign.campaignComplete });
     },
 
     tapBottle: (i) => {

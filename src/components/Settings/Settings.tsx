@@ -118,8 +118,10 @@ export function Settings() {
           </div>
           <p className={styles.hint}>
             {unlockedTo !== null
-              ? `Unlocked levels 1–${unlockedTo}. Frontier is now ${furthest}.`
-              : `Unlock every level up to and including this number (frontier is currently ${furthest}).`}
+              ? `Unlocked levels 1–${unlockedTo}. Frontier is now ${furthest}.${
+                  unlockedTo >= MAX_LEVEL ? ' Play Random is unlocked.' : ''
+                }`
+              : `Unlock every level up to and including this number (frontier is currently ${furthest}). Unlock to ${MAX_LEVEL} to open Play Random.`}
           </p>
         </section>
       )}

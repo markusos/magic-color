@@ -64,6 +64,35 @@ describe('createCampaign', () => {
     expect(c.campaignComplete).toBe(true);
   });
 
+  it('admin unlock to the last level opens Play Random; a partial unlock does not', () => {
+    const c = createCampaign();
+    c.unlockTo(BAKED_LEVEL_COUNT - 1, BAKED_LEVEL_COUNT); // partial -> random still locked
+    expect(c.campaignComplete).toBe(false);
+    c.unlockTo(BAKED_LEVEL_COUNT, BAKED_LEVEL_COUNT); // full -> random unlocked
+    expect(c.campaignComplete).toBe(true);
+  });
+
+  it('admin random unlock survives a reload (persisted)', () => {
+    createCampaign().unlockTo(BAKED_LEVEL_COUNT, BAKED_LEVEL_COUNT);
+    expect(createCampaign().campaignComplete).toBe(true);
+  });
+
+  it('admin random unlock re-arms when a later chapter raises the level count', () => {
+    // The admin unlock forges a completion of *its* last level, not a standalone flag. If a future
+    // chapter grows BAKED_LEVEL_COUNT past it (simulated here with a smaller `max`), campaignComplete
+    // falls back to false — the campaign resumes into the new levels, just as for organic finishers.
+    const c = createCampaign();
+    c.unlockTo(5, 5); // as if the campaign were only 5 levels long today
+    expect(c.campaignComplete).toBe(false); // best[BAKED_LEVEL_COUNT] still absent
+  });
+
+  it('a genuine win still overrides the worst-case score the admin unlock recorded', () => {
+    const c = createCampaign();
+    c.unlockTo(BAKED_LEVEL_COUNT, BAKED_LEVEL_COUNT);
+    c.complete(BAKED_LEVEL_COUNT, 12, 3);
+    expect(c.recordFor(BAKED_LEVEL_COUNT).best).toBe(12);
+  });
+
   it('reset wipes progress back to level 1', () => {
     const c = createCampaign();
     c.reach(9);

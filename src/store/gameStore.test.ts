@@ -19,10 +19,12 @@ const referenceSolution = solve(reference.state)!;
 
 /**
  * Live (un-baked) levels generate asynchronously: `loadLevel` flips on `loading` and defers the
- * blocking generation to a macrotask so the UI can paint a spinner. Tests that load such a level
- * await this to let that deferred work run. Baked levels load synchronously and need no flush.
+ * blocking generation until after the spinner paints (two nested rAFs — see `deferAfterPaint`). Tests
+ * that load such a level await this to let that deferred work run, mirroring the same double-rAF so it
+ * resolves after the generation has committed. Baked levels load synchronously and need no flush.
  */
-const flushLoad = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const flushLoad = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
 // Live (un-baked) levels past the campaign: generated on demand, so they carry a stored solution and
 // drive the loading spinner. Everything past the baked range is chapter 1 (hidden) via the plateau

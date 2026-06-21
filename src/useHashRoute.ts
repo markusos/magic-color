@@ -33,4 +33,10 @@ export function useScreen(): Screen {
 /** Navigate to a screen by setting the hash (adds a history entry, so Back works). */
 export function navigate(screen: Screen): void {
   window.location.hash = screen === 'home' ? '/' : `/${screen}`;
+  // Setting `location.hash` fires `hashchange` ASYNCHRONOUSLY (a queued task), so the route — and any
+  // spinner the new screen shows — wouldn't render until after a caller's deferred, main-thread-
+  // blocking work (e.g. level generation) has already finished. Dispatch synchronously too, so the
+  // screen switches in the same React commit as the state that triggered the navigation. The later
+  // native event is then a no-op re-check (the route snapshot is unchanged).
+  window.dispatchEvent(new Event('hashchange'));
 }

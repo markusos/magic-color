@@ -11,7 +11,7 @@
  * Persistence stores only the level number; baked boards load from data, live ones regenerate.
  */
 import type { BakedLevel } from './baked';
-import { assignSlots, compositeScores, measureMetrics } from './difficulty';
+import { assignSlots, compositeScores, measureMetrics, type MetricOptions } from './difficulty';
 import {
   computeFunnels,
   funnelEligibleTubes,
@@ -166,24 +166,55 @@ export function generateForLevel(level: number): PlayableLevel {
 }
 
 /**
- * How many candidate boards the live quality path samples before picking. In production this is
- * tuned to a ~1–2s generation budget on a phone (instant is no longer required — a spinner covers
- * it), even on the slowest shape (the dense tall 5-tube board). Bigger ⇒ better picks, slower
- * generation. Under tests we use a tiny pool so the suite stays fast: the selection logic is
- * identical, only the breadth differs (tests don't assert on specific tail boards). The guard is
- * safe everywhere — `process` is undefined in the production browser bundle (⇒ full budget), and the
- * tsx bake never calls this path. */
+ * Live quality budget (coarse-to-fine best-of-N; a spinner covers it, so instant is not required):
+ *
+ * - `LIVE_POOL_SIZE` — the COARSE pool, scored cheaply (proxy optimal, no dead-end sampling) to
+ *   narrow hundreds of boards to the few nearest the curve target.
+ * - `LIVE_FINALISTS` — those few are then re-scored in the FINE pass with dead-end sampling (see
+ *   `FINE_METRICS`) and the best fit wins.
+ *
+ * Sized to land well under a ~1.5s phone budget even on the slowest shape (dense tall 10-tube
+ * boards): the fine pass adds the dead-end-density signal — the strongest "feels hard" term, and
+ * otherwise entirely absent from the live path — at ~2 ms/board, unaffected by concealment. Bigger
+ * ⇒ better picks, slower generation. Under tests we use tiny values so the suite stays fast: the
+ * selection logic is identical, only the breadth differs (tests don't assert on specific tail
+ * boards). The guard is safe everywhere — `process` is undefined in the production browser bundle
+ * (⇒ full budget), and the tsx bake never calls this path. */
 const IN_TEST = typeof process !== 'undefined' && process.env?.VITEST === 'true';
-const LIVE_POOL_SIZE = IN_TEST ? 24 : 250;
+const LIVE_POOL_SIZE = IN_TEST ? 24 : 600;
+const LIVE_FINALISTS = IN_TEST ? 6 : 30;
+
+/** Coarse scoring: proxy optimal (no A*) and no dead-end sampling, to scan the big pool cheaply. */
+const CHEAP_METRICS: MetricOptions = { optimalNodeBudget: 0, tierNodeBudget: 0, deadEndSamples: 0 };
+/**
+ * Fine scoring: add dead-end-density sampling on the finalists only. We deliberately keep the proxy
+ * optimal here (`optimalNodeBudget: 0`) rather than the exact A* — the A* is 40–65× more expensive
+ * and *explodes* on the hidden 10-tube boards the random mode produces, whereas dead-end sampling is
+ * ~2 ms/board regardless of concealment and is the heaviest-weighted term in the scorer.
+ */
+const FINE_METRICS: MetricOptions = {
+  optimalNodeBudget: 0,
+  tierNodeBudget: 0,
+  deadEndSamples: IN_TEST ? 6 : 24,
+  deadEndNodeBudget: 12_000,
+};
+
+/** Score at percentile `p` of `scores` (mirrors `difficulty.quantile`, which isn't exported). */
+function percentileScore(scores: number[], p: number): number {
+  if (scores.length === 0) return 0;
+  const sorted = [...scores].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))]!;
+}
 
 /** Memoized live levels (deterministic by level), so re-loads and replays don't regenerate. */
 const liveCache = new Map<number, PlayableLevel>();
 
 /**
- * Best-of-N: sample a pool of candidates from `plan` and pick the one whose size-normalized
- * difficulty best fits `target` on the curve (the same scorer the offline bake uses, minus the
- * expensive dead-end sampling — too slow for a per-load budget). Falls back to the light generator if
- * the pool ever comes up empty.
+ * Coarse-to-fine best-of-N: sample a big pool from `plan`, cheaply rank it to the few finalists
+ * nearest the curve `target`, then re-score those finalists with the heavier dead-end signal and pick
+ * the best fit (the same scorer the offline bake uses, but with the exact-optimal A* swapped for the
+ * proxy — too slow/explosive for a per-load budget). Falls back to the light generator if the pool
+ * ever comes up empty.
  */
 function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel {
   for (let salt = 0; salt < 8; salt++) {
@@ -199,20 +230,26 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     if (candidates.length === 0) continue;
 
     const built = candidates.map((g) => ({ g, hidden: hiddenFor(plan, g), funnels: funnelsFor(plan, g) }));
-    const scores = compositeScores(
-      // Cheap scoring: proxy optimal (no A*) and no dead-end sampling, to honor the load budget.
-      built.map(({ g, hidden, funnels }) =>
-        measureMetrics(
-          g.state,
-          hidden,
-          g.solution,
-          { optimalNodeBudget: 0, tierNodeBudget: 0, deadEndSamples: 0 },
-          funnels,
-        ),
-      ),
+
+    // Coarse pass: cheap-score the whole pool and keep the finalists nearest the curve target —
+    // narrowing hundreds of boards to a handful at roughly the right difficulty.
+    const coarse = compositeScores(
+      built.map(({ g, hidden, funnels }) => measureMetrics(g.state, hidden, g.solution, CHEAP_METRICS, funnels)),
     );
-    const idx = assignSlots(scores.map((score) => ({ score, family: 'live' })), [target])[0]!;
-    const chosen = built[idx]!;
+    const coarseTarget = percentileScore(coarse, target);
+    const finalists = built
+      .map((b, i) => ({ b, dist: Math.abs(coarse[i]! - coarseTarget) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, Math.min(LIVE_FINALISTS, built.length))
+      .map((x) => x.b);
+
+    // Fine pass: re-score the finalists with dead-end sampling (the strongest signal, absent above)
+    // and pick the best fit on the curve.
+    const fine = compositeScores(
+      finalists.map(({ g, hidden, funnels }) => measureMetrics(g.state, hidden, g.solution, FINE_METRICS, funnels)),
+    );
+    const idx = assignSlots(fine.map((score) => ({ score, family: 'live' })), [target])[0]!;
+    const chosen = finalists[idx]!;
     return toPlayable(level, plan, chosen.g, chosen.hidden, chosen.funnels);
   }
 
