@@ -238,16 +238,17 @@
   }
 }
 
-/* Phones: only the top (surface) band of each tube keeps moving. The churn (::before), sheen
-   (::after) and wave scroll all animate background-position / mask-position, which repaint every
-   frame (no GPU compositing) — so on a Hard board that's ~180 live repaints across 60 bands. Here
-   we keep the motion on the ~15 open surfaces, where it actually reads as moving liquid, and freeze
-   the interior bands: they keep their static wavy shape and gradient texture, they just stop
-   scrolling. Desktop animates every band for the full effect. */
+/* Phones: freeze ALL idle band animations. The churn (::before), sheen (::after) and wave scroll
+   all animate background-position / mask-position, which repaint every frame (no GPU compositing) —
+   so on a Hard board that's ~180 live repaints across 60 bands. Even keeping just the ~15 open
+   surfaces moving was too costly on low-end devices, so every band now keeps its static wavy shape
+   and gradient texture and simply stops scrolling. The pour/fill animation is driven by Framer
+   Motion (JS transforms), not these CSS animations, so it is unaffected. Desktop animates every
+   band for the full effect. */
 @media (hover: none) and (pointer: coarse) {
-  .segment:not(.waveTop),
-  .segment:not(.waveTop)::before,
-  .segment:not(.waveTop)::after {
+  .segment,
+  .segment::before,
+  .segment::after {
     animation: none;
   }
 }
