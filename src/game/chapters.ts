@@ -5,11 +5,13 @@
  * don't change any board, so editing them here never forces a campaign re-bake.
  *
  * Names are parallel to `MECHANIC_SETS` in `progression.ts` — chapter 0 is the base game, chapter 1
- * adds hidden colors. Keep this in sync if a new chapter is defined there.
+ * adds hidden colors, chapter 2 adds color-locked funnels. Keep this in sync if a new chapter is
+ * defined there.
  */
 const CHAPTER_NAMES: readonly string[] = [
   'Classic', // chapter 0 — base game
   'Hidden Colors', // chapter 1 — + hidden colors
+  'Color Locks', // chapter 2 — + funnels
 ];
 
 /** The short display name of a chapter (clamped to the last defined chapter). */

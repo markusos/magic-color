@@ -16,13 +16,14 @@
  * while there's still somewhere new to explore — only once they're looping with nowhere to go.
  */
 import { create } from 'zustand';
-import { canPour, isWon, pour } from '../game/engine';
+import { canPour, isWon, pour, topColor } from '../game/engine';
 import { canonical, isStuckInLoop } from '../game/solver';
 import { DEFAULT_CAPACITY } from '../game/generator';
 import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
 import { mechanicsForLevel, phaseForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
-import { recolor } from '../game/recolor';
+import { funnelAccepts, type FunnelGrid, recolorFunnels } from '../game/funnels';
+import { applyColorMap, distinctIds, randomColorMap } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
@@ -57,6 +58,14 @@ interface GameStore {
   hidden: HiddenGrid;
   /** The level's starting concealment, for Restart. */
   initialHidden: HiddenGrid;
+  /**
+   * Per-tube funnel tints (funnel mechanic; all-null otherwise). Static for the whole attempt — a
+   * tube's tint never changes — so, unlike `hidden`, there's no per-pour history to snapshot. Carried
+   * in display (recolored) ids, parallel to `current.bottles`.
+   */
+  funnels: FunnelGrid;
+  /** The level's starting funnels (generator-canonical ids), for Restart's re-roll. */
+  initialFunnels: FunnelGrid;
   /** Concealment snapshots before each pour, mirroring `history` for undo. */
   hiddenHistory: HiddenGrid[];
   /** Currently selected source bottle, or null. */
@@ -133,13 +142,15 @@ interface GameStore {
  * cap-equivalent, since a completed tube holds all of its color and is never needed to win —
  * see the regression test in solver.test.ts.)
  */
-function noPlayerMove(state: GameState, hidden: HiddenGrid): boolean {
+function noPlayerMove(state: GameState, hidden: HiddenGrid, funnels: FunnelGrid): boolean {
   const n = state.bottles.length;
   for (let from = 0; from < n; from++) {
     const src = state.bottles[from]!;
     if (src.length === 0 || isCapped(src, state.capacity, hidden[from])) continue;
+    const color = topColor(src)!;
     for (let to = 0; to < n; to++) {
-      if (from !== to && canPour(state, from, to)) return false;
+      // A funnel-blocked pour isn't an escape move — exclude it just as the player can't make it.
+      if (from !== to && canPour(state, from, to) && funnelAccepts(funnels, to, color)) return false;
     }
   }
   return true;
@@ -153,10 +164,15 @@ function noPlayerMove(state: GameState, hidden: HiddenGrid): boolean {
  * superset of the player's (cap/conceal-limited) moves, so it can only ever *under*-fire — a player
  * who still has a real move available is never told they're stuck.
  */
-function syncStatus(state: GameState, hidden: HiddenGrid, visited: ReadonlySet<string>): GameStatus {
+function syncStatus(
+  state: GameState,
+  hidden: HiddenGrid,
+  funnels: FunnelGrid,
+  visited: ReadonlySet<string>,
+): GameStatus {
   if (isWon(state)) return anyHidden(hidden) ? 'playing' : 'won';
-  if (noPlayerMove(state, hidden)) return 'deadlocked';
-  if (isStuckInLoop(state, visited)) return 'stuck';
+  if (noPlayerMove(state, hidden, funnels)) return 'deadlocked';
+  if (isStuckInLoop(state, visited, { funnels })) return 'stuck';
   return 'playing';
 }
 
@@ -170,8 +186,9 @@ export const useGameStore = create<GameStore>((set, get) => {
    */
   const commit = (current: GameState, extra: Partial<GameStore>) => {
     const hidden = extra.hidden ?? get().hidden;
+    const funnels = extra.funnels ?? get().funnels;
     const visited = extra.visited ?? get().visited;
-    const status = syncStatus(current, hidden, visited);
+    const status = syncStatus(current, hidden, funnels, visited);
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -190,18 +207,33 @@ export const useGameStore = create<GameStore>((set, get) => {
     }
   };
 
+  /**
+   * Recolor a board for display under a fresh random palette, remapping any funnel tints through the
+   * SAME bijection so the funnel rings match the recolored liquid (the canonical `initial`/
+   * `initialFunnels` stay untouched, so each Restart re-rolls afresh).
+   */
+  const recolorBoard = (
+    state: GameState,
+    funnels: FunnelGrid,
+  ): { board: GameState; funnels: FunnelGrid } => {
+    const map = randomColorMap(distinctIds(state));
+    return { board: applyColorMap(state, map), funnels: recolorFunnels(funnels, map) };
+  };
+
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
   const applyLevel = (level: number) => {
     const generated = getLevel(level);
     // Replaying an earlier level must not lower the unlock frontier.
     campaign.reach(level);
-    // Display the board under a fresh random palette; keep `initial` in the generator's
-    // canonical colors so each Restart re-rolls the hues (see `restart`).
-    const board = recolor(generated.state);
+    // Display the board under a fresh random palette; keep `initial`/`initialFunnels` in the
+    // generator's canonical colors so each Restart re-rolls the hues (see `restart`).
+    const { board, funnels } = recolorBoard(generated.state, generated.funnels);
     commit(board, {
       initial: generated.state,
       hidden: generated.hidden,
       initialHidden: generated.hidden,
+      funnels,
+      initialFunnels: generated.funnels,
       hiddenHistory: [],
       history: [],
       moves: [],
@@ -226,11 +258,13 @@ export const useGameStore = create<GameStore>((set, get) => {
   /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
   const applyRandom = (seed: number) => {
     const generated = generateRandomLevel(seed);
-    const board = recolor(generated.state);
+    const { board, funnels } = recolorBoard(generated.state, generated.funnels);
     commit(board, {
       initial: generated.state,
       hidden: generated.hidden,
       initialHidden: generated.hidden,
+      funnels,
+      initialFunnels: generated.funnels,
       hiddenHistory: [],
       history: [],
       moves: [],
@@ -297,8 +331,11 @@ export const useGameStore = create<GameStore>((set, get) => {
   const startLevel = campaign.furthest;
   const startBaked = hasBakedLevel(startLevel);
   const first = startBaked ? getLevel(startLevel) : null;
-  const firstBoard = first ? recolor(first.state) : { bottles: [], capacity: DEFAULT_CAPACITY };
+  const firstRecolored = first ? recolorBoard(first.state, first.funnels) : null;
+  const firstBoard = firstRecolored?.board ?? { bottles: [], capacity: DEFAULT_CAPACITY };
   const firstHidden = first?.hidden ?? [];
+  const firstFunnels: FunnelGrid = firstRecolored?.funnels ?? [];
+  const firstInitialFunnels: FunnelGrid = first?.funnels ?? [];
   const firstVisited = new Set<string>([canonical(firstBoard)]);
   if (!startBaked) setTimeout(() => applyLevel(startLevel), 0);
 
@@ -307,6 +344,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     initial: first?.state ?? firstBoard,
     hidden: firstHidden,
     initialHidden: firstHidden,
+    funnels: firstFunnels,
+    initialFunnels: firstInitialFunnels,
     hiddenHistory: [],
     history: [],
     moves: [],
@@ -314,7 +353,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     visited: firstVisited,
     selected: null,
     boardNonce: 0,
-    status: first ? syncStatus(firstBoard, firstHidden, firstVisited) : 'playing',
+    status: first ? syncStatus(firstBoard, firstHidden, firstFunnels, firstVisited) : 'playing',
     loading: !startBaked,
     level: startLevel,
     phase: first?.phase ?? phaseForLevel(startLevel),
@@ -357,7 +396,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     tapBottle: (i) => {
-      const { current, selected, status, hidden } = get();
+      const { current, selected, status, hidden, funnels } = get();
       if (status !== 'playing') return;
 
       // A capped (finished) tube is inert: it can't be selected or poured from/into.
@@ -379,8 +418,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       }
 
       // Attempt a pour from the selected bottle to the tapped one. Concealed cells block the
-      // visible run, so cap the pour at what the player can actually see.
-      if (canPour(current, selected, i)) {
+      // visible run, so cap the pour at what the player can actually see. A funnel tube rejects any
+      // color but its tint, so a mismatched pour falls through to reselection below.
+      if (
+        canPour(current, selected, i) &&
+        funnelAccepts(funnels, i, topColor(current.bottles[selected]!)!)
+      ) {
         const cap = knownTopRun(current.bottles[selected]!, hidden[selected]);
         const { state: next, move } = pour(current, selected, i, cap);
         const revealed = revealExposed(next, hidden);
@@ -426,12 +469,13 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Re-roll BOTH the palette and the tube order on every restart: the same puzzle, but with
       // new colors and a new left-to-right arrangement, so a solved level can't be replayed from
       // muscle memory. `initial`/`initialHidden` stay canonical, so each restart re-rolls afresh.
-      const shuffled = shuffleBottles(get().initial, get().initialHidden);
-      const board = recolor(shuffled.state);
+      const shuffled = shuffleBottles(get().initial, get().initialHidden, get().initialFunnels);
+      const { board, funnels } = recolorBoard(shuffled.state, shuffled.funnels);
       commit(board, {
         history: [],
         hiddenHistory: [],
         hidden: shuffled.hidden,
+        funnels,
         moves: [],
         undos: 0,
         visited: new Set([canonical(board)]),

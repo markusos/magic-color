@@ -43,9 +43,10 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 
 /**
  * Optional board mechanics layered on by later chapters (cumulative). Empty in chapter 0
- * (the base game). `hidden` (covered segments) is the planned chapter-1 mechanic.
+ * (the base game); `hidden` (covered segments) is chapter 1; `funnel` (color-locked tubes) is
+ * chapter 2.
  */
-export type Mechanic = 'hidden';
+export type Mechanic = 'hidden' | 'funnel';
 
 /**
  * How a level's "par" is measured. `optimal` runs the exact (but heavier) BFS — used for the

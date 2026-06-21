@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
-import { canPour } from '../../game/engine';
+import { canPour, topColor } from '../../game/engine';
+import { funnelAccepts } from '../../game/funnels';
 import { Bottle } from '../Bottle/Bottle';
 import { useBottleMetrics } from './useBottleMetrics';
 import styles from './GameBoard.module.css';
@@ -10,6 +11,7 @@ export function GameBoard() {
   const current = useGameStore((s) => s.current);
   const selected = useGameStore((s) => s.selected);
   const hidden = useGameStore((s) => s.hidden);
+  const funnels = useGameStore((s) => s.funnels);
   const tapBottle = useGameStore((s) => s.tapBottle);
   // Bumped on every level load / restart (never on a pour or undo). Folding it into the bottle
   // keys remounts the board on a fresh load, so the liquid fill animation is reserved for pours.
@@ -37,8 +39,14 @@ export function GameBoard() {
             bottle={bottle}
             capacity={current.capacity}
             hidden={hidden[i]}
+            funnel={funnels[i] ?? null}
             selected={selected === i}
-            isTarget={selected !== null && selected !== i && canPour(current, selected, i)}
+            isTarget={
+              selected !== null &&
+              selected !== i &&
+              canPour(current, selected, i) &&
+              funnelAccepts(funnels, i, topColor(current.bottles[selected]!)!)
+            }
             lift={metrics.segmentHeight * 0.7}
             onTap={() => tapBottle(i)}
           />

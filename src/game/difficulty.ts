@@ -10,6 +10,7 @@
  * PLAN.md, "Revised model v2").
  */
 import { isWon, pour } from './engine';
+import { funnelLoad as funnelLoadOf, type FunnelGrid } from './funnels';
 import { cappedSolveMoves, type HiddenGrid } from './hidden';
 import { mulberry32 } from './rng';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
@@ -37,6 +38,8 @@ export interface Metrics {
   deadEndDensity: number;
   /** Concealment burden (0 for non-hidden boards): how buried the "?"s are, size-normalized. */
   digDepth: number;
+  /** Funnel load (0 for non-funnel boards): fraction of tubes color-locked, normalized by colors. */
+  funnelLoad: number;
   /** Distinct colors on the board (for size normalization). */
   colors: number;
   /** Spare tubes (`bottles - colors`) — the slack budget (for the tightness term). */
@@ -64,12 +67,12 @@ export interface MetricOptions {
  * board that railroads you through forced moves is easier than one that constantly offers (and
  * punishes) choices. Measured against `usefulMoves`, the same pruned branching the solver explores.
  */
-function forcedMoveRatio(state: GameState, solution: Move[]): number {
+function forcedMoveRatio(state: GameState, solution: Move[], funnels?: FunnelGrid): number {
   let current = state;
   let forced = 0;
   let total = 0;
   for (const move of solution) {
-    if (usefulMoves(current).length <= 1) forced++;
+    if (usefulMoves(current, funnels).length <= 1) forced++;
     total++;
     current = pour(current, move.from, move.to).state;
   }
@@ -89,6 +92,7 @@ function deadEndDensity(
   samples: number,
   nodeBudget: number,
   seed: number,
+  funnels?: FunnelGrid,
 ): number {
   if (samples <= 0) return 0;
   const rng = mulberry32(seed >>> 0);
@@ -100,13 +104,15 @@ function deadEndDensity(
   for (let s = 0; s < samples; s++) {
     let current = state;
     for (let k = 0; k < steps; k++) {
-      const moves = usefulMoves(current);
+      // Wander only along funnel-legal moves, and judge dead-ends under the funnel rule, so the
+      // estimate reflects the real (tighter) board the player faces.
+      const moves = usefulMoves(current, funnels);
       if (moves.length === 0) break;
       const mv = moves[Math.floor(rng() * moves.length)]!;
       current = pour(current, mv.from, mv.to).state;
       if (isWon(current)) break;
     }
-    if (!isWon(current) && isUnsolvable(current, { maxNodes: nodeBudget })) dead++;
+    if (!isWon(current) && isUnsolvable(current, { maxNodes: nodeBudget, funnels })) dead++;
   }
   return dead / samples;
 }
@@ -132,35 +138,43 @@ export function digDepth(state: GameState, hidden: HiddenGrid): number {
   return total === 0 ? 0 : sum / total;
 }
 
-/** Measure a candidate board's difficulty metrics. */
+/**
+ * Measure a candidate board's difficulty metrics. `funnels` (chapter 2+) tightens every move-based
+ * signal — `optimal`, `twoStarMax`, `forcedMoveRatio`, `deadEndDensity` — to the real funneled board
+ * and feeds the `funnelLoad` term. Default `undefined` ⇒ no funnels, so chapters 0–1 measure exactly
+ * as before.
+ */
 export function measureMetrics(
   state: GameState,
   hidden: HiddenGrid,
   solution: Move[],
   opts: MetricOptions = {},
+  funnels?: FunnelGrid,
 ): Metrics {
   const colors = new Set<string>(state.bottles.flat()).size;
-  const exact = optimalCappedMoves(state, hidden, opts.optimalNodeBudget ?? OPTIMAL_NODE_BUDGET);
+  const exact = optimalCappedMoves(state, hidden, opts.optimalNodeBudget ?? OPTIMAL_NODE_BUDGET, funnels);
   const optimal = exact ?? cappedSolveMoves(state, solution, hidden);
   // Adjusted 2★ ceiling. The tier sweep finds its own optimal; only trust its band when that matches
   // the (exact) optimal above — otherwise (proxy fallback, or the sweep overflowed) use optimal + 2.
   // A 0 budget disables it (the live scoring path doesn't use twoStarMax and can't afford the sweep).
   const tierBudget = opts.tierNodeBudget ?? OPTIMAL_NODE_BUDGET;
-  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget) : null;
+  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget, funnels) : null;
   const twoStarMax = tiers && tiers.optimal === optimal ? tiers.twoStarMax : optimal + 2;
   return {
     optimal,
     optimalExact: exact !== null,
     twoStarMax,
-    forcedMoveRatio: forcedMoveRatio(state, solution),
+    forcedMoveRatio: forcedMoveRatio(state, solution, funnels),
     deadEndDensity: deadEndDensity(
       state,
       solution.length,
       opts.deadEndSamples ?? 24,
       opts.deadEndNodeBudget ?? 50_000,
       opts.deadEndSeed ?? 1,
+      funnels,
     ),
     digDepth: digDepth(state, hidden),
+    funnelLoad: funnels ? funnelLoadOf(funnels, colors) : 0,
     colors,
     empties: state.bottles.length - colors,
   };
@@ -179,14 +193,21 @@ export const SCORE_WEIGHTS = {
   movesPerColor: 1,
   tightness: 0.6,
   digDepth: 1,
+  funnelLoad: 1,
 } as const;
 
 /**
  * The size-normalized difficulty score for every candidate in a pool, each in ~[0,1]. A weighted
  * blend (`SCORE_WEIGHTS`) of: dead-end density, inverted forced-move ratio, normalized moves-per-color
- * (`optimal / colors`, min-max scaled within the pool), tightness (`1 − empties/colors`), and dig
- * depth (concealment burden — 0 across a non-hidden pool, so it only shapes the hidden chapter). The
- * move term is normalized so it contributes *relative* depth rather than raw size.
+ * (`optimal / colors`, min-max scaled within the pool), tightness (`1 − empties/colors`), dig depth
+ * (concealment burden), and funnel load (color-lock pressure). The move term is normalized so it
+ * contributes *relative* depth rather than raw size.
+ *
+ * The funnel weight is folded into the blend ONLY when the pool actually contains funnels (any
+ * `funnelLoad > 0`). Across a non-funnel pool it would just be an all-zero term that nonetheless
+ * shrinks every score (via the denominator) and so could shift selections relative to the absolute
+ * `ROTATION_PENALTY` — excluding it keeps chapters 0–1 scoring byte-identical to before this mechanic,
+ * so a re-bake reproduces them exactly. (`digDepth` predates this and stays unconditional.)
  */
 export function compositeScores(pool: Metrics[]): number[] {
   if (pool.length === 0) return [];
@@ -195,7 +216,8 @@ export function compositeScores(pool: Metrics[]): number[] {
   const hi = Math.max(...movesPerColor);
   const normMpc = (x: number) => (hi > lo ? (x - lo) / (hi - lo) : 0.5);
   const w = SCORE_WEIGHTS;
-  const wSum = w.deadEnd + w.forced + w.movesPerColor + w.tightness + w.digDepth;
+  const wFunnel = pool.some((m) => m.funnelLoad > 0) ? w.funnelLoad : 0;
+  const wSum = w.deadEnd + w.forced + w.movesPerColor + w.tightness + w.digDepth + wFunnel;
 
   return pool.map((m, i) => {
     const tightness = m.colors > 0 ? Math.max(0, Math.min(1, 1 - m.empties / m.colors)) : 0;
@@ -204,7 +226,8 @@ export function compositeScores(pool: Metrics[]): number[] {
       w.forced * (1 - m.forcedMoveRatio) +
       w.movesPerColor * normMpc(movesPerColor[i]!) +
       w.tightness * tightness +
-      w.digDepth * m.digDepth;
+      w.digDepth * m.digDepth +
+      wFunnel * m.funnelLoad;
     return weighted / wSum;
   });
 }

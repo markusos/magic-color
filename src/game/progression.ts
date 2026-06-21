@@ -15,6 +15,7 @@
  * lives in `levelLoader.ts` so that tuning it does NOT force a re-bake.
  */
 import { DEFAULT_CAPACITY } from './generator';
+import type { FunnelGrid } from './funnels';
 import type { HiddenGrid } from './hidden';
 import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
 
@@ -69,11 +70,13 @@ export const CHAPTER_LEN = 60;
 
 /**
  * Cumulative mechanic sets, indexed by chapter. Chapter 0 is the base game; chapter 1 adds the
- * hidden-colors mechanic. Past the last defined chapter, play plateaus in the final chapter.
+ * hidden-colors mechanic; chapter 2 adds color-locked funnels on top (cumulative). Past the last
+ * defined chapter, play plateaus in the final chapter.
  */
 const MECHANIC_SETS: readonly (readonly Mechanic[])[] = [
   [], // chapter 0 — base game
   ['hidden'], // chapter 1 — + hidden colors
+  ['hidden', 'funnel'], // chapter 2 — + color-locked funnels (cumulative)
 ];
 
 /** Highest chapter we actually have content for. */
@@ -193,6 +196,8 @@ export interface PlayableLevel extends GeneratedLevel {
   mechanics: readonly Mechanic[];
   /** Initial concealment overlay (all-false unless this chapter has the `hidden` mechanic). */
   hidden: HiddenGrid;
+  /** Per-tube funnel tints (all-null unless this chapter has the `funnel` mechanic). */
+  funnels: FunnelGrid;
   /**
    * Achievable near-optimal move count (the solution replayed under the real capped/reveal
    * rules). Basis for star thresholds — see `stars.ts`. Differs from `minMoves` (bulk solution

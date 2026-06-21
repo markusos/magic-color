@@ -13,6 +13,7 @@ function m(over: Partial<Metrics>): Metrics {
     forcedMoveRatio: 0.5,
     deadEndDensity: 0.2,
     digDepth: 0,
+    funnelLoad: 0,
     colors: 4,
     empties: 1,
     ...over,
@@ -40,6 +41,7 @@ describe('measureMetrics', () => {
     expect(metrics.deadEndDensity).toBeGreaterThanOrEqual(0);
     expect(metrics.deadEndDensity).toBeLessThanOrEqual(1);
     expect(metrics.digDepth).toBe(0); // nothing concealed
+    expect(metrics.funnelLoad).toBe(0); // no funnels passed
     expect(metrics.colors).toBe(2);
     expect(metrics.empties).toBe(1); // 3 bottles − 2 colors
   });

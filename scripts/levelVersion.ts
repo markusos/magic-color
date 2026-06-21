@@ -17,11 +17,13 @@ const SOURCES = [
   'src/game/generator.ts',
   'src/game/progression.ts',
   'src/game/hidden.ts',
+  'src/game/funnels.ts',
   'src/game/difficulty.ts',
   'src/game/search.ts',
   'src/game/solver.ts',
   'src/game/engine.ts',
   'scripts/build-levels.ts',
+  'scripts/build-levels.worker.ts',
 ];
 
 export function currentGeneratorVersion(): string {

@@ -116,6 +116,20 @@
   box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
+/* Funnel collar: a tinted gradient fading down from the tube neck, marking the only color the tube
+   accepts. The `--funnel` custom property carries the (already recolored) tint; the gradient reads as
+   a stained glass collar without obscuring the liquid below. */
+.funnel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--segment-height) * 0.34);
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--funnel) 78%, transparent), transparent);
+}
+
 /* Cork lid on a finished (capped) tube. Perches on the rim; drops in via Framer Motion.
    Horizontal centering is done with motion's own `x: -50%` (not a CSS transform) so it isn't
    clobbered when motion writes the y/scale transform. */

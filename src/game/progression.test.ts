@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   CHAPTER_LEN,
   chapterForLevel,
+  DEFINED_CHAPTERS,
   mechanicsForLevel,
   phaseForLevel,
   planForLevel,
@@ -30,14 +31,17 @@ describe('chapters', () => {
     expect(chapterForLevel(1)).toBe(0);
     expect(chapterForLevel(CHAPTER_LEN)).toBe(0); // last level of chapter 0
     expect(chapterForLevel(CHAPTER_LEN + 1)).toBe(1); // first level of chapter 1
-    expect(chapterForLevel(CHAPTER_LEN * 2)).toBe(1); // last defined level
-    expect(chapterForLevel(CHAPTER_LEN * 5)).toBe(1); // deep — clamped (plateau)
+    expect(chapterForLevel(CHAPTER_LEN * DEFINED_CHAPTERS)).toBe(DEFINED_CHAPTERS - 1); // last defined level
+    expect(chapterForLevel(CHAPTER_LEN * (DEFINED_CHAPTERS + 3))).toBe(DEFINED_CHAPTERS - 1); // deep — clamped (plateau)
   });
 
-  it('layers the hidden mechanic from chapter 1 on', () => {
+  it('layers mechanics cumulatively from each chapter on', () => {
     expect(mechanicsForLevel(1)).not.toContain('hidden');
     expect(mechanicsForLevel(CHAPTER_LEN + 1)).toContain('hidden'); // first level of chapter 1
-    expect(mechanicsForLevel(CHAPTER_LEN * 5)).toContain('hidden'); // plateau keeps hidden
+    expect(mechanicsForLevel(CHAPTER_LEN + 1)).not.toContain('funnel'); // funnel arrives in chapter 2
+    expect(mechanicsForLevel(CHAPTER_LEN * 2 + 1)).toContain('hidden'); // chapter 2 keeps hidden…
+    expect(mechanicsForLevel(CHAPTER_LEN * 2 + 1)).toContain('funnel'); // …and adds funnels
+    expect(mechanicsForLevel(CHAPTER_LEN * (DEFINED_CHAPTERS + 3))).toContain('funnel'); // plateau keeps funnels
   });
 });
 
@@ -55,9 +59,9 @@ describe('difficulty curve (targetPercentile)', () => {
   });
 
   it('plateaus past the last defined chapter', () => {
-    const top = targetPercentile(CHAPTER_LEN * 2); // last defined level
-    expect(targetPercentile(CHAPTER_LEN * 5)).toBe(top);
-    expect(targetPercentile(CHAPTER_LEN * 9)).toBe(top);
+    const top = targetPercentile(CHAPTER_LEN * DEFINED_CHAPTERS); // last defined level
+    expect(targetPercentile(CHAPTER_LEN * (DEFINED_CHAPTERS + 3))).toBe(top);
+    expect(targetPercentile(CHAPTER_LEN * (DEFINED_CHAPTERS + 7))).toBe(top);
   });
 });
 

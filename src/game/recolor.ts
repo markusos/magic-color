@@ -15,7 +15,7 @@ import { colorDistance } from '../theme/colors';
 import type { Color, GameState } from './types';
 
 /** The distinct color ids present in a board, in first-seen (bottom-up, left-to-right) order. */
-function distinctIds(state: GameState): Color[] {
+export function distinctIds(state: GameState): Color[] {
   const seen = new Set<Color>();
   const ids: Color[] = [];
   for (const bottle of state.bottles) {

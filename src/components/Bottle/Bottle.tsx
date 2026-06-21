@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
-import type { Bottle as BottleData } from '../../game/types';
+import type { Bottle as BottleData, Color } from '../../game/types';
 import { isCapped } from '../../game/hidden';
+import { cssColor } from '../../theme/colors';
 import { LiquidSegment } from '../LiquidSegment/LiquidSegment';
 import styles from './Bottle.module.css';
 
@@ -10,6 +11,8 @@ interface Props {
   capacity: number;
   /** Per-segment concealment (bottom-first), for the hidden-colors mechanic. */
   hidden?: boolean[];
+  /** Funnel tint (funnel mechanic): the only color this tube accepts, or null for an ordinary tube. */
+  funnel?: Color | null;
   selected: boolean;
   /** Highlight as a valid pour target while another bottle is selected. */
   isTarget?: boolean;
@@ -38,7 +41,7 @@ function coverScaleX(capacity: number): number {
 }
 
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, hidden, selected, isTarget, lift, onTap }: Props) {
+export function Bottle({ bottle, capacity, hidden, funnel, selected, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
   const capped = isCapped(bottle, capacity, hidden);
 
@@ -123,6 +126,13 @@ export function Bottle({ bottle, capacity, hidden, selected, isTarget, lift, onT
               ) : null,
             )}
           </div>
+        )}
+
+        {/* Funnel collar: a tinted ring at the tube neck marking the only color this tube accepts.
+            Lives in the glass (clipped to the rim) and so tilts with the tube. Drawn above the liquid
+            but it sits at the very top, where liquid only reaches once the tube is full. */}
+        {funnel != null && (
+          <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }} />
         )}
         </div>
       </motion.div>

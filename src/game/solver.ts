@@ -3,7 +3,8 @@
  * actually solvable — the hard guarantee behind the generator — and (b) compute a
  * known solution and its step count. The same machinery can later power a "hint" tool.
  */
-import { isWon, legalMoves, pour } from './engine';
+import { isWon, legalMoves, pour, topColor } from './engine';
+import { funnelAccepts, type FunnelGrid } from './funnels';
 import { stateKey } from './search';
 import type { GameState, Move } from './types';
 
@@ -19,25 +20,44 @@ export function canonical(state: GameState): string {
 interface SolveOptions {
   /** Safety cap on explored nodes so generation can never hang. Default 200k. */
   maxNodes?: number;
+  /**
+   * Color-locked funnels overlay (chapter 2+). When present, a pour into a tube whose tint rejects
+   * the poured color is omitted from the search — the same constraint the player plays under. Default
+   * `undefined` ⇒ no funnels, so every search behaves exactly as the un-funneled game.
+   */
+  funnels?: FunnelGrid;
 }
 
 /**
  * Decide whether a candidate pour is worth exploring. Prunes moves that can never help:
  * - pouring a bottle that is already a finished single color, and
  * - pouring into one of several interchangeable empty bottles (only the first matters).
+ *
+ * With `funnels`, a pour the destination tube's tint rejects is also pruned (it isn't a legal player
+ * move). Folding the funnel gate in here means every search built on `isUsefulMove` — `search`,
+ * `isStuckInLoop`, `bfsOptimal`, and `usefulMoves` (the difficulty metrics) — honors funnels through
+ * one shared check.
  */
-function isUsefulMove(state: GameState, from: number, to: number): boolean {
+function isUsefulMove(state: GameState, from: number, to: number, funnels?: FunnelGrid): boolean {
   const src = state.bottles[from]!;
   const dst = state.bottles[to]!;
+
+  const color = topColor(src)!;
+  // A funnel rejects any inflow that isn't its tint — not a legal move to consider.
+  if (!funnelAccepts(funnels, to, color)) return false;
 
   // Don't disturb a bottle that is already uniformly one color filling it entirely
   // unless the destination is also that same color (consolidation is pointless here).
   const srcUniform = src.length > 0 && src.every((c) => c === src[0]);
   if (srcUniform && dst.length === 0) return false; // moving a solid block to empty = no progress
 
-  // Among equivalent empty destinations, only consider the first empty bottle.
+  // Among equivalent empty destinations, only consider the first one — but funnels make empties
+  // non-interchangeable, so the representative is the first empty that ALSO accepts this color (an
+  // empty locked to another color is a different destination, not a redundant copy of this one).
   if (dst.length === 0) {
-    const firstEmpty = state.bottles.findIndex((b) => b.length === 0);
+    const firstEmpty = state.bottles.findIndex(
+      (b, idx) => b.length === 0 && funnelAccepts(funnels, idx, color),
+    );
     if (to !== firstEmpty) return false;
   }
   return true;
@@ -45,12 +65,16 @@ function isUsefulMove(state: GameState, from: number, to: number): boolean {
 
 /**
  * The legal moves worth considering from a state — `legalMoves` minus the ones `isUsefulMove`
- * prunes (disturbing a finished solid block, or pouring into a redundant empty). This is the
- * branching the search actually explores, so difficulty metrics (branching factor, forced-move
- * ratio in `difficulty.ts`) measure against it rather than the raw legal-move count.
+ * prunes (disturbing a finished solid block, pouring into a redundant empty, or — under `funnels` —
+ * a pour a destination funnel rejects). This is the branching the search actually explores, so
+ * difficulty metrics (branching factor, forced-move ratio in `difficulty.ts`) measure against it
+ * rather than the raw legal-move count.
  */
-export function usefulMoves(state: GameState): Array<{ from: number; to: number }> {
-  return legalMoves(state).filter(({ from, to }) => isUsefulMove(state, from, to));
+export function usefulMoves(
+  state: GameState,
+  funnels?: FunnelGrid,
+): Array<{ from: number; to: number }> {
+  return legalMoves(state).filter(({ from, to }) => isUsefulMove(state, from, to, funnels));
 }
 
 export interface SolveResult {
@@ -87,7 +111,7 @@ export function search(state: GameState, options: SolveOptions = {}): SolveResul
     visited.add(key);
 
     for (const { from, to } of legalMoves(current)) {
-      if (!isUsefulMove(current, from, to)) continue;
+      if (!isUsefulMove(current, from, to, options.funnels)) continue;
       const { state: next, move } = pour(current, from, to);
       const result = dfs(next, [...path, move]);
       if (result) return result;
@@ -154,7 +178,7 @@ export function isStuckInLoop(
     const current = stack.pop()!;
     if (++nodes > maxNodes) return false; // inconclusive — don't nag
     for (const { from, to } of legalMoves(current)) {
-      if (!isUsefulMove(current, from, to)) continue;
+      if (!isUsefulMove(current, from, to, options.funnels)) continue;
       const { state: next } = pour(current, from, to);
       if (isWon(next)) return false; // a win is reachable (and would be unvisited anyway)
       const key = canonical(next);
@@ -186,7 +210,7 @@ export function bfsOptimal(state: GameState, options: SolveOptions = {}): number
     depth++;
     for (const current of frontier) {
       for (const { from, to } of legalMoves(current)) {
-        if (!isUsefulMove(current, from, to)) continue;
+        if (!isUsefulMove(current, from, to, options.funnels)) continue;
         const { state: child } = pour(current, from, to);
         if (isWon(child)) return depth;
         const key = canonical(child);

@@ -448,5 +448,169 @@ Design notes / decisions to confirm:
   macrotask so the compositor-animated CSS spinner (`components/Loader`) paints first; `GameScreen`
   renders it in place of the board while loading. Baked levels skip all this (synchronous).
 
-All open questions are resolved. v2 selection + live budget/spinner are BUILT; remaining: endless
-mode, dig-depth metric.
+All open questions are resolved. v2 selection + live budget/spinner are BUILT; endless mode and the
+dig-depth metric also landed — the **entire baked-levels project above is COMPLETE** (lint +
+typecheck + 162 tests green; dead `levels.ts` tiers module removed). Nothing remains to implement
+before starting the next mechanic chapter below.
+
+---
+
+# Plan: Chapter 2 — Color-locked funnels (the next mechanic)
+
+> **✅ BUILT 2026-06-21** (lint + typecheck + tests green; all 180 levels re-baked). UI-facing this is
+> **"Chapter 3"** (the level selector numbers chapters 1-based); internally it's chapter index **2**,
+> the next entry in `MECHANIC_SETS` — **cumulative on top of `hidden`** (so a chapter-2 board can be
+> both funneled *and* concealed). See the `funnels-mechanic` memory note for the as-built summary and
+> the three non-obvious gotchas handled (recolor bijection, funnel-aware empty-interchangeability,
+> conditional `funnelLoad` weight). The steps below are the original plan, all executed.
+
+## Goal
+
+Introduce **color-locked funnels** ("tinted tubes"): some tubes are stained a single color and
+**only accept that color** (they pour out normally). This removes the option of using a locked tube
+as temporary scratch space for other colors — squeezing buffer flexibility, which is the difficulty
+lever — **without ever making a board unsolvable.**
+
+The design deliberately mirrors the `hidden` mechanic's blueprint, which is the bar to clear:
+
+1. **A parallel overlay, not an engine change.** The pure engine (`engine.ts`) stays full-information
+   and mechanic-unaware. Funnels are enforced only at the interaction layer (the store) and in the
+   offline solver/metrics — exactly as `hidden`'s cap-the-run + tightened win live outside the engine.
+2. **Solvability guaranteed by construction**, derived from the stored solution (the `exposableCells`
+   trick), so no new solvability search is needed.
+3. **Folds into difficulty + stars** as one new composite term, ramped across the chapter by the curve.
+
+## The overlay model
+
+- **New overlay `funnels: (Color | null)[]`** — one entry **per tube** (parallel to `bottles`, the way
+  `HiddenGrid` is). `null` = an ordinary tube; a `Color` = the only color that tube accepts. Lives in a
+  new `src/game/funnels.ts`, alongside `hidden.ts`.
+- **Legality gate (the only rule funnels add):** a pour into tube `to` carrying `color` is allowed iff
+  `funnels[to] == null || funnels[to] === color`. A small helper `funnelAccepts(funnels, to, color)` +
+  a funnel-aware `legalMoves`/`canPour` wrapper in `funnels.ts`. The engine's `canPour`/`pour` are
+  untouched.
+- **Win condition unchanged** — funnels don't change what "sorted" means, and `isCapped` is unchanged.
+- **Funnels are STATIC per-tube attributes** (a tube's tint never changes mid-game). Unlike `hidden`'s
+  evolving concealment grid, there's **no new search-state dimension** — it's purely a move *filter*,
+  which is why threading it through the solver is cheap.
+
+## Solvability guarantee (mirrors `exposableCells`)
+
+Derive funnels from the stored full-information solution:
+
+- A tube `t` is **funnel-eligible** iff *every* solution move with `to === t` pours the **same** color
+  `c` (its inflow is monochrome). `funnelEligibleTubes(state, solution)` in `funnels.ts`.
+- Lock a **seed-chosen subset** of eligible tubes to their inflow color (`computeFunnels(state, seed,
+  eligible, load)`, parallel to `computeHidden`). Because the stored solution only ever pours `c` into
+  `t`, that solution remains **legal under the funnel rule** → the board is **provably still solvable**.
+  No extra search, same as `hidden`.
+- This is exactly the constraint that *bites*: a tube the solution fills monochromatically is one the
+  player would otherwise be tempted to borrow as scratch space — funneling it forbids that, adding
+  pressure while keeping the intended line intact.
+
+**Composition with hidden:** both overlays are derived from the same stored solution and are
+independent — a tube can be funneled and also hide a buried `?`. Bake order: `solution` →
+`exposableCells`/`hidden` → `funnelEligibleTubes`/`funnels`.
+
+## Difficulty + stars
+
+- The offline exact-optimal A* (`optimalCappedMoves` in `search.ts`), `bfsOptimal`, `isUnsolvable`,
+  `usefulMoves`, and the dead-end/forced-move playouts (`difficulty.ts`) must all use the **funnel-aware
+  legal-move filter**, so `optimal`, `twoStarMax`, `forcedMoveRatio`, and `deadEndDensity` reflect the
+  real (tighter) board. Thread `funnels` as an **optional param** through these paths, defaulting to
+  "no funnels" so chapters 0–1 behave byte-identically.
+- **New composite term `funnelLoad`** (0 outside chapter 2): locked-tube count normalized by colors
+  (or the branching-factor reduction vs. the un-funneled board). A sixth equal-blend term in
+  `compositeScores`, **ramped across the chapter by the curve** the way `digDepth` ramps `hidden`.
+
+## The recolor subtlety (don't miss this)
+
+Funnel entries are palette color **ids**, and `recolor()` remaps every id to a fresh hue each play
+(`gameStore` calls `recolor(generated.state)` at load — lines ~200/229/300/430). If the funnel ids
+aren't remapped with the **same bijection**, a recolored board shows mismatched funnel rings.
+
+Fix: build the map once and apply it to both. `recolor.ts` already exports `randomColorMap` +
+`applyColorMap`; the store should call `randomColorMap(distinctIds(state))` once, then
+`applyColorMap(state, map)` for the board **and** map each non-null `funnels[i]` through the same
+`map`. (Add a `recolorFunnels(funnels, map)` helper, or have the store thread `map` to both.)
+
+## Rendering
+
+`Bottle.tsx`: a tinted **ring / collar at the tube neck** in the funnel color (optionally a small
+funnel glyph). No layout or size change; reads the funnel color *after* the recolor remap. Selection
+and cap visuals unchanged. Empty funnel tubes still show their tint so the constraint is legible before
+any pour.
+
+## Data schema delta
+
+`BakedLevel` (`baked.ts`) gains:
+
+```ts
+funnels: (string | null)[];  // color id per tube, null = ordinary; all-null outside chapter 2
+```
+
+`PlayableLevel` and `LevelPlan` (`progression.ts`) gain a `funnels` field; the loader
+(`levelLoader.ts`) assembles it for both baked and live boards; the store carries it in state next to
+`hidden` (no undo history needed — funnels never change during play).
+
+## Implementation steps
+
+1. **Types & wiring.** `types.ts`: add `'funnel'` to `Mechanic`. `progression.ts`: `MECHANIC_SETS` →
+   add `['hidden', 'funnel']` as chapter 2 (so `DEFINED_CHAPTERS = 3`, `CAMPAIGN_LENGTH = 180`, chapter
+   2 = L121–180). `chapters.ts`: add the chapter-2 display name (e.g. `'Color-Locked Funnels'`).
+2. **`src/game/funnels.ts`** (mirrors `hidden.ts`): `funnelAccepts`, a funnel-aware `legalMoves`/
+   `canPour` wrapper, `funnelEligibleTubes(state, solution)`, `computeFunnels(state, seed, eligible,
+   load)`, and `recolorFunnels(funnels, map)`. Plus a `FUNNEL_PROB`/load knob analogous to `HIDDEN_PROB`.
+3. **Thread funnels through the solver/metrics** as an optional param: `search.ts`
+   (`optimalCappedMoves`, `bfsOptimal`), `solver.ts` (`usefulMoves`, `isUnsolvable`,
+   `isStuckInLoop`), `difficulty.ts` (dead-end + forced-move playouts) + the new `funnelLoad` term in
+   `compositeScores`. Default param = no funnels → chapters 0–1 unchanged.
+4. **Store** (`gameStore.ts`): carry `funnels` in state; gate `tapBottle`'s pour on `funnelAccepts`;
+   make `noPlayerMove`/deadlock detection funnel-aware (a funnel-blocked pour is not a legal move);
+   apply the shared recolor map to `funnels` (see recolor subtlety above).
+5. **Rendering** (`Bottle.tsx` + any `useBottleMetrics`): funnel collar/tint, post-recolor color.
+6. **Live path** (`levelLoader.ts`): when `'funnel' ∈ mechanics`, generate funnels for live/un-baked
+   boards (and endless — `generateRandomHard` already unions all `MECHANIC_SETS`, so it picks up
+   funnels automatically once the chapter is defined; just make sure the generation actually applies
+   them).
+7. **Baked schema + bake** (`baked.ts`, `build-levels.ts`): add `funnels` to `BakedLevel` (de)serialize;
+   the bake computes funnels for chapter-2 boards after the solution, funnel-aware optimal/stars.
+8. **Staleness:** add `src/game/funnels.ts` to `levelVersion.ts` `SOURCES`, then **re-bake all 180
+   levels** (`npm run build:levels`). Re-baking reproduces chapters 0–1 identically (seed-deterministic,
+   funnel code is a no-op there); only chapter 2 is new. ~12 min for 180 (vs ~8 for 120).
+9. **Docs/memory:** update README architecture, the PLAN status block, and add a `funnels-mechanic`
+   memory note linking `[[levels-progression-design]]` / `[[baked-levels-plan]]`.
+
+## Testing
+
+- **`funnels.test.ts`:** eligibility = monochrome-inflow tubes only; `computeFunnels` never locks an
+  ineligible tube and never the wrong color; `funnelAccepts`/funnel-aware `legalMoves` correctness.
+- **Solvability test** (analog of `capping.test.ts`, across many boards): for chapter-2 boards the
+  stored solution stays fully legal and reaches the win under **funnel + hidden** rules combined.
+- **Monotonicity:** the optimal under funnels is **≥** the un-funneled optimal (funnels never help);
+  within chapter 2, `funnelLoad` is non-decreasing across the curve.
+- **Recolor test:** funnel ids remap with the exact same bijection as the board (no orphaned tint).
+- **Store test:** `tapBottle` rejects a pour into a mismatched funnel; deadlock detection is
+  funnel-aware; undo restores `funnels` consistently.
+- **`baked.test.ts`** staleness stamp picks up `funnels.ts`.
+
+## Risks & mitigations
+
+- **Solver paths diverging** — if any one of the solver/metric entry points forgets the funnel filter,
+  the solvability proof and the metrics disagree. Mitigate: a **single funnel-aware `legalMoves`
+  wrapper** reused everywhere, funnels passed as one optional param (default = today's behavior).
+- **Over-constraining (degenerate/forced boards)** — too many funnels can collapse the board to a
+  single forced line. The curve ramps `funnelLoad` gently (ease-in) and caps locked tubes per board;
+  `forcedMoveRatio` already penalizes this, so watch it in playtests.
+- **Re-bake churn** — forced by the version-hash change, but cheap and deterministic; chapters 0–1
+  regenerate byte-identically.
+
+## Decisions to confirm (lean recommendations)
+
+- **Per-tube tint, not per-cell** ✅ (matches the "this tube only takes blue" mental model; per-cell
+  would be a different mechanic).
+- **Funnels stay out of the pure engine** ✅ (interaction-layer + offline enforcement, like `hidden`).
+- **Derive from the stored solution** ✅ (free solvability, no extra search).
+- **Chapter name:** working title **"Color-Locked Funnels"** (final wording TBD).
+- **Open:** exact `funnelLoad` formula (locked-count/colors vs. branching reduction) and the
+  per-board lock cap — settle by feel in a re-bake/playtest pass, as with `SCORE_WEIGHTS`.

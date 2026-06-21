@@ -533,3 +533,65 @@ describe('undos count toward the star rating', () => {
     expect(store().best).toBe(referenceSolution.length + 1);
   });
 });
+
+describe('color-locked funnels (chapter 2)', () => {
+  // Past the baked campaign, play plateaus in the final defined chapter — which carries the funnel
+  // mechanic — so these live (plateau) boards exercise the funnel wiring without depending on a
+  // specific committed board. Live levels generate on a deferred macrotask, hence the flush.
+  it('loads a funneled board whose tints ride the SAME recolor bijection as the liquid', async () => {
+    // Find a plateau level that actually got funnels (deterministic per level number).
+    let funneled = false;
+    for (let k = 1; k <= 12 && !funneled; k++) {
+      store().loadLevel(BAKED_LEVEL_COUNT + k);
+      await flushLoad();
+      funneled = store().funnels.some((t) => t != null);
+    }
+    const s = store();
+    expect(s.mechanics).toContain('funnel');
+    expect(funneled).toBe(true); // the chapter actually applied at least one funnel
+    expect(s.funnels.length).toBe(s.current.bottles.length); // one entry per tube
+
+    // The recolor subtlety: every funnel tint must be a color that actually appears on the recolored
+    // board. If funnels were remapped with a different bijection than the liquid, the tint would be an
+    // orphan hue absent from the board — this asserts they share one map.
+    const boardColors = new Set<string>(s.current.bottles.flat());
+    for (const tint of s.funnels) {
+      if (tint != null) expect(boardColors.has(tint)).toBe(true);
+    }
+  });
+
+  it('rejects a pour into a funnel tube whose tint does not match the poured color', async () => {
+    let target: { store: ReturnType<typeof store>; from: number; to: number } | null = null;
+    for (let k = 1; k <= 12 && !target; k++) {
+      store().loadLevel(BAKED_LEVEL_COUNT + k);
+      await flushLoad();
+      const s = store();
+      // Look for an immediately-available pour the engine allows but a funnel should block: source
+      // top color X, destination is a funnel tube tinted to some other color, with room.
+      for (let from = 0; from < s.current.bottles.length && !target; from++) {
+        const src = s.current.bottles[from]!;
+        if (src.length === 0) continue;
+        const top = src[src.length - 1]!;
+        for (let to = 0; to < s.current.bottles.length; to++) {
+          if (to === from) continue;
+          const tint = s.funnels[to];
+          const dst = s.current.bottles[to]!;
+          const hasRoom = dst.length < s.current.capacity;
+          const colorOk = dst.length === 0 || dst[dst.length - 1] === top;
+          if (tint != null && tint !== top && hasRoom && colorOk) {
+            target = { store: s, from, to };
+            break;
+          }
+        }
+      }
+    }
+    // Some seeds may not surface such a pour on the opening board; only assert when one exists.
+    if (target) {
+      const before = target.store.moves.length;
+      target.store.tapBottle(target.from);
+      target.store.tapBottle(target.to);
+      // The funnel rejected the pour: no move recorded (the second tap just re-selected/cleared).
+      expect(store().moves.length).toBe(before);
+    }
+  });
+});

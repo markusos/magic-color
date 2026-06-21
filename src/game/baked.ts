@@ -18,6 +18,8 @@ export interface BakedLevel {
   capacity: number;
   /** Concealment overlay parallel to `bottles` (all-false outside the hidden chapter). */
   hidden: boolean[][];
+  /** Per-tube funnel tint (palette id), or null for an ordinary tube. All-null outside the funnel chapter. */
+  funnels: (string | null)[];
   /** Exact (or proxy upper-bound) achievable optimal player pours — the 3★ cutoff. */
   optimal: number;
   /** 2★ ceiling: adjusted near-optimal band upper bound (always `> optimal`). See `stars.ts`. */

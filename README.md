@@ -31,6 +31,7 @@ src/
     search.ts           # shared graph search + optimalCappedMoves (hidden-aware A*)
     generator.ts        # generateLevel() / generateCandidates() — guaranteed solvable
     hidden.ts           # the "hidden colors" mechanic (concealed cells, capping)
+    funnels.ts          # the "color-locked funnels" mechanic (per-tube color locks)
     difficulty.ts       # offline difficulty metrics, composite score, slot assignment
     progression.ts      # campaign CONFIG: shape menu, chapters, difficulty curve (bake-hashed)
     levelLoader.ts      # runtime: getLevel() — baked board, else live generation; random-hard
@@ -48,13 +49,17 @@ scripts/
 
 Difficulty is **decoupled from board size**. A level's difficulty comes from where it sits on a
 per-chapter ease-in curve, not from its tube count — so a tricky 5-tube board can be "harder" than a
-sprawling 15-tube one. **Chapters** layer cumulative mechanics (chapter 1 adds *hidden colors*).
+sprawling 15-tube one. **Chapters** layer cumulative mechanics: chapter 1 adds *hidden colors*,
+chapter 2 adds *color-locked funnels* (tubes that accept only one color) on top. Each mechanic is a
+parallel overlay enforced at the interaction layer and in the offline solver — the pure engine stays
+mechanic-unaware — and each is derived from the stored solution so the board provably stays solvable.
 
-The first **60 levels are pre-baked offline** (`npm run build:levels`): the script generates a large
-pool of boards across a *shape menu* (small / tall 5-tube up to 12-high / medium / large), scores each
-with a **size-normalized composite** (exact optimal, forced-move ratio, dead-end density, dig depth),
-and assigns boards to the curve with shape variety. The result is committed to `levels.data.ts`; a
-staleness test re-stamps it if the bake logic changes. Levels past 60 — and the post-campaign
+The first **180 levels are pre-baked offline** (`npm run build:levels`): the script generates a large
+pool of boards across a *shape menu* (small / tall 5-tube up to 10-high / medium / large), scores each
+with a **size-normalized composite** (exact optimal, forced-move ratio, dead-end density, dig depth,
+funnel load), and assigns boards to the curve with shape variety. The result is committed to
+`levels.data.ts`; a staleness test re-stamps it if the bake logic changes. Levels past 180 — and the
+post-campaign
 **Play Random Hard** endless mode — are generated **live** (best-of-N within a ~1–2s budget, behind a
 spinner). Persistence stores only the level number; boards are baked or regenerated on demand.
 

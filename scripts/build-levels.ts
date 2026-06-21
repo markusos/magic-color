@@ -114,12 +114,15 @@ async function main(): Promise<void> {
   // fill cores while another chapter's deep tall board is still running.
   const jobs: ShapeJob[] = [];
   for (const chapter of chapters) {
-    const isHidden = mechanicsForLevel(chapter * CHAPTER_LEN + 1).includes('hidden');
+    const chapterMechanics = mechanicsForLevel(chapter * CHAPTER_LEN + 1);
+    const isHidden = chapterMechanics.includes('hidden');
+    const isFunnel = chapterMechanics.includes('funnel');
     SHAPES.forEach((_, si) => {
       jobs.push({
         chapter,
         si,
         isHidden,
+        isFunnel,
         perShape: PER_SHAPE,
         nodeBudget: NODE_BUDGET,
         deadEndSamples: DEAD_END_SAMPLES,
@@ -161,6 +164,7 @@ async function main(): Promise<void> {
         bottles: chosen.state.bottles.map((col) => [...col]),
         capacity: chosen.capacity,
         hidden: chosen.hidden.map((col) => [...col]),
+        funnels: chosen.funnels.map((t) => t ?? null),
         optimal: chosen.metrics.optimal,
         twoStarMax: chosen.metrics.twoStarMax,
         par: chosen.par,
@@ -184,7 +188,7 @@ async function main(): Promise<void> {
           ` ${`${m.colors}c/${chosen.bottles}b×${chosen.capacity}`.padEnd(10)}` +
           ` score=${score.toFixed(2)} opt=${String(m.optimal).padStart(3)}${m.optimalExact ? ' ' : '~'}` +
           ` 2★≤${String(m.twoStarMax).padStart(3)}` +
-          ` dead=${m.deadEndDensity.toFixed(2)} forced=${m.forcedMoveRatio.toFixed(2)} dig=${m.digDepth.toFixed(2)} tgt=${targets[s]!.toFixed(2)}`,
+          ` dead=${m.deadEndDensity.toFixed(2)} forced=${m.forcedMoveRatio.toFixed(2)} dig=${m.digDepth.toFixed(2)} fun=${m.funnelLoad.toFixed(2)} tgt=${targets[s]!.toFixed(2)}`,
       );
     });
   }

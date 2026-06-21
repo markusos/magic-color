@@ -12,6 +12,12 @@
  */
 import type { BakedLevel } from './baked';
 import { assignSlots, compositeScores, measureMetrics } from './difficulty';
+import {
+  computeFunnels,
+  funnelEligibleTubes,
+  type FunnelGrid,
+  noFunnels,
+} from './funnels';
 import { DEFAULT_CAPACITY, generateCandidates, generateLevel } from './generator';
 import { cappedSolveMoves, computeHidden, emptyGrid, exposableCells, type HiddenGrid } from './hidden';
 import { BAKED_LEVELS } from './levels.data';
@@ -50,11 +56,13 @@ function optimalFor(
   hidden: HiddenGrid,
   bottles: number,
   capacity: number,
+  funnels: FunnelGrid,
 ): number {
   if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
-    const exact = optimalCappedMoves(state, hidden);
+    const exact = optimalCappedMoves(state, hidden, undefined, funnels);
     if (exact !== null) return exact;
   }
+  // The stored solution is funnel-legal by construction, so it's still a valid upper bound.
   return cappedSolveMoves(state, solution, hidden);
 }
 
@@ -70,10 +78,11 @@ function cutoffsFor(
   hidden: HiddenGrid,
   bottles: number,
   capacity: number,
+  funnels: FunnelGrid,
 ): { optimal: number; twoStarMax: number } {
-  const optimal = optimalFor(state, solution, hidden, bottles, capacity);
+  const optimal = optimalFor(state, solution, hidden, bottles, capacity, funnels);
   if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
-    const tiers = nearOptimalCutoffs(state, hidden);
+    const tiers = nearOptimalCutoffs(state, hidden, undefined, funnels);
     if (tiers && tiers.optimal === optimal) return tiers;
   }
   return { optimal, twoStarMax: optimal + 2 };
@@ -86,14 +95,32 @@ function hiddenFor(plan: LevelPlan, generated: GeneratedLevel): HiddenGrid {
     : emptyGrid(generated.state);
 }
 
-/** Wrap a generated board + its concealment as a campaign-annotated `PlayableLevel`. */
-function toPlayable(level: number, plan: LevelPlan, generated: GeneratedLevel, hidden: HiddenGrid): PlayableLevel {
+/**
+ * The initial funnel overlay for a generated board (all-null outside the funnel chapter): a
+ * seed-chosen subset of solution-eligible tubes (monochrome inflow), each locked to its inflow color
+ * so the stored solution stays legal and the board stays solvable.
+ */
+function funnelsFor(plan: LevelPlan, generated: GeneratedLevel): FunnelGrid {
+  return plan.mechanics.includes('funnel')
+    ? computeFunnels(generated.state, plan.seed, funnelEligibleTubes(generated.state, generated.solution))
+    : noFunnels(generated.state);
+}
+
+/** Wrap a generated board + its concealment/funnel overlays as a campaign-annotated `PlayableLevel`. */
+function toPlayable(
+  level: number,
+  plan: LevelPlan,
+  generated: GeneratedLevel,
+  hidden: HiddenGrid,
+  funnels: FunnelGrid,
+): PlayableLevel {
   const { optimal, twoStarMax } = cutoffsFor(
     generated.state,
     generated.solution,
     hidden,
     generated.bottles,
     generated.capacity,
+    funnels,
   );
   return {
     ...generated,
@@ -102,6 +129,7 @@ function toPlayable(level: number, plan: LevelPlan, generated: GeneratedLevel, h
     phase: plan.phase,
     mechanics: plan.mechanics,
     hidden,
+    funnels,
     optimal,
     twoStarMax,
   };
@@ -123,7 +151,7 @@ function generateFromPlan(level: number, plan: LevelPlan): PlayableLevel {
         minPar: plan.minPar,
         parMode: plan.parMode,
       });
-      return toPlayable(level, plan, generated, hiddenFor(plan, generated));
+      return toPlayable(level, plan, generated, hiddenFor(plan, generated), funnelsFor(plan, generated));
     } catch {
       // Extremely unlikely; try a different seed for this same plan.
     }
@@ -170,20 +198,22 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     );
     if (candidates.length === 0) continue;
 
-    const built = candidates.map((g) => ({ g, hidden: hiddenFor(plan, g) }));
+    const built = candidates.map((g) => ({ g, hidden: hiddenFor(plan, g), funnels: funnelsFor(plan, g) }));
     const scores = compositeScores(
       // Cheap scoring: proxy optimal (no A*) and no dead-end sampling, to honor the load budget.
-      built.map(({ g, hidden }) =>
-        measureMetrics(g.state, hidden, g.solution, {
-          optimalNodeBudget: 0,
-          tierNodeBudget: 0,
-          deadEndSamples: 0,
-        }),
+      built.map(({ g, hidden, funnels }) =>
+        measureMetrics(
+          g.state,
+          hidden,
+          g.solution,
+          { optimalNodeBudget: 0, tierNodeBudget: 0, deadEndSamples: 0 },
+          funnels,
+        ),
       ),
     );
     const idx = assignSlots(scores.map((score) => ({ score, family: 'live' })), [target])[0]!;
     const chosen = built[idx]!;
-    return toPlayable(level, plan, chosen.g, chosen.hidden);
+    return toPlayable(level, plan, chosen.g, chosen.hidden, chosen.funnels);
   }
 
   return generateFromPlan(level, plan); // pool kept failing — fall back to the light generator
@@ -240,10 +270,13 @@ export function generateRandomLevel(seed: number): PlayableLevel {
   const shape = RANDOM_SHAPES[Math.abs(seed) % RANDOM_SHAPES.length]!;
   // Spread difficulty across the normal→hard band instead of pinning every board to the top.
   const target = RANDOM_TARGET_MIN + seedFraction(seed, 1) * (RANDOM_TARGET_MAX - RANDOM_TARGET_MIN);
-  // Vary the mechanics per board: ≈half carry the (cumulative top-chapter) hidden-colors set, the
-  // rest run plain — genuine variety rather than the hardest mechanic on every board.
+  // Vary the mechanics per board: each cumulative mechanic of the top chapter is toggled
+  // independently (≈half the boards carry it), for genuine variety rather than the hardest stack of
+  // mechanics on every board.
   const full = mechanicsForLevel(CHAPTER_LEN * 1_000_000); // clamps to the last defined chapter
-  const mechanics = seedFraction(seed, 2) < 0.5 ? full : full.filter((m) => m !== 'hidden');
+  let mechanics = full;
+  if (seedFraction(seed, 2) >= 0.5) mechanics = mechanics.filter((m) => m !== 'hidden');
+  if (seedFraction(seed, 3) >= 0.5) mechanics = mechanics.filter((m) => m !== 'funnel');
   const plan: LevelPlan = {
     level: 0, // sentinel — random boards are not campaign levels
     chapter: chapterForLevel(CHAPTER_LEN * 1_000_000),
@@ -293,6 +326,7 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
     phase: baked.phase,
     mechanics: baked.mechanics,
     hidden: baked.hidden,
+    funnels: baked.funnels.map((t) => (t == null ? null : (t as Color))),
     optimal: baked.optimal,
     twoStarMax: baked.twoStarMax,
   };

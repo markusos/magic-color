@@ -9,7 +9,8 @@
  * other way around.
  */
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from './hidden';
-import { canPour, isWon, pour } from './engine';
+import { funnelAccepts, type FunnelGrid } from './funnels';
+import { canPour, isWon, pour, topColor } from './engine';
 import type { GameState } from './types';
 
 /**
@@ -95,28 +96,36 @@ interface CappedSuccessor {
  * finished/capped tubes can't be poured from, and the obviously-pointless moves are pruned
  * (interchangeable empties collapsed; relocating a fully-revealed solid block to an empty tube
  * dropped). Shared by `optimalCappedMoves` (exact A*) and `nearOptimalCutoffs` (tier BFS) so both
- * explore the identical move graph.
+ * explore the identical move graph. With `funnels`, a pour into a tube whose tint rejects the poured
+ * color is omitted — the same constraint the player plays under (default `undefined` ⇒ no funnels).
  */
-function cappedSuccessors(state: GameState, hidden: HiddenGrid): CappedSuccessor[] {
+function cappedSuccessors(state: GameState, hidden: HiddenGrid, funnels?: FunnelGrid): CappedSuccessor[] {
   const out: CappedSuccessor[] = [];
   const n = state.bottles.length;
-  const firstEmpty = state.bottles.findIndex((b) => b.length === 0);
   for (let from = 0; from < n; from++) {
     const src = state.bottles[from]!;
     // A capped (finished) tube can't be poured from — same rule the player plays under.
     if (src.length === 0 || isCapped(src, state.capacity, hidden[from])) continue;
     const cap = knownTopRun(src, hidden[from]);
+    const srcColor = topColor(src)!;
     const srcUniform = src.every((c) => c === src[0]);
     const srcConcealed = hidden[from]?.some(Boolean) ?? false;
+    // The representative empty for THIS color: the first empty tube that accepts it. Funnels make
+    // empties non-interchangeable (one locked to another color is a different destination), so the
+    // representative is color-specific; with no funnels this is just the first empty, as before.
+    const firstEmpty = state.bottles.findIndex(
+      (b, idx) => b.length === 0 && funnelAccepts(funnels, idx, srcColor),
+    );
     for (let to = 0; to < n; to++) {
       if (from === to) continue;
       const dst = state.bottles[to]!;
+      if (!canPour(state, from, to)) continue;
+      if (!funnelAccepts(funnels, to, srcColor)) continue; // a funnel rejects mismatched inflow
       if (dst.length === 0) {
-        if (to !== firstEmpty) continue; // empties are interchangeable
+        if (to !== firstEmpty) continue; // equivalent empties collapse to their representative
         // Relocating a fully-revealed solid block to an empty tube is never progress.
         if (srcUniform && !srcConcealed) continue;
       }
-      if (!canPour(state, from, to)) continue;
       const { state: next } = pour(state, from, to, cap);
       out.push({ state: next, hidden: revealExposed(next, hidden) });
     }
@@ -143,6 +152,7 @@ export function optimalCappedMoves(
   state0: GameState,
   hidden0: HiddenGrid,
   maxNodes = 12_000,
+  funnels?: FunnelGrid,
 ): number | null {
   const key0 = stateKey(state0, hidden0);
   const bestG = new Map<string, number>([[key0, 0]]);
@@ -162,7 +172,7 @@ export function optimalCappedMoves(
     if (isSolved(cur.state, cur.hidden)) return cur.g;
     if (++nodes > maxNodes) return null;
 
-    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden)) {
+    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden, funnels)) {
       const nextKey = stateKey(next, nextHidden);
       const ng = cur.g + 1;
       if (ng < (bestG.get(nextKey) ?? Infinity)) {
@@ -206,6 +216,7 @@ export function nearOptimalCutoffs(
   state0: GameState,
   hidden0: HiddenGrid,
   maxNodes = 200_000,
+  funnels?: FunnelGrid,
 ): StarCutoffs | null {
   // One layer = every state reachable in exactly `depth` capped pours (deduped within the layer).
   let layer = new Map<string, CappedSuccessor>([[stateKey(state0, hidden0), { state: state0, hidden: hidden0 }]]);
@@ -229,7 +240,7 @@ export function nearOptimalCutoffs(
     const next = new Map<string, CappedSuccessor>();
     for (const { state, hidden } of layer.values()) {
       if (isSolved(state, hidden)) continue; // solved boards have no useful successors
-      for (const succ of cappedSuccessors(state, hidden)) {
+      for (const succ of cappedSuccessors(state, hidden, funnels)) {
         if (++nodes > maxNodes) return finalize();
         const key = stateKey(succ.state, succ.hidden);
         if (!next.has(key)) next.set(key, succ);
