@@ -20,7 +20,7 @@ import { canPour, isWon, pour, topColor } from '../game/engine';
 import { canonical, isStuckInLoop } from '../game/solver';
 import { DEFAULT_CAPACITY } from '../game/generator';
 import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
-import { mechanicsForLevel, phaseForLevel } from '../game/progression';
+import { mechanicsForLevel, phaseForLevel, type PlayableLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
 import { funnelAccepts, type FunnelGrid } from '../game/funnels';
 import { recolorBoard } from '../game/recolor';
@@ -208,34 +208,50 @@ export const useGameStore = create<GameStore>((set, get) => {
     }
   };
 
+  /**
+   * The reset fields shared by every "install a freshly generated board" path (`applyLevel`,
+   * `applyRandom`): clear the in-progress attempt (history / moves / undos / selection, and re-seed
+   * `visited`), install the recolored `board`/`funnels` alongside the canonical `initial`/`initial*`
+   * (kept generator-canonical so Restart re-rolls the hues), carry the board's level metadata, clear
+   * `loading`, and bump the remount nonce. The mode-specific fields (campaign records vs. the endless
+   * reset) are spread on top by each caller.
+   */
+  const freshBoardState = (
+    generated: PlayableLevel,
+    board: GameState,
+    funnels: FunnelGrid,
+  ): Partial<GameStore> => ({
+    initial: generated.state,
+    hidden: generated.hidden,
+    initialHidden: generated.hidden,
+    funnels,
+    initialFunnels: generated.funnels,
+    hiddenHistory: [],
+    history: [],
+    moves: [],
+    undos: 0,
+    visited: new Set([canonical(board)]),
+    selected: null,
+    boardNonce: get().boardNonce + 1,
+    loading: false,
+    phase: generated.phase,
+    mechanics: generated.mechanics,
+    optimal: generated.optimal,
+    twoStarMax: generated.twoStarMax,
+  });
+
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
   const applyLevel = (level: number) => {
     const generated = getLevel(level);
     // Replaying an earlier level must not lower the unlock frontier.
     campaign.reach(level);
-    // Display the board under a fresh random palette; keep `initial`/`initialFunnels` in the
-    // generator's canonical colors so each Restart re-rolls the hues (see `restart`).
+    // Display the board under a fresh random palette; `freshBoardState` keeps `initial`/`initialFunnels`
+    // in the generator's canonical colors so each Restart re-rolls the hues (see `restart`).
     const { board, funnels } = recolorBoard(generated.state, generated.funnels);
     commit(board, {
-      initial: generated.state,
-      hidden: generated.hidden,
-      initialHidden: generated.hidden,
-      funnels,
-      initialFunnels: generated.funnels,
-      hiddenHistory: [],
-      history: [],
-      moves: [],
-      undos: 0,
-      visited: new Set([canonical(board)]),
-      selected: null,
-      boardNonce: get().boardNonce + 1,
-      loading: false,
+      ...freshBoardState(generated, board, funnels),
       mode: 'campaign',
       level,
-      phase: generated.phase,
-      mechanics: generated.mechanics,
-      optimal: generated.optimal,
-      twoStarMax: generated.twoStarMax,
       ...campaign.recordFor(level),
       furthest: campaign.furthest,
       campaignComplete: campaign.campaignComplete,
@@ -248,24 +264,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     const generated = generateRandomLevel(seed);
     const { board, funnels } = recolorBoard(generated.state, generated.funnels);
     commit(board, {
-      initial: generated.state,
-      hidden: generated.hidden,
-      initialHidden: generated.hidden,
-      funnels,
-      initialFunnels: generated.funnels,
-      hiddenHistory: [],
-      history: [],
-      moves: [],
-      undos: 0,
-      visited: new Set([canonical(board)]),
-      selected: null,
-      boardNonce: get().boardNonce + 1,
-      loading: false,
+      ...freshBoardState(generated, board, funnels),
       mode: 'endless',
-      phase: generated.phase, // varies normal→hard per board
-      mechanics: generated.mechanics,
-      optimal: generated.optimal,
-      twoStarMax: generated.twoStarMax,
       best: null, // random boards have no per-level best/stars
       bestStars: null,
     });

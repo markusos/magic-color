@@ -102,12 +102,15 @@ recoloring, not bake-hashed), now with an injectable `random` for testability. `
 517 → 476 lines and no longer mixes UI timing or recoloring with state. Behavior-preserving (the 31
 store tests + full suite stay green); non-functional; no re-bake.
 
-### 6. DRY the fresh-attempt state assembly (DRY/OCP)
+### 6. DRY the fresh-attempt state assembly (DRY/OCP) — DONE
 
-`applyLevel`, `applyRandom`, and the inline `startLevel` setup each hand-build the same ~15-field reset
-object (`history: []`, `moves: []`, `undos: 0`, `visited: new Set(...)`, `selected: null`,
-`boardNonce + 1`, …) — three copies that must stay in sync; adding a per-attempt field means editing
-all three. Extract a `freshAttempt(generated, recolored)` builder. Non-functional; no re-bake.
+`applyLevel` and `applyRandom` hand-built the same ~17-field reset object. Extracted a
+`freshBoardState(generated, board, funnels)` builder in [gameStore.ts](src/store/gameStore.ts); each
+caller now spreads only its mode-specific fields (campaign records vs. the endless `best`/`bestStars`
+reset) on top. Adding a per-attempt field is now a one-place edit. The `restart` handler (re-shuffles,
+keeps level metadata) and the initial-state object (different shape — full state with un-baked
+fallbacks) are deliberately left out: routing them through the builder would need conditionals for
+little gain. Behavior-preserving (full suite green); non-functional; no re-bake. Non-functional; no re-bake.
 
 ### 7. Collapse the long positional parameter lists in `levelLoader` (clarity)
 
