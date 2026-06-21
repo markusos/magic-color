@@ -6,12 +6,16 @@ import { Stars } from '../Stars/Stars';
 import styles from './Overlay.module.css';
 
 /**
- * Modal overlays for end-of-attempt states: a celebratory win panel, and the
- * "no moves left" deadlock alert (the source game's instant-failure detection).
+ * Modal overlays for end-of-attempt states: a celebratory win panel, and a terminal game-over
+ * alert for both dead ends — a hard wall (`deadlocked`, no legal move) and a `stuck` loop (moves
+ * remain but every reachable board has already been seen). Both end the attempt with Restart;
+ * a loop is deliberately NOT offered a step-by-step Undo, which would leak how far back the player
+ * went wrong.
  */
 export function Overlay() {
   const status = useGameStore((s) => s.status);
   const moves = useGameStore((s) => s.moves);
+  const undos = useGameStore((s) => s.undos);
   const optimal = useGameStore((s) => s.optimal);
   const twoStarMax = useGameStore((s) => s.twoStarMax);
   const nextLevel = useGameStore((s) => s.nextLevel);
@@ -20,8 +24,9 @@ export function Overlay() {
   const endlessStreak = useGameStore((s) => s.endlessStreak);
 
   const endless = mode === 'endless';
-  const visible = status === 'won' || status === 'deadlocked';
-  const stars = starsFor(moves.length, optimal, twoStarMax);
+  const visible = status === 'won' || status === 'deadlocked' || status === 'stuck';
+  // The score (and thus the rating) counts undos used, mirroring the live Stats preview.
+  const stars = starsFor(moves.length + undos, optimal, twoStarMax);
   const praise = endless
     ? `Streak ${endlessStreak}!`
     : stars === 3
@@ -63,8 +68,14 @@ export function Overlay() {
               </>
             ) : (
               <>
-                <h2 className={styles.fail}>No moves left</h2>
-                <p className={styles.sub}>This board is stuck — restart to try again.</p>
+                <h2 className={styles.fail}>
+                  {status === 'stuck' ? 'No way forward' : 'No moves left'}
+                </h2>
+                <p className={styles.sub}>
+                  {status === 'stuck'
+                    ? 'Every move just loops back — restart to try again.'
+                    : 'This board is stuck — restart to try again.'}
+                </p>
                 <button className={styles.primary} onClick={restart}>
                   <RotateCcw size={18} strokeWidth={2} aria-hidden />
                   Restart Level

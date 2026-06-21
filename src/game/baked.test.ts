@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { currentGeneratorVersion } from '../../scripts/levelVersion';
 import { BAKED_LEVELS, GENERATOR_VERSION } from './levels.data';
-import { chapterForLevel, mechanicsForLevel, phaseForLevel, SHAPES } from './progression';
+import { CAMPAIGN_LENGTH, chapterForLevel, mechanicsForLevel, phaseForLevel, SHAPES } from './progression';
 import { isSolvable } from './solver';
 import { board } from '../test/board';
 
-/** Levels we expect to have baked (chapters 0 + 1). Keep in sync with `npm run build:levels`. */
-const EXPECTED_COUNT = 60;
+/** Levels we expect to have baked (every defined chapter at full length). Matches `npm run build:levels`. */
+const EXPECTED_COUNT = CAMPAIGN_LENGTH;
 
 describe('baked levels', () => {
   it('is up to date with the generator (re-run `npm run build:levels` if this fails)', () => {

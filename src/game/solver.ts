@@ -125,6 +125,49 @@ export function isUnsolvable(state: GameState, options?: SolveOptions): boolean 
 }
 
 /**
+ * Whether the player is provably going in circles: every state reachable from `state` (under the
+ * same useful-move pruning the solver explores) has *already been visited this attempt* — so no
+ * move can ever produce a board the player hasn't already seen; the only moves left loop back.
+ *
+ * This is the trigger for the gentle "going in circles" nudge, distinct from `engine.isDeadlocked`
+ * (a hard zero-moves wall) and from `isUnsolvable` (which would fire the instant a board becomes
+ * unwinnable — even with plenty of fresh states still to explore, which we deliberately don't
+ * interrupt). Reusing `isUsefulMove` is what makes the distinction meaningful: parking a finished
+ * solid block in an empty tube is not a real "somewhere new to go", so a spare empty bottle can't
+ * disguise a dead end.
+ *
+ * Conservative by construction: it returns `false` the moment it finds any unvisited reachable
+ * state, and also `false` if the search hits the node budget (inconclusive) — so a player who
+ * still has somewhere meaningful to go is never nagged.
+ */
+export function isStuckInLoop(
+  state: GameState,
+  visited: ReadonlySet<string>,
+  options: SolveOptions = {},
+): boolean {
+  const maxNodes = options.maxNodes ?? 20_000;
+  const seen = new Set<string>([canonical(state)]);
+  const stack: GameState[] = [state];
+  let nodes = 0;
+
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    if (++nodes > maxNodes) return false; // inconclusive — don't nag
+    for (const { from, to } of legalMoves(current)) {
+      if (!isUsefulMove(current, from, to)) continue;
+      const { state: next } = pour(current, from, to);
+      if (isWon(next)) return false; // a win is reachable (and would be unvisited anyway)
+      const key = canonical(next);
+      if (!visited.has(key)) return false; // somewhere new to go → not circling
+      if (seen.has(key)) continue;
+      seen.add(key);
+      stack.push(next);
+    }
+  }
+  return true; // whole reachable closure already visited — only loops remain
+}
+
+/**
  * Breadth-first search for the *minimum* number of moves. Heavier than `solve`, so it's
  * intended only for difficulty calibration on small boards. Returns `null` if unsolved
  * within the node budget.

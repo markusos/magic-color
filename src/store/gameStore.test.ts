@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
 import { BAKED_LEVEL_COUNT, getLevel } from '../game/levelLoader';
-import { isSolvable, solve } from '../game/solver';
+import { canonical, isSolvable, solve, usefulMoves } from '../game/solver';
+import { pour } from '../game/engine';
 import { optimalCappedMoves } from '../game/search';
 import { board } from '../test/board';
 
@@ -22,6 +23,12 @@ const referenceSolution = solve(reference.state)!;
  * await this to let that deferred work run. Baked levels load synchronously and need no flush.
  */
 const flushLoad = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+// Live (un-baked) levels past the campaign: generated on demand, so they carry a stored solution and
+// drive the loading spinner. Everything past the baked range is chapter 1 (hidden) via the plateau
+// clamp. Derived from the baked count so they stay live if the campaign is resized.
+const LIVE_HIDDEN = BAKED_LEVEL_COUNT + 25;
+const LIVE_HIDDEN_2 = BAKED_LEVEL_COUNT + 55;
 
 /** Whether two boards are identical up to a consistent 1:1 color renaming (what recolor does). */
 function sameLayout(a: string[][], b: string[][]): boolean {
@@ -98,10 +105,10 @@ describe('live-level loading state (drives the spinner)', () => {
   });
 
   it('flags loading synchronously for a live level, then clears it after generation', async () => {
-    store().loadLevel(75); // live tail — deferred generation
+    store().loadLevel(LIVE_HIDDEN); // live tail — deferred generation
     // Header info updates immediately so the spinner screen shows the right level…
     expect(store().loading).toBe(true);
-    expect(store().level).toBe(75);
+    expect(store().level).toBe(LIVE_HIDDEN);
     // …and the board arrives once generation finishes.
     await flushLoad();
     expect(store().loading).toBe(false);
@@ -270,7 +277,7 @@ describe('hidden colors (chapter 1)', () => {
   it('chapter-0 levels conceal nothing; chapter-1 levels do', async () => {
     store().loadLevel(1); // baked — synchronous
     expect(anyHidden(store().hidden)).toBe(false);
-    store().loadLevel(75); // live tail — deferred
+    store().loadLevel(LIVE_HIDDEN); // live tail — deferred
     await flushLoad();
     expect(anyHidden(store().hidden)).toBe(true);
   });
@@ -278,7 +285,7 @@ describe('hidden colors (chapter 1)', () => {
   // The key guarantee: even though pours are capped to the visible run, a hidden level is
   // still beatable. We drive the full-info solution as repeated capped pours — each concealed
   // cell in a run is the same color, so it reveals and pours on the next tap.
-  it.each([75, 145])('hidden level %i is solvable through the capped tap interface', async (level) => {
+  it.each([LIVE_HIDDEN, LIVE_HIDDEN_2])('hidden level %i is solvable through the capped tap interface', async (level) => {
     store().loadLevel(level);
     await flushLoad();
     expect(anyHidden(store().hidden)).toBe(true);
@@ -300,12 +307,12 @@ describe('hidden colors (chapter 1)', () => {
   });
 
   it('a pour snapshots concealment and undo restores it; restart re-conceals', async () => {
-    store().loadLevel(75);
+    store().loadLevel(LIVE_HIDDEN);
     await flushLoad();
     const initialHidden = store().hidden;
     const concealedCount = (g: boolean[][]) => g.reduce((n, col) => n + col.filter(Boolean).length, 0);
     const startConcealed = concealedCount(initialHidden);
-    const first = getLevel(75).solution[0]!;
+    const first = getLevel(LIVE_HIDDEN).solution[0]!;
 
     store().tapBottle(first.from);
     store().tapBottle(first.to);
@@ -423,5 +430,106 @@ describe('deadlock detection (genuine walls only)', () => {
     // Two full, mismatched tubes and no empty — nothing can be poured anywhere.
     seed([['ruby', 'emerald'], ['emerald', 'ruby']], 2);
     expect(store().status).toBe('deadlocked');
+  });
+});
+
+describe('"going in circles" detection (soft loop)', () => {
+  /** Every canonical board reachable from `start` under the solver's useful-move pruning. */
+  const closureOf = (start: ReturnType<typeof board>): Set<string> => {
+    const seen = new Set<string>([canonical(start)]);
+    const stack = [start];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      for (const { from, to } of usefulMoves(current)) {
+        const { state: next } = pour(current, from, to);
+        const key = canonical(next);
+        if (!seen.has(key)) {
+          seen.add(key);
+          stack.push(next);
+        }
+      }
+    }
+    return seen;
+  };
+
+  // Unsolvable loop board: moves remain forever but it can never be won.
+  const loop = () =>
+    board(
+      [
+        ['ruby', 'emerald', 'ruby', 'emerald'],
+        ['emerald', 'ruby', 'emerald', 'ruby'],
+        ['ruby', 'emerald'],
+      ],
+      4,
+    );
+
+  it('stays playing while fresh boards are still reachable (a mistake does not end the game)', () => {
+    // Only the start has been seen, so the player still has somewhere new to go.
+    const grid = loop().bottles.map((b) => b.map(() => false));
+    useGameStore.setState({
+      current: loop(),
+      initial: loop(),
+      hidden: grid,
+      initialHidden: grid,
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      selected: null,
+    });
+    store().restart(); // recomputes status with a fresh single-entry visited set
+    expect(store().status).toBe('playing');
+  });
+
+  it('flags "stuck" once every reachable board has already been visited', () => {
+    const A = loop();
+    const { from, to } = usefulMoves(A)[0]!;
+    const { state: B, move } = pour(A, from, to);
+    const gridA = A.bottles.map((b) => b.map(() => false));
+    const gridB = B.bottles.map((b) => b.map(() => false));
+    // Sit on B with A as the prior board and the WHOLE closure already visited; undoing back to A
+    // recomputes status — A's every reachable board is in `visited` and none wins → going in circles.
+    useGameStore.setState({
+      current: B,
+      initial: A,
+      hidden: gridB,
+      initialHidden: gridA,
+      history: [A],
+      hiddenHistory: [gridA],
+      moves: [move],
+      undos: 0,
+      visited: closureOf(A),
+      selected: null,
+    });
+    store().undo();
+    expect(store().status).toBe('stuck');
+  });
+});
+
+describe('undos count toward the star rating', () => {
+  it('an undo increments `undos` while rewinding the move', () => {
+    const first = referenceSolution[0]!;
+    store().tapBottle(first.from);
+    store().tapBottle(first.to);
+    expect(store().moves).toHaveLength(1);
+    expect(store().undos).toBe(0);
+
+    store().undo();
+    expect(store().moves).toHaveLength(0);
+    expect(store().undos).toBe(1);
+  });
+
+  it('records best = real moves + undos used (undoing costs rating)', () => {
+    // Reset the (singleton) campaign so an earlier test's level-1 best can't min-out this score.
+    store().startOver();
+    // A throwaway pour then undo (undos = 1), then a clean optimal solve.
+    const t = referenceSolution[0]!;
+    store().tapBottle(t.from);
+    store().tapBottle(t.to);
+    store().undo();
+    playSolution();
+
+    expect(store().status).toBe('won');
+    expect(store().undos).toBe(1);
+    expect(store().best).toBe(referenceSolution.length + 1);
   });
 });

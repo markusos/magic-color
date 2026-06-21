@@ -8,7 +8,7 @@
  * generating on device, plus a debug-only provenance sidecar (`scripts/levels.provenance.json`).
  *
  * Run: `npm run build:levels [-- count perShape nodeBudget deadEndSamples concurrency]`
- *   count          how many levels to bake (default 60 = chapters 0 + 1)
+ *   count          how many levels to bake (default = every defined chapter at full length)
  *   perShape       candidates sampled per shape per chapter (default 80; raise for higher quality)
  *   nodeBudget     exact-optimal A* node budget per candidate (default 150k)
  *   deadEndSamples random playouts per candidate for the dead-end estimate (default 24)
@@ -32,6 +32,7 @@ import { Worker } from 'node:worker_threads';
 import type { BakedLevel } from '../src/game/baked';
 import { assignSlots, compositeScores, type Metrics } from '../src/game/difficulty';
 import {
+  CAMPAIGN_LENGTH,
   CHAPTER_LEN,
   mechanicsForLevel,
   phaseForLevel,
@@ -44,7 +45,7 @@ import type { Candidate, ShapeJob } from './build-levels.worker';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const WORKER = join(ROOT, 'scripts/build-levels.worker.ts');
 
-const COUNT = Number(process.argv[2] ?? 60);
+const COUNT = Number(process.argv[2] ?? CAMPAIGN_LENGTH);
 const PER_SHAPE = Number(process.argv[3] ?? 80);
 const NODE_BUDGET = Number(process.argv[4] ?? 150_000);
 const DEAD_END_SAMPLES = Number(process.argv[5] ?? 24);

@@ -1,6 +1,6 @@
 {
-  "version": "f60c9eca7bc5cee1",
-  "count": 60,
+  "version": "62be1a7c034e6010",
+  "count": 120,
   "perShape": 80,
   "levels": [
     {
@@ -28,7 +28,7 @@
       "phase": "easy",
       "family": "small",
       "footprint": "4c/5b×4",
-      "targetPercentile": 0.153,
+      "targetPercentile": 0.151,
       "score": 0.297,
       "metrics": {
         "optimal": 7,
@@ -45,9 +45,28 @@
       "level": 3,
       "chapter": 0,
       "phase": "easy",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.153,
+      "score": 0.298,
+      "metrics": {
+        "optimal": 18,
+        "optimalExact": true,
+        "twoStarMax": 20,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 4,
+      "chapter": 0,
+      "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.16,
+      "targetPercentile": 0.156,
       "score": 0.298,
       "metrics": {
         "optimal": 11,
@@ -61,12 +80,12 @@
       }
     },
     {
-      "level": 4,
+      "level": 5,
       "chapter": 0,
       "phase": "easy",
       "family": "medium",
       "footprint": "7c/10b×4",
-      "targetPercentile": 0.169,
+      "targetPercentile": 0.159,
       "score": 0.302,
       "metrics": {
         "optimal": 19,
@@ -80,12 +99,12 @@
       }
     },
     {
-      "level": 5,
+      "level": 6,
       "chapter": 0,
       "phase": "easy",
       "family": "tall",
       "footprint": "4c/5b×6",
-      "targetPercentile": 0.179,
+      "targetPercentile": 0.163,
       "score": 0.303,
       "metrics": {
         "optimal": 18,
@@ -99,12 +118,12 @@
       }
     },
     {
-      "level": 6,
+      "level": 7,
       "chapter": 0,
       "phase": "easy",
       "family": "medium",
       "footprint": "7c/10b×4",
-      "targetPercentile": 0.192,
+      "targetPercentile": 0.168,
       "score": 0.304,
       "metrics": {
         "optimal": 21,
@@ -118,12 +137,12 @@
       }
     },
     {
-      "level": 7,
+      "level": 8,
       "chapter": 0,
       "phase": "easy",
       "family": "small",
       "footprint": "4c/5b×4",
-      "targetPercentile": 0.206,
+      "targetPercentile": 0.173,
       "score": 0.306,
       "metrics": {
         "optimal": 9,
@@ -137,12 +156,12 @@
       }
     },
     {
-      "level": 8,
+      "level": 9,
       "chapter": 0,
       "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.222,
+      "targetPercentile": 0.179,
       "score": 0.307,
       "metrics": {
         "optimal": 12,
@@ -156,12 +175,12 @@
       }
     },
     {
-      "level": 9,
+      "level": 10,
       "chapter": 0,
       "phase": "easy",
       "family": "medium",
       "footprint": "7c/10b×4",
-      "targetPercentile": 0.239,
+      "targetPercentile": 0.185,
       "score": 0.309,
       "metrics": {
         "optimal": 21,
@@ -175,12 +194,12 @@
       }
     },
     {
-      "level": 10,
+      "level": 11,
       "chapter": 0,
       "phase": "easy",
       "family": "large",
       "footprint": "11c/15b×4",
-      "targetPercentile": 0.258,
+      "targetPercentile": 0.191,
       "score": 0.31,
       "metrics": {
         "optimal": 30,
@@ -194,12 +213,12 @@
       }
     },
     {
-      "level": 11,
+      "level": 12,
       "chapter": 0,
       "phase": "easy",
       "family": "medium",
       "footprint": "7c/10b×4",
-      "targetPercentile": 0.277,
+      "targetPercentile": 0.198,
       "score": 0.311,
       "metrics": {
         "optimal": 23,
@@ -213,12 +232,69 @@
       }
     },
     {
-      "level": 12,
+      "level": 13,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.205,
+      "score": 0.312,
+      "metrics": {
+        "optimal": 31,
+        "optimalExact": true,
+        "twoStarMax": 33,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 14,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.212,
+      "score": 0.313,
+      "metrics": {
+        "optimal": 22,
+        "optimalExact": true,
+        "twoStarMax": 24,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 15,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.22,
+      "score": 0.314,
+      "metrics": {
+        "optimal": 32,
+        "optimalExact": true,
+        "twoStarMax": 34,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 16,
       "chapter": 0,
       "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.298,
+      "targetPercentile": 0.228,
       "score": 0.316,
       "metrics": {
         "optimal": 13,
@@ -232,12 +308,12 @@
       }
     },
     {
-      "level": 13,
+      "level": 17,
       "chapter": 0,
       "phase": "easy",
       "family": "medium",
       "footprint": "7c/10b×4",
-      "targetPercentile": 0.321,
+      "targetPercentile": 0.237,
       "score": 0.317,
       "metrics": {
         "optimal": 23,
@@ -251,12 +327,107 @@
       }
     },
     {
-      "level": 14,
+      "level": 18,
       "chapter": 0,
-      "phase": "normal",
+      "phase": "easy",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.246,
+      "score": 0.317,
+      "metrics": {
+        "optimal": 33,
+        "optimalExact": true,
+        "twoStarMax": 35,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 19,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.255,
+      "score": 0.317,
+      "metrics": {
+        "optimal": 20,
+        "optimalExact": true,
+        "twoStarMax": 22,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 20,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.264,
+      "score": 0.319,
+      "metrics": {
+        "optimal": 34,
+        "optimalExact": true,
+        "twoStarMax": 36,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 21,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.274,
+      "score": 0.319,
+      "metrics": {
+        "optimal": 16,
+        "optimalExact": true,
+        "twoStarMax": 18,
+        "forcedMoveRatio": 0.5,
+        "deadEndDensity": 0.20833333333333334,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 22,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.284,
+      "score": 0.32,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 23,
+      "chapter": 0,
+      "phase": "easy",
       "family": "large",
       "footprint": "12c/15b×4",
-      "targetPercentile": 0.344,
+      "targetPercentile": 0.294,
       "score": 0.321,
       "metrics": {
         "optimal": 32,
@@ -270,55 +441,36 @@
       }
     },
     {
-      "level": 15,
+      "level": 24,
       "chapter": 0,
-      "phase": "normal",
-      "family": "tall",
-      "footprint": "4c/5b×6",
-      "targetPercentile": 0.368,
-      "score": 0.326,
-      "metrics": {
-        "optimal": 18,
-        "optimalExact": true,
-        "twoStarMax": 20,
-        "forcedMoveRatio": 0.4090909090909091,
-        "deadEndDensity": 0.125,
-        "digDepth": 0,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 16,
-      "chapter": 0,
-      "phase": "normal",
+      "phase": "easy",
       "family": "medium",
       "footprint": "8c/10b×4",
-      "targetPercentile": 0.394,
-      "score": 0.346,
+      "targetPercentile": 0.305,
+      "score": 0.324,
       "metrics": {
-        "optimal": 23,
+        "optimal": 24,
         "optimalExact": true,
-        "twoStarMax": 25,
-        "forcedMoveRatio": 0.08823529411764706,
-        "deadEndDensity": 0.125,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0.03225806451612903,
+        "deadEndDensity": 0,
         "digDepth": 0,
         "colors": 8,
         "empties": 2
       }
     },
     {
-      "level": 17,
+      "level": 25,
       "chapter": 0,
-      "phase": "normal",
+      "phase": "easy",
       "family": "large",
       "footprint": "11c/15b×4",
-      "targetPercentile": 0.42,
-      "score": 0.357,
+      "targetPercentile": 0.316,
+      "score": 0.324,
       "metrics": {
-        "optimal": 50,
-        "optimalExact": false,
-        "twoStarMax": 52,
+        "optimal": 36,
+        "optimalExact": true,
+        "twoStarMax": 38,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0,
@@ -327,56 +479,227 @@
       }
     },
     {
-      "level": 18,
+      "level": 26,
+      "chapter": 0,
+      "phase": "easy",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.327,
+      "score": 0.324,
+      "metrics": {
+        "optimal": 19,
+        "optimalExact": true,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0.45,
+        "deadEndDensity": 0.125,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 27,
       "chapter": 0,
       "phase": "normal",
       "family": "medium",
-      "footprint": "8c/10b×4",
-      "targetPercentile": 0.448,
-      "score": 0.366,
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.339,
+      "score": 0.325,
       "metrics": {
         "optimal": 22,
         "optimalExact": true,
         "twoStarMax": 24,
-        "forcedMoveRatio": 0.03125,
-        "deadEndDensity": 0.16666666666666666,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.041666666666666664,
+        "digDepth": 0,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 28,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.35,
+      "score": 0.326,
+      "metrics": {
+        "optimal": 18,
+        "optimalExact": true,
+        "twoStarMax": 20,
+        "forcedMoveRatio": 0.34782608695652173,
+        "deadEndDensity": 0.08333333333333333,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 29,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.362,
+      "score": 0.326,
+      "metrics": {
+        "optimal": 21,
+        "optimalExact": true,
+        "twoStarMax": 23,
+        "forcedMoveRatio": 0.034482758620689655,
+        "deadEndDensity": 0.041666666666666664,
         "digDepth": 0,
         "colors": 8,
         "empties": 2
       }
     },
     {
-      "level": 19,
-      "chapter": 0,
-      "phase": "normal",
-      "family": "small",
-      "footprint": "4c/5b×4",
-      "targetPercentile": 0.476,
-      "score": 0.374,
-      "metrics": {
-        "optimal": 12,
-        "optimalExact": true,
-        "twoStarMax": 14,
-        "forcedMoveRatio": 0.46153846153846156,
-        "deadEndDensity": 0.4583333333333333,
-        "digDepth": 0,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 20,
+      "level": 30,
       "chapter": 0,
       "phase": "normal",
       "family": "tall",
       "footprint": "4c/5b×6",
-      "targetPercentile": 0.506,
-      "score": 0.386,
+      "targetPercentile": 0.375,
+      "score": 0.33,
       "metrics": {
         "optimal": 15,
         "optimalExact": true,
         "twoStarMax": 17,
-        "forcedMoveRatio": 0.5,
+        "forcedMoveRatio": 0.6,
+        "deadEndDensity": 0.3333333333333333,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 31,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.387,
+      "score": 0.338,
+      "metrics": {
+        "optimal": 19,
+        "optimalExact": true,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.125,
+        "digDepth": 0,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 32,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.4,
+      "score": 0.35,
+      "metrics": {
+        "optimal": 47,
+        "optimalExact": false,
+        "twoStarMax": 49,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 33,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.413,
+      "score": 0.355,
+      "metrics": {
+        "optimal": 10,
+        "optimalExact": true,
+        "twoStarMax": 12,
+        "forcedMoveRatio": 0.18181818181818182,
+        "deadEndDensity": 0.25,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 34,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.426,
+      "score": 0.36,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0.03333333333333333,
+        "deadEndDensity": 0.125,
+        "digDepth": 0,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 35,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.44,
+      "score": 0.363,
+      "metrics": {
+        "optimal": 11,
+        "optimalExact": true,
+        "twoStarMax": 13,
+        "forcedMoveRatio": 0.36363636363636365,
+        "deadEndDensity": 0.375,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 36,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.454,
+      "score": 0.367,
+      "metrics": {
+        "optimal": 54,
+        "optimalExact": false,
+        "twoStarMax": 56,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 37,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.468,
+      "score": 0.37,
+      "metrics": {
+        "optimal": 10,
+        "optimalExact": true,
+        "twoStarMax": 12,
+        "forcedMoveRatio": 0.4166666666666667,
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0,
         "colors": 4,
@@ -384,17 +707,93 @@
       }
     },
     {
-      "level": 21,
+      "level": 38,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.482,
+      "score": 0.376,
+      "metrics": {
+        "optimal": 58,
+        "optimalExact": false,
+        "twoStarMax": 60,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 39,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.496,
+      "score": 0.382,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0.32142857142857145,
+        "deadEndDensity": 0.125,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 40,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.511,
+      "score": 0.391,
+      "metrics": {
+        "optimal": 19,
+        "optimalExact": true,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0.045454545454545456,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 41,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.526,
+      "score": 0.396,
+      "metrics": {
+        "optimal": 17,
+        "optimalExact": true,
+        "twoStarMax": 19,
+        "forcedMoveRatio": 0.45454545454545453,
+        "deadEndDensity": 0.4166666666666667,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 42,
       "chapter": 0,
       "phase": "normal",
       "family": "large",
       "footprint": "12c/15b×4",
-      "targetPercentile": 0.536,
-      "score": 0.403,
+      "targetPercentile": 0.541,
+      "score": 0.407,
       "metrics": {
-        "optimal": 47,
+        "optimal": 49,
         "optimalExact": false,
-        "twoStarMax": 49,
+        "twoStarMax": 51,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0,
@@ -403,18 +802,151 @@
       }
     },
     {
-      "level": 22,
+      "level": 43,
       "chapter": 0,
       "phase": "normal",
       "family": "small",
       "footprint": "4c/5b×4",
-      "targetPercentile": 0.568,
-      "score": 0.418,
+      "targetPercentile": 0.556,
+      "score": 0.416,
+      "metrics": {
+        "optimal": 8,
+        "optimalExact": true,
+        "twoStarMax": 10,
+        "forcedMoveRatio": 0.5555555555555556,
+        "deadEndDensity": 0.75,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 44,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.572,
+      "score": 0.419,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 45,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 0.588,
+      "score": 0.427,
+      "metrics": {
+        "optimal": 28,
+        "optimalExact": true,
+        "twoStarMax": 30,
+        "forcedMoveRatio": 0.2903225806451613,
+        "deadEndDensity": 0.16666666666666666,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 46,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.604,
+      "score": 0.433,
+      "metrics": {
+        "optimal": 55,
+        "optimalExact": false,
+        "twoStarMax": 57,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.20833333333333334,
+        "digDepth": 0,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 47,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.62,
+      "score": 0.438,
+      "metrics": {
+        "optimal": 23,
+        "optimalExact": true,
+        "twoStarMax": 25,
+        "forcedMoveRatio": 0.3793103448275862,
+        "deadEndDensity": 0.375,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 48,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.637,
+      "score": 0.445,
+      "metrics": {
+        "optimal": 58,
+        "optimalExact": false,
+        "twoStarMax": 60,
+        "forcedMoveRatio": 0.034482758620689655,
+        "deadEndDensity": 0.25,
+        "digDepth": 0,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 49,
+      "chapter": 0,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.653,
+      "score": 0.451,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.3793103448275862,
+        "deadEndDensity": 0.375,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 50,
+      "chapter": 0,
+      "phase": "hard",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.67,
+      "score": 0.46,
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
         "twoStarMax": 14,
-        "forcedMoveRatio": 0.6153846153846154,
+        "forcedMoveRatio": 0.4,
         "deadEndDensity": 0.7083333333333334,
         "digDepth": 0,
         "colors": 4,
@@ -422,107 +954,107 @@
       }
     },
     {
-      "level": 23,
+      "level": 51,
       "chapter": 0,
-      "phase": "normal",
-      "family": "tall",
-      "footprint": "4c/5b×6",
-      "targetPercentile": 0.6,
-      "score": 0.43,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.687,
+      "score": 0.469,
       "metrics": {
-        "optimal": 19,
+        "optimal": 37,
         "optimalExact": true,
-        "twoStarMax": 21,
-        "forcedMoveRatio": 0.4090909090909091,
-        "deadEndDensity": 0.4583333333333333,
+        "twoStarMax": 39,
+        "forcedMoveRatio": 0.17647058823529413,
+        "deadEndDensity": 0.5833333333333334,
+        "digDepth": 0,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 52,
+      "chapter": 0,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.704,
+      "score": 0.48,
+      "metrics": {
+        "optimal": 23,
+        "optimalExact": true,
+        "twoStarMax": 25,
+        "forcedMoveRatio": 0.03125,
+        "deadEndDensity": 0.5416666666666666,
+        "digDepth": 0,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 53,
+      "chapter": 0,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 0.722,
+      "score": 0.49,
+      "metrics": {
+        "optimal": 27,
+        "optimalExact": true,
+        "twoStarMax": 29,
+        "forcedMoveRatio": 0.43333333333333335,
+        "deadEndDensity": 0.5,
         "digDepth": 0,
         "colors": 4,
         "empties": 1
       }
     },
     {
-      "level": 24,
+      "level": 54,
       "chapter": 0,
-      "phase": "normal",
+      "phase": "hard",
       "family": "large",
       "footprint": "12c/15b×4",
-      "targetPercentile": 0.633,
-      "score": 0.443,
+      "targetPercentile": 0.74,
+      "score": 0.499,
       "metrics": {
-        "optimal": 52,
+        "optimal": 59,
         "optimalExact": false,
-        "twoStarMax": 54,
-        "forcedMoveRatio": 0.038461538461538464,
-        "deadEndDensity": 0.2916666666666667,
+        "twoStarMax": 61,
+        "forcedMoveRatio": 0.01694915254237288,
+        "deadEndDensity": 0.4166666666666667,
         "digDepth": 0,
         "colors": 12,
         "empties": 3
       }
     },
     {
-      "level": 25,
+      "level": 55,
       "chapter": 0,
       "phase": "hard",
-      "family": "medium",
-      "footprint": "8c/10b×4",
-      "targetPercentile": 0.667,
-      "score": 0.457,
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.758,
+      "score": 0.509,
       "metrics": {
-        "optimal": 26,
+        "optimal": 10,
         "optimalExact": true,
-        "twoStarMax": 28,
-        "forcedMoveRatio": 0.075,
-        "deadEndDensity": 0.4583333333333333,
+        "twoStarMax": 12,
+        "forcedMoveRatio": 0.3333333333333333,
+        "deadEndDensity": 0.875,
         "digDepth": 0,
-        "colors": 8,
-        "empties": 2
+        "colors": 4,
+        "empties": 1
       }
     },
     {
-      "level": 26,
-      "chapter": 0,
-      "phase": "hard",
-      "family": "large",
-      "footprint": "12c/15b×4",
-      "targetPercentile": 0.702,
-      "score": 0.48,
-      "metrics": {
-        "optimal": 54,
-        "optimalExact": false,
-        "twoStarMax": 56,
-        "forcedMoveRatio": 0,
-        "deadEndDensity": 0.375,
-        "digDepth": 0,
-        "colors": 12,
-        "empties": 3
-      }
-    },
-    {
-      "level": 27,
-      "chapter": 0,
-      "phase": "hard",
-      "family": "medium",
-      "footprint": "8c/10b×4",
-      "targetPercentile": 0.738,
-      "score": 0.498,
-      "metrics": {
-        "optimal": 27,
-        "optimalExact": true,
-        "twoStarMax": 29,
-        "forcedMoveRatio": 0.06976744186046512,
-        "deadEndDensity": 0.5833333333333334,
-        "digDepth": 0,
-        "colors": 8,
-        "empties": 2
-      }
-    },
-    {
-      "level": 28,
+      "level": 56,
       "chapter": 0,
       "phase": "hard",
       "family": "tall",
       "footprint": "4c/5b×10",
-      "targetPercentile": 0.774,
+      "targetPercentile": 0.776,
       "score": 0.518,
       "metrics": {
         "optimal": 25,
@@ -536,18 +1068,18 @@
       }
     },
     {
-      "level": 29,
+      "level": 57,
       "chapter": 0,
       "phase": "hard",
       "family": "medium",
       "footprint": "8c/10b×4",
-      "targetPercentile": 0.812,
-      "score": 0.536,
+      "targetPercentile": 0.794,
+      "score": 0.532,
       "metrics": {
-        "optimal": 23,
+        "optimal": 25,
         "optimalExact": true,
-        "twoStarMax": 25,
-        "forcedMoveRatio": 0.06060606060606061,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.11428571428571428,
         "deadEndDensity": 0.75,
         "digDepth": 0,
         "colors": 8,
@@ -555,26 +1087,64 @@
       }
     },
     {
-      "level": 30,
+      "level": 58,
+      "chapter": 0,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.812,
+      "score": 0.535,
+      "metrics": {
+        "optimal": 21,
+        "optimalExact": true,
+        "twoStarMax": 23,
+        "forcedMoveRatio": 0.4444444444444444,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 59,
       "chapter": 0,
       "phase": "hard",
       "family": "large",
       "footprint": "12c/15b×4",
-      "targetPercentile": 0.85,
-      "score": 0.557,
+      "targetPercentile": 0.831,
+      "score": 0.545,
       "metrics": {
-        "optimal": 50,
+        "optimal": 56,
         "optimalExact": false,
-        "twoStarMax": 52,
+        "twoStarMax": 58,
         "forcedMoveRatio": 0,
-        "deadEndDensity": 0.6666666666666666,
+        "deadEndDensity": 0.5833333333333334,
         "digDepth": 0,
         "colors": 12,
         "empties": 3
       }
     },
     {
-      "level": 31,
+      "level": 60,
+      "chapter": 0,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.85,
+      "score": 0.556,
+      "metrics": {
+        "optimal": 17,
+        "optimalExact": true,
+        "twoStarMax": 19,
+        "forcedMoveRatio": 0.2631578947368421,
+        "deadEndDensity": 0.8333333333333334,
+        "digDepth": 0,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 61,
       "chapter": 1,
       "phase": "easy",
       "family": "medium",
@@ -593,12 +1163,12 @@
       }
     },
     {
-      "level": 32,
+      "level": 62,
       "chapter": 1,
       "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.273,
+      "targetPercentile": 0.271,
       "score": 0.355,
       "metrics": {
         "optimal": 14,
@@ -612,45 +1182,121 @@
       }
     },
     {
-      "level": 33,
+      "level": 63,
       "chapter": 1,
       "phase": "easy",
       "family": "medium",
       "footprint": "7c/10b×4",
-      "targetPercentile": 0.28,
+      "targetPercentile": 0.273,
       "score": 0.356,
       "metrics": {
-        "optimal": 23,
+        "optimal": 21,
         "optimalExact": true,
-        "twoStarMax": 25,
+        "twoStarMax": 23,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
-        "digDepth": 0.25892857142857145,
+        "digDepth": 0.29464285714285715,
         "colors": 7,
         "empties": 3
       }
     },
     {
-      "level": 34,
+      "level": 64,
+      "chapter": 1,
+      "phase": "easy",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.276,
+      "score": 0.356,
+      "metrics": {
+        "optimal": 10,
+        "optimalExact": true,
+        "twoStarMax": 12,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.3958333333333333,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 65,
       "chapter": 1,
       "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.289,
-      "score": 0.358,
+      "targetPercentile": 0.279,
+      "score": 0.356,
       "metrics": {
         "optimal": 14,
         "optimalExact": true,
         "twoStarMax": 16,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
-        "digDepth": 0.2314814814814815,
+        "digDepth": 0.2222222222222222,
         "colors": 3,
         "empties": 2
       }
     },
     {
-      "level": 35,
+      "level": 66,
+      "chapter": 1,
+      "phase": "easy",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.283,
+      "score": 0.356,
+      "metrics": {
+        "optimal": 11,
+        "optimalExact": true,
+        "twoStarMax": 13,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.3541666666666667,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 67,
+      "chapter": 1,
+      "phase": "easy",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.288,
+      "score": 0.358,
+      "metrics": {
+        "optimal": 15,
+        "optimalExact": true,
+        "twoStarMax": 17,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.1851851851851852,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 68,
+      "chapter": 1,
+      "phase": "easy",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.293,
+      "score": 0.359,
+      "metrics": {
+        "optimal": 22,
+        "optimalExact": true,
+        "twoStarMax": 24,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.29464285714285715,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 69,
       "chapter": 1,
       "phase": "easy",
       "family": "large",
@@ -669,74 +1315,93 @@
       }
     },
     {
-      "level": 36,
+      "level": 70,
       "chapter": 1,
       "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.312,
-      "score": 0.364,
+      "targetPercentile": 0.305,
+      "score": 0.361,
       "metrics": {
-        "optimal": 14,
+        "optimal": 15,
         "optimalExact": true,
-        "twoStarMax": 16,
+        "twoStarMax": 17,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
-        "digDepth": 0.2592592592592593,
+        "digDepth": 0.2037037037037037,
         "colors": 3,
         "empties": 2
       }
     },
     {
-      "level": 37,
+      "level": 71,
       "chapter": 1,
       "phase": "easy",
-      "family": "large",
-      "footprint": "11c/15b×4",
-      "targetPercentile": 0.326,
-      "score": 0.368,
-      "metrics": {
-        "optimal": 47,
-        "optimalExact": false,
-        "twoStarMax": 49,
-        "forcedMoveRatio": 0,
-        "deadEndDensity": 0,
-        "digDepth": 0.1534090909090909,
-        "colors": 11,
-        "empties": 4
-      }
-    },
-    {
-      "level": 38,
-      "chapter": 1,
-      "phase": "normal",
       "family": "medium",
-      "footprint": "7c/10b×4",
-      "targetPercentile": 0.342,
-      "score": 0.374,
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.311,
+      "score": 0.363,
       "metrics": {
         "optimal": 24,
         "optimalExact": true,
         "twoStarMax": 26,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
-        "digDepth": 0.33035714285714285,
-        "colors": 7,
+        "digDepth": 0.2265625,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 72,
+      "chapter": 1,
+      "phase": "easy",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.318,
+      "score": 0.367,
+      "metrics": {
+        "optimal": 15,
+        "optimalExact": true,
+        "twoStarMax": 17,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.23148148148148145,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 73,
+      "chapter": 1,
+      "phase": "easy",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.325,
+      "score": 0.368,
+      "metrics": {
+        "optimal": 35,
+        "optimalExact": true,
+        "twoStarMax": 37,
+        "forcedMoveRatio": 0.018518518518518517,
+        "deadEndDensity": 0.08333333333333333,
+        "digDepth": 0.15625,
+        "colors": 12,
         "empties": 3
       }
     },
     {
-      "level": 39,
+      "level": 74,
       "chapter": 1,
-      "phase": "normal",
+      "phase": "easy",
       "family": "tall",
       "footprint": "3c/5b×6",
-      "targetPercentile": 0.359,
-      "score": 0.379,
+      "targetPercentile": 0.332,
+      "score": 0.371,
       "metrics": {
-        "optimal": 16,
+        "optimal": 15,
         "optimalExact": true,
-        "twoStarMax": 18,
+        "twoStarMax": 17,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.25,
@@ -745,50 +1410,164 @@
       }
     },
     {
-      "level": 40,
+      "level": 75,
       "chapter": 1,
       "phase": "normal",
       "family": "small",
       "footprint": "4c/5b×4",
-      "targetPercentile": 0.378,
-      "score": 0.384,
+      "targetPercentile": 0.34,
+      "score": 0.374,
       "metrics": {
-        "optimal": 10,
+        "optimal": 11,
         "optimalExact": true,
-        "twoStarMax": 12,
-        "forcedMoveRatio": 0.4,
-        "deadEndDensity": 0.4166666666666667,
-        "digDepth": 0.171875,
+        "twoStarMax": 13,
+        "forcedMoveRatio": 0.5,
+        "deadEndDensity": 0.375,
+        "digDepth": 0.25,
         "colors": 4,
         "empties": 1
       }
     },
     {
-      "level": 41,
+      "level": 76,
       "chapter": 1,
       "phase": "normal",
       "family": "large",
       "footprint": "11c/15b×4",
-      "targetPercentile": 0.397,
-      "score": 0.391,
+      "targetPercentile": 0.348,
+      "score": 0.374,
+      "metrics": {
+        "optimal": 50,
+        "optimalExact": false,
+        "twoStarMax": 52,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.14772727272727273,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 77,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.357,
+      "score": 0.379,
+      "metrics": {
+        "optimal": 13,
+        "optimalExact": true,
+        "twoStarMax": 15,
+        "forcedMoveRatio": 0.38461538461538464,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0.21875,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 78,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.366,
+      "score": 0.381,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.36607142857142855,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 79,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.375,
+      "score": 0.383,
+      "metrics": {
+        "optimal": 15,
+        "optimalExact": true,
+        "twoStarMax": 17,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.3148148148148148,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 80,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.384,
+      "score": 0.386,
       "metrics": {
         "optimal": 49,
         "optimalExact": false,
         "twoStarMax": 51,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
-        "digDepth": 0.24431818181818182,
+        "digDepth": 0.2215909090909091,
         "colors": 11,
         "empties": 4
       }
     },
     {
-      "level": 42,
+      "level": 81,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.394,
+      "score": 0.389,
+      "metrics": {
+        "optimal": 33,
+        "optimalExact": false,
+        "twoStarMax": 35,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.24107142857142858,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 82,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.404,
+      "score": 0.394,
+      "metrics": {
+        "optimal": 56,
+        "optimalExact": false,
+        "twoStarMax": 58,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.17613636363636365,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 83,
       "chapter": 1,
       "phase": "normal",
       "family": "tall",
       "footprint": "4c/5b×10",
-      "targetPercentile": 0.418,
+      "targetPercentile": 0.414,
       "score": 0.396,
       "metrics": {
         "optimal": 30,
@@ -802,17 +1581,17 @@
       }
     },
     {
-      "level": 43,
+      "level": 84,
       "chapter": 1,
       "phase": "normal",
       "family": "large",
       "footprint": "11c/15b×4",
-      "targetPercentile": 0.441,
-      "score": 0.404,
+      "targetPercentile": 0.425,
+      "score": 0.399,
       "metrics": {
-        "optimal": 53,
+        "optimal": 51,
         "optimalExact": false,
-        "twoStarMax": 55,
+        "twoStarMax": 53,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0,
         "digDepth": 0.26136363636363635,
@@ -821,259 +1600,563 @@
       }
     },
     {
-      "level": 44,
+      "level": 85,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.436,
+      "score": 0.404,
+      "metrics": {
+        "optimal": 20,
+        "optimalExact": true,
+        "twoStarMax": 22,
+        "forcedMoveRatio": 0.42857142857142855,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0.15972222222222224,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 86,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.447,
+      "score": 0.405,
+      "metrics": {
+        "optimal": 58,
+        "optimalExact": false,
+        "twoStarMax": 60,
+        "forcedMoveRatio": 0.03508771929824561,
+        "deadEndDensity": 0,
+        "digDepth": 0.234375,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 87,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.459,
+      "score": 0.41,
+      "metrics": {
+        "optimal": 20,
+        "optimalExact": true,
+        "twoStarMax": 22,
+        "forcedMoveRatio": 0.5,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0.2638888888888889,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 88,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.47,
+      "score": 0.415,
+      "metrics": {
+        "optimal": 56,
+        "optimalExact": false,
+        "twoStarMax": 58,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.041666666666666664,
+        "digDepth": 0.20833333333333334,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 89,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.482,
+      "score": 0.42,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.06060606060606061,
+        "deadEndDensity": 0.20833333333333334,
+        "digDepth": 0.25,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 90,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.495,
+      "score": 0.423,
+      "metrics": {
+        "optimal": 19,
+        "optimalExact": true,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0.35,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0.2152777777777778,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 91,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.507,
+      "score": 0.43,
+      "metrics": {
+        "optimal": 56,
+        "optimalExact": false,
+        "twoStarMax": 58,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.041666666666666664,
+        "digDepth": 0.29545454545454547,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 92,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.52,
+      "score": 0.434,
+      "metrics": {
+        "optimal": 17,
+        "optimalExact": true,
+        "twoStarMax": 19,
+        "forcedMoveRatio": 0.38095238095238093,
+        "deadEndDensity": 0.4583333333333333,
+        "digDepth": 0.11805555555555557,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 93,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.533,
+      "score": 0.445,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.3333333333333333,
+        "digDepth": 0.125,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 94,
       "chapter": 1,
       "phase": "normal",
       "family": "small",
       "footprint": "4c/5b×4",
-      "targetPercentile": 0.464,
-      "score": 0.414,
+      "targetPercentile": 0.546,
+      "score": 0.452,
       "metrics": {
         "optimal": 12,
         "optimalExact": true,
         "twoStarMax": 14,
-        "forcedMoveRatio": 0.25,
-        "deadEndDensity": 0.3333333333333333,
+        "forcedMoveRatio": 0.46153846153846156,
+        "deadEndDensity": 0.5833333333333334,
+        "digDepth": 0.265625,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 95,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.56,
+      "score": 0.462,
+      "metrics": {
+        "optimal": 17,
+        "optimalExact": true,
+        "twoStarMax": 19,
+        "forcedMoveRatio": 0.3157894736842105,
+        "deadEndDensity": 0.4583333333333333,
+        "digDepth": 0.19444444444444442,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 96,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.574,
+      "score": 0.47,
+      "metrics": {
+        "optimal": 13,
+        "optimalExact": true,
+        "twoStarMax": 15,
+        "forcedMoveRatio": 0.38461538461538464,
+        "deadEndDensity": 0.6666666666666666,
+        "digDepth": 0.125,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 97,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.588,
+      "score": 0.477,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.4230769230769231,
+        "deadEndDensity": 0.4166666666666667,
+        "digDepth": 0.17578125,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 98,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.602,
+      "score": 0.485,
+      "metrics": {
+        "optimal": 11,
+        "optimalExact": true,
+        "twoStarMax": 13,
+        "forcedMoveRatio": 0.38461538461538464,
+        "deadEndDensity": 0.6666666666666666,
+        "digDepth": 0.265625,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 99,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.616,
+      "score": 0.491,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.10714285714285714,
+        "deadEndDensity": 0.5,
+        "digDepth": 0.21875,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 100,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.631,
+      "score": 0.499,
+      "metrics": {
+        "optimal": 49,
+        "optimalExact": false,
+        "twoStarMax": 51,
+        "forcedMoveRatio": 0.04081632653061224,
+        "deadEndDensity": 0.375,
+        "digDepth": 0.2552083333333333,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 101,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.646,
+      "score": 0.507,
+      "metrics": {
+        "optimal": 19,
+        "optimalExact": true,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0.42857142857142855,
+        "deadEndDensity": 0.625,
+        "digDepth": 0.2222222222222222,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 102,
+      "chapter": 1,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.661,
+      "score": 0.515,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.08823529411764706,
+        "deadEndDensity": 0.5416666666666666,
+        "digDepth": 0.2578125,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 103,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.676,
+      "score": 0.524,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0.5,
+        "deadEndDensity": 0.625,
+        "digDepth": 0.21484375,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 104,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.692,
+      "score": 0.531,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0.029411764705882353,
+        "deadEndDensity": 0.5833333333333334,
+        "digDepth": 0.234375,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 105,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.708,
+      "score": 0.539,
+      "metrics": {
+        "optimal": 55,
+        "optimalExact": false,
+        "twoStarMax": 57,
+        "forcedMoveRatio": 0.03636363636363636,
+        "deadEndDensity": 0.4583333333333333,
+        "digDepth": 0.265625,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 106,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.724,
+      "score": 0.546,
+      "metrics": {
+        "optimal": 29,
+        "optimalExact": true,
+        "twoStarMax": 31,
+        "forcedMoveRatio": 0.3870967741935484,
+        "deadEndDensity": 0.5,
         "digDepth": 0.234375,
         "colors": 4,
         "empties": 1
       }
     },
     {
-      "level": 45,
+      "level": 107,
       "chapter": 1,
-      "phase": "normal",
-      "family": "large",
-      "footprint": "11c/15b×4",
-      "targetPercentile": 0.488,
-      "score": 0.422,
-      "metrics": {
-        "optimal": 54,
-        "optimalExact": false,
-        "twoStarMax": 56,
-        "forcedMoveRatio": 0.05555555555555555,
-        "deadEndDensity": 0.041666666666666664,
-        "digDepth": 0.3352272727272727,
-        "colors": 11,
-        "empties": 4
-      }
-    },
-    {
-      "level": 46,
-      "chapter": 1,
-      "phase": "normal",
-      "family": "tall",
-      "footprint": "4c/5b×8",
-      "targetPercentile": 0.514,
-      "score": 0.433,
-      "metrics": {
-        "optimal": 24,
-        "optimalExact": true,
-        "twoStarMax": 26,
-        "forcedMoveRatio": 0.46153846153846156,
-        "deadEndDensity": 0.2916666666666667,
-        "digDepth": 0.2109375,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 47,
-      "chapter": 1,
-      "phase": "normal",
-      "family": "large",
-      "footprint": "12c/15b×4",
-      "targetPercentile": 0.54,
-      "score": 0.449,
-      "metrics": {
-        "optimal": 59,
-        "optimalExact": false,
-        "twoStarMax": 61,
-        "forcedMoveRatio": 0.034482758620689655,
-        "deadEndDensity": 0.125,
-        "digDepth": 0.2604166666666667,
-        "colors": 12,
-        "empties": 3
-      }
-    },
-    {
-      "level": 48,
-      "chapter": 1,
-      "phase": "normal",
-      "family": "small",
-      "footprint": "4c/5b×4",
-      "targetPercentile": 0.568,
-      "score": 0.467,
-      "metrics": {
-        "optimal": 13,
-        "optimalExact": true,
-        "twoStarMax": 15,
-        "forcedMoveRatio": 0.35714285714285715,
-        "deadEndDensity": 0.5833333333333334,
-        "digDepth": 0.203125,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 49,
-      "chapter": 1,
-      "phase": "normal",
-      "family": "large",
-      "footprint": "12c/15b×4",
-      "targetPercentile": 0.596,
-      "score": 0.482,
-      "metrics": {
-        "optimal": 36,
-        "optimalExact": true,
-        "twoStarMax": 38,
-        "forcedMoveRatio": 0,
-        "deadEndDensity": 0.4166666666666667,
-        "digDepth": 0.20833333333333334,
-        "colors": 12,
-        "empties": 3
-      }
-    },
-    {
-      "level": 50,
-      "chapter": 1,
-      "phase": "normal",
+      "phase": "hard",
       "family": "medium",
       "footprint": "8c/10b×4",
-      "targetPercentile": 0.626,
-      "score": 0.497,
+      "targetPercentile": 0.74,
+      "score": 0.557,
       "metrics": {
-        "optimal": 25,
+        "optimal": 27,
         "optimalExact": true,
-        "twoStarMax": 27,
-        "forcedMoveRatio": 0.21621621621621623,
+        "twoStarMax": 29,
+        "forcedMoveRatio": 0,
         "deadEndDensity": 0.625,
-        "digDepth": 0.171875,
+        "digDepth": 0.2265625,
         "colors": 8,
         "empties": 2
       }
     },
     {
-      "level": 51,
-      "chapter": 1,
-      "phase": "normal",
-      "family": "small",
-      "footprint": "4c/5b×4",
-      "targetPercentile": 0.656,
-      "score": 0.511,
-      "metrics": {
-        "optimal": 12,
-        "optimalExact": true,
-        "twoStarMax": 14,
-        "forcedMoveRatio": 0.3333333333333333,
-        "deadEndDensity": 0.75,
-        "digDepth": 0.1875,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 52,
-      "chapter": 1,
-      "phase": "hard",
-      "family": "tall",
-      "footprint": "4c/5b×8",
-      "targetPercentile": 0.688,
-      "score": 0.528,
-      "metrics": {
-        "optimal": 28,
-        "optimalExact": true,
-        "twoStarMax": 30,
-        "forcedMoveRatio": 0.4074074074074074,
-        "deadEndDensity": 0.4583333333333333,
-        "digDepth": 0.26171875,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 53,
+      "level": 108,
       "chapter": 1,
       "phase": "hard",
       "family": "large",
       "footprint": "12c/15b×4",
-      "targetPercentile": 0.72,
-      "score": 0.545,
+      "targetPercentile": 0.757,
+      "score": 0.565,
       "metrics": {
-        "optimal": 50,
+        "optimal": 55,
         "optimalExact": false,
-        "twoStarMax": 52,
-        "forcedMoveRatio": 0.02040816326530612,
+        "twoStarMax": 57,
+        "forcedMoveRatio": 0.03773584905660377,
         "deadEndDensity": 0.5416666666666666,
-        "digDepth": 0.20833333333333334,
+        "digDepth": 0.2708333333333333,
         "colors": 12,
         "empties": 3
       }
     },
     {
-      "level": 54,
-      "chapter": 1,
-      "phase": "hard",
-      "family": "tall",
-      "footprint": "4c/5b×8",
-      "targetPercentile": 0.753,
-      "score": 0.562,
-      "metrics": {
-        "optimal": 28,
-        "optimalExact": true,
-        "twoStarMax": 30,
-        "forcedMoveRatio": 0.40625,
-        "deadEndDensity": 0.5833333333333334,
-        "digDepth": 0.24609375,
-        "colors": 4,
-        "empties": 1
-      }
-    },
-    {
-      "level": 55,
+      "level": 109,
       "chapter": 1,
       "phase": "hard",
       "family": "medium",
       "footprint": "8c/10b×4",
-      "targetPercentile": 0.787,
-      "score": 0.578,
+      "targetPercentile": 0.773,
+      "score": 0.572,
       "metrics": {
-        "optimal": 25,
+        "optimal": 26,
         "optimalExact": true,
-        "twoStarMax": 27,
+        "twoStarMax": 28,
         "forcedMoveRatio": 0,
         "deadEndDensity": 0.6666666666666666,
-        "digDepth": 0.3046875,
+        "digDepth": 0.2578125,
         "colors": 8,
         "empties": 2
       }
     },
     {
-      "level": 56,
+      "level": 110,
       "chapter": 1,
       "phase": "hard",
       "family": "tall",
-      "footprint": "4c/5b×10",
-      "targetPercentile": 0.822,
-      "score": 0.595,
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.79,
+      "score": 0.579,
       "metrics": {
-        "optimal": 34,
+        "optimal": 19,
         "optimalExact": true,
-        "twoStarMax": 36,
-        "forcedMoveRatio": 0.3888888888888889,
-        "deadEndDensity": 0.5833333333333334,
-        "digDepth": 0.195,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0.5,
+        "deadEndDensity": 0.875,
+        "digDepth": 0.28472222222222227,
         "colors": 4,
         "empties": 1
       }
     },
     {
-      "level": 57,
+      "level": 111,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.807,
+      "score": 0.588,
+      "metrics": {
+        "optimal": 26,
+        "optimalExact": true,
+        "twoStarMax": 28,
+        "forcedMoveRatio": 0.05714285714285714,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0.2109375,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 112,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.824,
+      "score": 0.595,
+      "metrics": {
+        "optimal": 60,
+        "optimalExact": false,
+        "twoStarMax": 62,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.5833333333333334,
+        "digDepth": 0.2708333333333333,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 113,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.842,
+      "score": 0.603,
+      "metrics": {
+        "optimal": 21,
+        "optimalExact": true,
+        "twoStarMax": 23,
+        "forcedMoveRatio": 0.30434782608695654,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0.2708333333333333,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 114,
       "chapter": 1,
       "phase": "hard",
       "family": "small",
       "footprint": "4c/5b×4",
-      "targetPercentile": 0.858,
+      "targetPercentile": 0.86,
       "score": 0.611,
       "metrics": {
         "optimal": 13,
@@ -1087,12 +2170,31 @@
       }
     },
     {
-      "level": 58,
+      "level": 115,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.878,
+      "score": 0.619,
+      "metrics": {
+        "optimal": 26,
+        "optimalExact": true,
+        "twoStarMax": 28,
+        "forcedMoveRatio": 0.34615384615384615,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0.23046875,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 116,
       "chapter": 1,
       "phase": "hard",
       "family": "medium",
       "footprint": "8c/10b×4",
-      "targetPercentile": 0.894,
+      "targetPercentile": 0.896,
       "score": 0.628,
       "metrics": {
         "optimal": 25,
@@ -1106,31 +2208,31 @@
       }
     },
     {
-      "level": 59,
+      "level": 117,
       "chapter": 1,
       "phase": "hard",
       "family": "tall",
       "footprint": "4c/5b×8",
-      "targetPercentile": 0.932,
-      "score": 0.662,
+      "targetPercentile": 0.914,
+      "score": 0.645,
       "metrics": {
-        "optimal": 27,
+        "optimal": 25,
         "optimalExact": true,
-        "twoStarMax": 29,
-        "forcedMoveRatio": 0.3793103448275862,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0.4642857142857143,
         "deadEndDensity": 0.9583333333333334,
-        "digDepth": 0.1953125,
+        "digDepth": 0.26171875,
         "colors": 4,
         "empties": 1
       }
     },
     {
-      "level": 60,
+      "level": 118,
       "chapter": 1,
       "phase": "hard",
       "family": "medium",
       "footprint": "8c/10b×4",
-      "targetPercentile": 0.97,
+      "targetPercentile": 0.932,
       "score": 0.662,
       "metrics": {
         "optimal": 27,
@@ -1141,6 +2243,44 @@
         "digDepth": 0.296875,
         "colors": 8,
         "empties": 2
+      }
+    },
+    {
+      "level": 119,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 0.951,
+      "score": 0.682,
+      "metrics": {
+        "optimal": 31,
+        "optimalExact": true,
+        "twoStarMax": 33,
+        "forcedMoveRatio": 0.3235294117647059,
+        "deadEndDensity": 0.875,
+        "digDepth": 0.23500000000000004,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 120,
+      "chapter": 1,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 0.97,
+      "score": 0.704,
+      "metrics": {
+        "optimal": 32,
+        "optimalExact": true,
+        "twoStarMax": 34,
+        "forcedMoveRatio": 0.3888888888888889,
+        "deadEndDensity": 0.9583333333333334,
+        "digDepth": 0.25749999999999995,
+        "colors": 4,
+        "empties": 1
       }
     }
   ]

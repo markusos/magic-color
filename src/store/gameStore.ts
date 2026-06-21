@@ -9,13 +9,15 @@
  * regenerated from it on demand. The reached level and best scores live in `campaign`, which the
  * store mirrors into its reactive fields (`furthest`, `best`, `bestStars`, `levelStars`).
  *
- * The board is only declared `deadlocked` when the player has NO legal move at all (a genuine
- * wall). We deliberately do NOT proactively detect "the board is no longer winnable but moves
- * remain" — getting stuck from an earlier mistake shouldn't end the game; the player keeps their
- * moves and can undo or restart at will.
+ * The board is declared `deadlocked` when the player has NO legal move at all (a genuine wall),
+ * and `stuck` when moves remain but every reachable board has already been seen this attempt — the
+ * player is provably going in circles (see `isStuckInLoop`). We deliberately do NOT fire on the
+ * broader "no longer winnable but fresh states remain" condition: a mistake shouldn't end the game
+ * while there's still somewhere new to explore — only once they're looping with nowhere to go.
  */
 import { create } from 'zustand';
 import { canPour, isWon, pour } from '../game/engine';
+import { canonical, isStuckInLoop } from '../game/solver';
 import { DEFAULT_CAPACITY } from '../game/generator';
 import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
 import { mechanicsForLevel, phaseForLevel } from '../game/progression';
@@ -26,7 +28,7 @@ import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
 
-export type GameStatus = 'playing' | 'won' | 'deadlocked';
+export type GameStatus = 'playing' | 'won' | 'deadlocked' | 'stuck';
 
 /** Campaign play (the numbered track) vs. the post-campaign "Random" challenge. */
 export type GameMode = 'campaign' | 'endless';
@@ -41,6 +43,14 @@ interface GameStore {
   history: GameState[];
   /** Moves applied so far this attempt. */
   moves: Move[];
+  /** Undos used this attempt. Counts toward the star metric (`moves.length + undos`) — undoing costs rating. */
+  undos: number;
+  /**
+   * Canonical keys of every board seen this attempt, kept monotonically across undo (so re-treading
+   * a branch still reads as circling) and reset only on a fresh board / restart. Drives the `stuck`
+   * "going in circles" detection. Not React-reactive — read only inside the store.
+   */
+  visited: Set<string>;
   /** The board the level started from, for Restart. */
   initial: GameState;
   /** Concealment overlay for the live board (hidden-colors mechanic; all-false otherwise). */
@@ -136,13 +146,17 @@ function noPlayerMove(state: GameState, hidden: HiddenGrid): boolean {
 }
 
 /**
- * Status we can decide instantly: a win, or a board where the player has no legal move. A board
- * only counts as won once every bottle is sorted AND no concealed cell remains — a tube that
- * still holds a "?" isn't finished, even if its real colors already match.
+ * Status for a board: a win, a hard wall (no legal move), a `stuck` loop (moves remain but every
+ * reachable board has already been seen — `visited`), or normal play. A board only counts as won
+ * once every bottle is sorted AND no concealed cell remains — a tube that still holds a "?" isn't
+ * finished, even if its real colors already match. The loop check runs full-information, which is a
+ * superset of the player's (cap/conceal-limited) moves, so it can only ever *under*-fire — a player
+ * who still has a real move available is never told they're stuck.
  */
-function syncStatus(state: GameState, hidden: HiddenGrid): GameStatus {
-  if (isWon(state) && !anyHidden(hidden)) return 'won';
-  if (!isWon(state) && noPlayerMove(state, hidden)) return 'deadlocked';
+function syncStatus(state: GameState, hidden: HiddenGrid, visited: ReadonlySet<string>): GameStatus {
+  if (isWon(state)) return anyHidden(hidden) ? 'playing' : 'won';
+  if (noPlayerMove(state, hidden)) return 'deadlocked';
+  if (isStuckInLoop(state, visited)) return 'stuck';
   return 'playing';
 }
 
@@ -156,7 +170,8 @@ export const useGameStore = create<GameStore>((set, get) => {
    */
   const commit = (current: GameState, extra: Partial<GameStore>) => {
     const hidden = extra.hidden ?? get().hidden;
-    const status = syncStatus(current, hidden);
+    const visited = extra.visited ?? get().visited;
+    const status = syncStatus(current, hidden, visited);
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -166,8 +181,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       const streak = get().endlessStreak + 1;
       set({ endlessStreak: streak, endlessBestStreak: campaign.recordRandomHard(streak) });
     } else {
-      const { level, moves, optimal, twoStarMax } = get();
-      const record = campaign.complete(level, moves.length, starsFor(moves.length, optimal, twoStarMax));
+      const { level, moves, undos, optimal, twoStarMax } = get();
+      // Undos count toward the rating: the score is the real move count plus undos used.
+      const score = moves.length + undos;
+      const record = campaign.complete(level, score, starsFor(score, optimal, twoStarMax));
       // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
       set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
     }
@@ -180,13 +197,16 @@ export const useGameStore = create<GameStore>((set, get) => {
     campaign.reach(level);
     // Display the board under a fresh random palette; keep `initial` in the generator's
     // canonical colors so each Restart re-rolls the hues (see `restart`).
-    commit(recolor(generated.state), {
+    const board = recolor(generated.state);
+    commit(board, {
       initial: generated.state,
       hidden: generated.hidden,
       initialHidden: generated.hidden,
       hiddenHistory: [],
       history: [],
       moves: [],
+      undos: 0,
+      visited: new Set([canonical(board)]),
       selected: null,
       boardNonce: get().boardNonce + 1,
       loading: false,
@@ -206,13 +226,16 @@ export const useGameStore = create<GameStore>((set, get) => {
   /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
   const applyRandom = (seed: number) => {
     const generated = generateRandomLevel(seed);
-    commit(recolor(generated.state), {
+    const board = recolor(generated.state);
+    commit(board, {
       initial: generated.state,
       hidden: generated.hidden,
       initialHidden: generated.hidden,
       hiddenHistory: [],
       history: [],
       moves: [],
+      undos: 0,
+      visited: new Set([canonical(board)]),
       selected: null,
       boardNonce: get().boardNonce + 1,
       loading: false,
@@ -276,6 +299,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   const first = startBaked ? getLevel(startLevel) : null;
   const firstBoard = first ? recolor(first.state) : { bottles: [], capacity: DEFAULT_CAPACITY };
   const firstHidden = first?.hidden ?? [];
+  const firstVisited = new Set<string>([canonical(firstBoard)]);
   if (!startBaked) setTimeout(() => applyLevel(startLevel), 0);
 
   return {
@@ -286,9 +310,11 @@ export const useGameStore = create<GameStore>((set, get) => {
     hiddenHistory: [],
     history: [],
     moves: [],
+    undos: 0,
+    visited: firstVisited,
     selected: null,
     boardNonce: 0,
-    status: first ? syncStatus(firstBoard, firstHidden) : 'playing',
+    status: first ? syncStatus(firstBoard, firstHidden, firstVisited) : 'playing',
     loading: !startBaked,
     level: startLevel,
     phase: first?.phase ?? phaseForLevel(startLevel),
@@ -357,11 +383,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (canPour(current, selected, i)) {
         const cap = knownTopRun(current.bottles[selected]!, hidden[selected]);
         const { state: next, move } = pour(current, selected, i, cap);
+        const revealed = revealExposed(next, hidden);
+        const visited = new Set(get().visited).add(canonical(next));
         commit(next, {
           history: [...get().history, current],
           hiddenHistory: [...get().hiddenHistory, hidden],
-          hidden: revealExposed(next, hidden),
+          hidden: revealed,
           moves: [...get().moves, move],
+          visited,
           selected: null,
         });
         return;
@@ -380,11 +409,15 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { history, hiddenHistory, moves } = get();
       if (history.length === 0) return;
       const previous = history[history.length - 1]!;
+      // Undo rewinds the board but NOT the rating: `undos` keeps climbing (it counts toward the
+      // star score), and `visited` stays monotonic so re-treading the same branch still reads as
+      // circling. `visited` already holds `previous`, so the rewound board is never falsely `stuck`.
       commit(previous, {
         history: history.slice(0, -1),
         hiddenHistory: hiddenHistory.slice(0, -1),
         hidden: hiddenHistory[hiddenHistory.length - 1]!,
         moves: moves.slice(0, -1),
+        undos: get().undos + 1,
         selected: null,
       });
     },
@@ -394,11 +427,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       // new colors and a new left-to-right arrangement, so a solved level can't be replayed from
       // muscle memory. `initial`/`initialHidden` stay canonical, so each restart re-rolls afresh.
       const shuffled = shuffleBottles(get().initial, get().initialHidden);
-      commit(recolor(shuffled.state), {
+      const board = recolor(shuffled.state);
+      commit(board, {
         history: [],
         hiddenHistory: [],
         hidden: shuffled.hidden,
         moves: [],
+        undos: 0,
+        visited: new Set([canonical(board)]),
         selected: null,
         boardNonce: get().boardNonce + 1,
       });

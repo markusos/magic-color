@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canonical, solve, isSolvable, isUnsolvable, search, bfsOptimal } from './solver';
+import { canonical, solve, isSolvable, isUnsolvable, isStuckInLoop, usefulMoves, search, bfsOptimal } from './solver';
 import { isWon, isDeadlocked, legalMoves, pour } from './engine';
 import type { Bottle, GameState, Move } from './types';
 
@@ -9,6 +9,24 @@ const state = (bottles: string[][], capacity = 4): GameState =>
 /** Replay a solution against a state and return the final board. */
 function replay(start: GameState, moves: Move[]): GameState {
   return moves.reduce((s, m) => pour(s, m.from, m.to).state, start);
+}
+
+/** Every canonical board reachable from `start` under the solver's useful-move pruning. */
+function closure(start: GameState): Set<string> {
+  const seen = new Set<string>([canonical(start)]);
+  const stack = [start];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const { from, to } of usefulMoves(current)) {
+      const { state: next } = pour(current, from, to);
+      const key = canonical(next);
+      if (!seen.has(key)) {
+        seen.add(key);
+        stack.push(next);
+      }
+    }
+  }
+  return seen;
 }
 
 describe('canonical', () => {
@@ -114,6 +132,47 @@ describe('isUnsolvable (proof-based deadlock)', () => {
     const result = search(s, { maxNodes: 1 });
     expect(result.exhausted).toBe(false);
     expect(isUnsolvable(s, { maxNodes: 1 })).toBe(false);
+  });
+});
+
+describe('isStuckInLoop (going-in-circles nudge)', () => {
+  // Unsolvable, but legal/useful moves remain — the classic "loop" board.
+  const loop = state([
+    ['r', 'g', 'r', 'g'],
+    ['g', 'r', 'g', 'r'],
+    ['r', 'g'],
+  ]);
+
+  it('is false while an unvisited board is still reachable (somewhere new to go)', () => {
+    // Only the start has been seen, so the very next move reaches a fresh state.
+    expect(isStuckInLoop(loop, new Set([canonical(loop)]))).toBe(false);
+  });
+
+  it('is true once the whole reachable closure has been visited and none of it wins', () => {
+    expect(isStuckInLoop(loop, closure(loop))).toBe(true);
+  });
+
+  it('is false if any single reachable board is still unvisited', () => {
+    const visited = closure(loop);
+    // Drop one non-start state: there is now somewhere new to reach, so not stuck.
+    const dropped = [...visited].find((k) => k !== canonical(loop))!;
+    visited.delete(dropped);
+    expect(isStuckInLoop(loop, visited)).toBe(false);
+  });
+
+  it('never fires on a winnable board, even with the entire closure visited', () => {
+    // A win is reachable, so the player is never "stuck" no matter how much they've explored.
+    const winnable = state([
+      ['r', 'g', 'r', 'g'],
+      ['g', 'r', 'g', 'r'],
+      [],
+      [],
+    ]);
+    expect(isStuckInLoop(winnable, closure(winnable))).toBe(false);
+  });
+
+  it('is conservative when the search is inconclusive (budget hit → not stuck)', () => {
+    expect(isStuckInLoop(loop, closure(loop), { maxNodes: 1 })).toBe(false);
   });
 });
 

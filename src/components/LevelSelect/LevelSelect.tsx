@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { chapterName } from '../../game/chapters';
+import { CHAPTER_LEN } from '../../game/progression';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
 import { Stars } from '../Stars/Stars';
 import styles from './LevelSelect.module.css';
 
-/** Levels per page — keeps the rendered DOM bounded no matter how far the player has progressed. */
-const PAGE_SIZE = 60;
+/** One page = one chapter. Levels never run past the baked campaign, so this is always a full chapter. */
+const PAGE_SIZE = CHAPTER_LEN;
 
 /**
- * Level selector: every reached level (1..furthest), each showing its best star rating. Tapping
- * a level replays it. Paginated so the grid stays light with hundreds or thousands of levels;
- * opens on the page holding the player's frontier.
+ * Level selector: one chapter per page (its 30 levels with the chapter's short name), each level
+ * showing its best star rating. Tapping a level replays it. Chevrons page between chapters; opens on
+ * the chapter holding the player's frontier. The grid never extends past the last campaign level —
+ * the post-campaign random mode lives elsewhere and doesn't unlock or save levels.
  */
 export function LevelSelect() {
   const furthest = useGameStore((s) => s.furthest);
@@ -20,7 +23,7 @@ export function LevelSelect() {
   const loadLevel = useGameStore((s) => s.loadLevel);
 
   const pageCount = Math.max(1, Math.ceil(furthest / PAGE_SIZE));
-  // 0-indexed; default to the page that contains the frontier.
+  // 0-indexed; page === chapter index. Default to the chapter that contains the frontier.
   const [page, setPage] = useState(() => Math.floor((furthest - 1) / PAGE_SIZE));
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +47,10 @@ export function LevelSelect() {
         <button className={styles.back} onClick={() => navigate('home')} aria-label="Back">
           <ChevronLeft size={26} strokeWidth={2} aria-hidden />
         </button>
-        <h1 className={styles.title}>Levels</h1>
+        <h1 className={styles.title}>{chapterName(page)}</h1>
+        <span className={styles.subtitle}>
+          Chapter {page + 1} · Levels {start}–{page * PAGE_SIZE + PAGE_SIZE}
+        </span>
       </header>
 
       <div className={styles.grid} ref={gridRef}>
@@ -69,18 +75,18 @@ export function LevelSelect() {
             className={styles.pageBtn}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            aria-label="Previous levels"
+            aria-label="Previous chapter"
           >
             <ChevronLeft size={20} strokeWidth={2} aria-hidden />
           </button>
           <span className={styles.range}>
-            {start}–{end}
+            {page + 1} / {pageCount}
           </span>
           <button
             className={styles.pageBtn}
             onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
             disabled={page >= pageCount - 1}
-            aria-label="Next levels"
+            aria-label="Next chapter"
           >
             <ChevronRight size={20} strokeWidth={2} aria-hidden />
           </button>

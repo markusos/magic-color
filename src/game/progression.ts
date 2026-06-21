@@ -65,7 +65,7 @@ const LIVE_SHAPES: readonly Shape[] = SHAPES.filter(
 );
 
 /** Number of levels per chapter. Levels 1..CHAPTER_LEN are chapter 0, etc. */
-export const CHAPTER_LEN = 30;
+export const CHAPTER_LEN = 60;
 
 /**
  * Cumulative mechanic sets, indexed by chapter. Chapter 0 is the base game; chapter 1 adds the
@@ -77,7 +77,10 @@ const MECHANIC_SETS: readonly (readonly Mechanic[])[] = [
 ];
 
 /** Highest chapter we actually have content for. */
-const DEFINED_CHAPTERS = MECHANIC_SETS.length;
+export const DEFINED_CHAPTERS = MECHANIC_SETS.length;
+
+/** Total number of campaign levels the offline bake produces (every defined chapter, full length). */
+export const CAMPAIGN_LENGTH = DEFINED_CHAPTERS * CHAPTER_LEN;
 
 /** The chapter a level belongs to (clamped to the last defined chapter — the plateau). */
 export function chapterForLevel(level: number): number {

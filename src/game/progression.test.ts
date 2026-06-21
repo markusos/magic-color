@@ -28,15 +28,15 @@ describe('seedForLevel', () => {
 describe('chapters', () => {
   it('maps levels to chapters and plateaus past the last defined one', () => {
     expect(chapterForLevel(1)).toBe(0);
-    expect(chapterForLevel(CHAPTER_LEN)).toBe(0); // level 30
-    expect(chapterForLevel(CHAPTER_LEN + 1)).toBe(1); // level 31
-    expect(chapterForLevel(CHAPTER_LEN * 2)).toBe(1); // level 60
+    expect(chapterForLevel(CHAPTER_LEN)).toBe(0); // last level of chapter 0
+    expect(chapterForLevel(CHAPTER_LEN + 1)).toBe(1); // first level of chapter 1
+    expect(chapterForLevel(CHAPTER_LEN * 2)).toBe(1); // last defined level
     expect(chapterForLevel(CHAPTER_LEN * 5)).toBe(1); // deep — clamped (plateau)
   });
 
   it('layers the hidden mechanic from chapter 1 on', () => {
     expect(mechanicsForLevel(1)).not.toContain('hidden');
-    expect(mechanicsForLevel(CHAPTER_LEN + 1)).toContain('hidden'); // level 31
+    expect(mechanicsForLevel(CHAPTER_LEN + 1)).toContain('hidden'); // first level of chapter 1
     expect(mechanicsForLevel(CHAPTER_LEN * 5)).toContain('hidden'); // plateau keeps hidden
   });
 });
