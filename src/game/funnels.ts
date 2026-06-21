@@ -94,14 +94,25 @@ export function funnelEligibleTubes(state: GameState, solution: Move[]): (Color 
  * inflow color. A draw is consumed for EVERY tube so the RNG stream stays aligned regardless of
  * eligibility (mirrors `computeHidden`). The XOR constant differs from `computeHidden`'s so a board's
  * funnel draws are decorrelated from its concealment draws even off the same level seed.
+ *
+ * The funnel chapter must always SHOW its mechanic, so if the per-tube draw happens to lock nothing
+ * we force one eligible tube on (seed-chosen, after the per-tube pass so the aligned draws are
+ * unchanged). A board with no eligible tube at all stays unfunneled — it can't be funneled without
+ * risking unsolvability — so the bake filters those out of the funnel pool (see build-levels.ts).
  */
 export function computeFunnels(state: GameState, seed: number, eligible: (Color | null)[]): FunnelGrid {
   const rng = mulberry32((seed ^ 0x6d2b79f5) >>> 0);
-  return state.bottles.map((_, t) => {
+  const grid = state.bottles.map((_, t) => {
     const lock = rng() < FUNNEL_PROB;
     const tint = eligible[t] ?? null;
     return lock ? tint : null;
   });
+  if (grid.some((t) => t != null)) return grid;
+  const eligibleIdx = eligible.flatMap((c, t) => (c != null ? [t] : []));
+  if (eligibleIdx.length === 0) return grid; // nothing we can safely lock
+  const pick = eligibleIdx[Math.floor(rng() * eligibleIdx.length)]!;
+  grid[pick] = eligible[pick]!;
+  return grid;
 }
 
 /**

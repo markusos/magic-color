@@ -66,6 +66,20 @@ describe('computeFunnels', () => {
     const eligible = [C('ruby'), C('teal'), null];
     expect(computeFunnels(state, 12345, eligible)).toEqual(computeFunnels(state, 12345, eligible));
   });
+
+  it('always locks at least one tube when any tube is eligible', () => {
+    const state = board([[], [], []], 4);
+    const eligible = [C('ruby'), C('teal'), null];
+    for (let seed = 0; seed < 200; seed++) {
+      expect(anyFunnel(computeFunnels(state, seed, eligible))).toBe(true);
+    }
+  });
+
+  it('locks nothing when no tube is eligible', () => {
+    const state = board([[], []], 4);
+    const eligible = [null, null];
+    expect(anyFunnel(computeFunnels(state, 7, eligible))).toBe(false);
+  });
 });
 
 describe('funnelLegalMoves', () => {

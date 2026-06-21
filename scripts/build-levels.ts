@@ -148,6 +148,15 @@ async function main(): Promise<void> {
       if (job.chapter === chapter) pool.push(...jobResults[ji]!);
     });
 
+    // Funnel chapters must show the mechanic on every level: drop candidates with no eligible tube
+    // (those `computeFunnels` can't lock anything on), so a board without a color-locked tube can
+    // never be assigned to a slot.
+    if (mechanics.includes('funnel')) {
+      const funneled = pool.filter((c) => c.funnels.some((t) => t != null));
+      pool.length = 0;
+      pool.push(...funneled);
+    }
+
     console.log(`\nChapter ${chapter} (levels ${firstLevel}–${lastLevel}, mechanics [${mechanics.join(',')}])`);
     const scores = compositeScores(pool.map((c) => c.metrics));
     const targets = levels.map((l) => targetPercentile(l));
