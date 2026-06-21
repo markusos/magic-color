@@ -11,6 +11,7 @@
  * reproducible, only the layout is. `random` is injectable so tests can pin the mapping.
  */
 import { PALETTE } from './generator';
+import { recolorFunnels, type FunnelGrid } from './funnels';
 import { colorDistance } from '../theme/colors';
 import type { Color, GameState } from './types';
 
@@ -100,4 +101,18 @@ export function applyColorMap(state: GameState, map: Record<string, Color>): Gam
 /** A freshly recolored copy of a board: identical layout, new random hues. */
 export function recolor(state: GameState, random: () => number = Math.random): GameState {
   return applyColorMap(state, randomColorMap(distinctIds(state), random));
+}
+
+/**
+ * Recolor a board AND its funnel tints under ONE fresh random bijection, so the funnel rings stay
+ * matched to the recolored liquid. This is what installs a board for display; callers keep the
+ * canonical `initial`/`initialFunnels` untouched so each restart re-rolls afresh.
+ */
+export function recolorBoard(
+  state: GameState,
+  funnels: FunnelGrid,
+  random: () => number = Math.random,
+): { board: GameState; funnels: FunnelGrid } {
+  const map = randomColorMap(distinctIds(state), random);
+  return { board: applyColorMap(state, map), funnels: recolorFunnels(funnels, map) };
 }

@@ -92,14 +92,15 @@ is deliberately left as the single in-code origin (one definition, one cast) —
 the bake hash for no real safety gain, so #4 stays re-bake-free. Non-functional; lint/typecheck/182
 tests green.
 
-### 5. Split the `gameStore` god-closure (SRP)
+### 5. Split the `gameStore` god-closure (SRP) — DONE
 
-`gameStore.ts` (517 lines, [src/store/gameStore.ts](src/store/gameStore.ts)) mixes campaign-persistence
-mirroring, level-generation orchestration, palette recoloring, status computation, **and
-`deferAfterPaint`** — a `requestAnimationFrame`/`setTimeout` DOM-timing scheduler. That paint-deferral
-is a pure UI-platform concern living inside the state store: the clearest SRP violation and the hardest
-piece to unit-test. Extract it (and ideally the recolor helper) into its own module the store depends
-on. Non-functional; no re-bake.
+Extracted the two self-contained concerns out of the store closure:
+`deferAfterPaint` (the rAF/setTimeout paint scheduler — a pure browser-timing concern) → new
+[src/store/deferAfterPaint.ts](src/store/deferAfterPaint.ts); and `recolorBoard` (board + funnel-tint
+recolor under one bijection) → [recolor.ts](src/game/recolor.ts), its natural home (display
+recoloring, not bake-hashed), now with an injectable `random` for testability. `gameStore.ts` is
+517 → 476 lines and no longer mixes UI timing or recoloring with state. Behavior-preserving (the 31
+store tests + full suite stay green); non-functional; no re-bake.
 
 ### 6. DRY the fresh-attempt state assembly (DRY/OCP)
 

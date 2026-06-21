@@ -22,12 +22,13 @@ import { DEFAULT_CAPACITY } from '../game/generator';
 import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
 import { mechanicsForLevel, phaseForLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
-import { funnelAccepts, type FunnelGrid, recolorFunnels } from '../game/funnels';
-import { applyColorMap, distinctIds, randomColorMap } from '../game/recolor';
+import { funnelAccepts, type FunnelGrid } from '../game/funnels';
+import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
+import { deferAfterPaint } from './deferAfterPaint';
 
 export type GameStatus = 'playing' | 'won' | 'deadlocked' | 'stuck';
 
@@ -181,35 +182,6 @@ export const useGameStore = create<GameStore>((set, get) => {
   const campaign = createCampaign();
 
   /**
-   * Run `fn` (a blocking level generation) only AFTER the browser has painted and composited the
-   * current frame (the loading spinner). A bare `setTimeout(0)` does NOT guarantee a paint before the
-   * macrotask runs, so the generation can start before the spinner ever appears — it gets committed
-   * to the DOM and then starved, which is why the spinner was never seen. Two nested rAFs land us just
-   * after the spinner's frame has composited (its rotation runs on the compositor, so it keeps
-   * spinning through the blocking work).
-   *
-   * The `setTimeout` is a safety net, not just a non-DOM fallback: rAF is PAUSED while the tab is
-   * hidden/backgrounded, so without it a player who tabs away mid-load would be stuck on the spinner
-   * forever. Whichever fires first wins (guarded by `ran`); when foregrounded the double-rAF (~32ms)
-   * beats the timeout, so we still get a real paint.
-   */
-  const deferAfterPaint = (fn: () => void) => {
-    if (typeof requestAnimationFrame !== 'function') {
-      setTimeout(fn, 0);
-      return;
-    }
-    let ran = false;
-    const run = () => {
-      if (ran) return;
-      ran = true;
-      clearTimeout(timer);
-      fn();
-    };
-    requestAnimationFrame(() => requestAnimationFrame(run));
-    const timer = setTimeout(run, 150);
-  };
-
-  /**
    * Commit a new board: set the synchronously-known status. On a win, record the best result for
    * the current level via the campaign and mirror it into the reactive fields.
    */
@@ -234,19 +206,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
       set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
     }
-  };
-
-  /**
-   * Recolor a board for display under a fresh random palette, remapping any funnel tints through the
-   * SAME bijection so the funnel rings match the recolored liquid (the canonical `initial`/
-   * `initialFunnels` stay untouched, so each Restart re-rolls afresh).
-   */
-  const recolorBoard = (
-    state: GameState,
-    funnels: FunnelGrid,
-  ): { board: GameState; funnels: FunnelGrid } => {
-    const map = randomColorMap(distinctIds(state));
-    return { board: applyColorMap(state, map), funnels: recolorFunnels(funnels, map) };
   };
 
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
