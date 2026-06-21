@@ -55,14 +55,19 @@ flags. Re-bake reproduced all 180 boards byte-identically (only the `GENERATOR_V
 Live-gen benchmark flat (within noise), as expected — the win is stack-safety + reduced bake-path
 allocation, not live latency (which is A*/dead-end-bound).
 
-### 2. Cheaper canonical state key — speeds every search
+### 2. Cheaper canonical state key — DONE
 
-`stateKey` ([search.ts:23](src/game/search.ts)) does `map → sort → join` allocating several
-intermediate strings per visited node, in the hottest loop of *every* search variant (DFS, `bfsOptimal`,
-A* `optimalCappedMoves`, the tier sweep). On 200k-node searches this string churn dominates runtime.
-Replace with a more compact encoding (e.g. sort pre-encoded bottle byte strings, or an incremental
-numeric hash with collision-safe fallback). Same caveat as #1: identical semantics, bumps the hash,
-re-bake must reproduce.
+`stateKey` ([search.ts](src/game/search.ts)) did `map → (inner map+join) → sort → join` over long
+palette ids on every visited node, the hottest loop of *every* search variant (DFS, `bfsOptimal`, A*
+`optimalCappedMoves`, the tier sweep). Now each color is interned to a single BMP char (codes from
+0x100, above the '|'/'?' markers, so no per-cell separator is needed), so a serialized bottle is a
+short char string — cheaper to build, sort, and join.
+
+Verified: micro-benchmark ~22–25% faster across large/tall/hidden boards; the old↔new key mapping
+proven a bijection over 300+ diverse states (generated boards, random-walk successors, random
+concealment), so the equality partition — all that callers rely on — is unchanged. Re-bake reproduced
+all 180 boards byte-identically (only the version hash changed) and ran faster (≈431s vs ≈638s, though
+not a controlled comparison).
 
 ### 3. Tame the non-null-assertion sprawl (TS safety net)
 

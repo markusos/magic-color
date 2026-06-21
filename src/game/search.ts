@@ -14,17 +14,46 @@ import { canPour, isWon, pour, topColor } from './engine';
 import type { GameState } from './types';
 
 /**
- * An order-independent string key for a (board, concealment) state. Bottles are serialized
- * bottom-first — concealed cells prefixed with "?" — then sorted, so two boards that differ
- * only by bottle ordering collapse to the same key (which dramatically shrinks the search
- * space). Omit `hidden` for full-information boards; the result then matches a plain
- * color-only canonicalization.
+ * Color interning: each distinct color id maps to a single BMP char so a serialized bottle is a
+ * short char string rather than a comma-joined list of long ids ("amethyst", "tangerine"). Codes
+ * start at 0x100 — above the bottle separator '|' (0x7C) and the concealment marker '?' (0x3F), so
+ * those never collide with a color char and no per-cell separator is needed (every cell is one code
+ * char, optionally one '?' prefix). The cache is ephemeral and only ever read back through equality —
+ * the actual code values are irrelevant, so the assignment order across processes doesn't matter; it
+ * grows monotonically, bounded by the (tiny) palette. This interning is the bulk of `stateKey`'s cost
+ * on the search hot loop, so paying a one-time `Map.get` per cell is well worth the shorter strings.
+ */
+const colorCode = new Map<string, string>();
+function codeFor(color: string): string {
+  let code = colorCode.get(color);
+  if (code === undefined) {
+    code = String.fromCharCode(0x100 + colorCode.size);
+    colorCode.set(color, code);
+  }
+  return code;
+}
+
+/**
+ * An order-independent string key for a (board, concealment) state. Each bottle is serialized
+ * bottom-first as interned color chars — concealed cells prefixed with "?" — and the per-bottle
+ * strings are sorted, so two boards that differ only by bottle ordering collapse to the same key
+ * (which dramatically shrinks the search space). The encoding is injective over (multiset of bottles),
+ * so two distinct boards never share a key. Omit `hidden` for full-information boards; the result then
+ * canonicalizes by color alone. (The key is only ever compared for equality, never parsed or ordered
+ * by value — see the callers, which use it solely as a Set/Map key.)
  */
 export function stateKey(state: GameState, hidden?: HiddenGrid): string {
-  return state.bottles
-    .map((b, i) => b.map((c, j) => (hidden?.[i]?.[j] ? '?' : '') + c).join(','))
-    .sort()
-    .join('|');
+  const n = state.bottles.length;
+  const parts = new Array<string>(n);
+  for (let i = 0; i < n; i++) {
+    const bottle = state.bottles[i]!;
+    const col = hidden?.[i];
+    let s = '';
+    for (let j = 0; j < bottle.length; j++) s += (col?.[j] ? '?' : '') + codeFor(bottle[j]!);
+    parts[i] = s;
+  }
+  parts.sort();
+  return parts.join('|');
 }
 
 /** A tiny binary min-heap for the A* frontier. */
