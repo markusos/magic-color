@@ -90,8 +90,29 @@ export interface SolveResult {
 }
 
 /**
- * Depth-first search for *a* solution, reporting whether the search was exhaustive.
- * This is the primitive behind `solve`, `isSolvable`, and `isUnsolvable`.
+ * One node on the explicit DFS stack: a board already "entered" (counted, marked visited, and not a
+ * goal), its useful successor moves, and how many of them we've tried. The shared `path` array mirrors
+ * the stack — one move per non-root frame — so it always holds the moves from the root to the current
+ * node without per-node copying.
+ */
+interface Frame {
+  state: GameState;
+  moves: Array<{ from: number; to: number }>;
+  /** Index of the next move in `moves` to descend into. */
+  next: number;
+}
+
+/**
+ * Depth-first search for *a* solution, reporting whether the search was exhaustive. This is the
+ * primitive behind `solve`, `isSolvable`, and `isUnsolvable`.
+ *
+ * Iterative (explicit stack) rather than recursive: the search runs up to `maxNodes` (200k) deep, so
+ * recursion risked a stack overflow on the most tangled large boards, and the old `[...path, move]`
+ * rebuilt the whole path at every node (O(nodes · depth) allocation). Here a single mutable `path`
+ * shadows the frame stack — pushed when we descend, popped when we backtrack — so it's allocation-free
+ * per node. The traversal is the same pre-order DFS with the same prune order, so it explores the
+ * identical node sequence and returns the identical first solution (this is what lets a re-bake
+ * reproduce earlier chapters byte-identically).
  */
 export function search(state: GameState, options: SolveOptions = {}): SolveResult {
   const maxNodes = options.maxNodes ?? 200_000;
@@ -99,28 +120,47 @@ export function search(state: GameState, options: SolveOptions = {}): SolveResul
   let nodes = 0;
   let hitCap = false;
 
-  const dfs = (current: GameState, path: Move[]): Move[] | null => {
-    if (isWon(current)) return path;
+  const path: Move[] = [];
+  const stack: Frame[] = [];
+
+  /**
+   * "Enter" a node, mirroring the per-call gate of the old recursion: a goal short-circuits the
+   * search, the node budget aborts the branch (flagging `hitCap`), an already-visited board is
+   * pruned, and a fresh board is marked visited and pushed as a new frame. Returns what happened so
+   * the driver can keep `path` in sync.
+   */
+  const enter = (current: GameState): 'won' | 'pruned' | 'pushed' => {
+    if (isWon(current)) return 'won';
     if (++nodes > maxNodes) {
       hitCap = true;
-      return null;
+      return 'pruned';
     }
-
     const key = canonical(current);
-    if (visited.has(key)) return null;
+    if (visited.has(key)) return 'pruned';
     visited.add(key);
-
-    for (const { from, to } of legalMoves(current)) {
-      if (!isUsefulMove(current, from, to, options.funnels)) continue;
-      const { state: next, move } = pour(current, from, to);
-      const result = dfs(next, [...path, move]);
-      if (result) return result;
-    }
-    return null;
+    stack.push({ state: current, moves: usefulMoves(current, options.funnels), next: 0 });
+    return 'pushed';
   };
 
-  const solution = dfs(state, []);
-  return { solution, exhausted: !hitCap };
+  if (enter(state) === 'won') return { solution: [], exhausted: !hitCap };
+
+  while (stack.length > 0) {
+    const frame = stack[stack.length - 1]!;
+    if (frame.next >= frame.moves.length) {
+      stack.pop();
+      if (stack.length > 0) path.pop(); // a non-root frame: drop the move that led into it
+      continue;
+    }
+    const { from, to } = frame.moves[frame.next++]!;
+    const { state: next, move } = pour(frame.state, from, to);
+    path.push(move);
+    const result = enter(next);
+    if (result === 'won') return { solution: path.slice(), exhausted: !hitCap };
+    if (result === 'pruned') path.pop(); // didn't descend — undo the tentative move
+    // 'pushed': the move stays on `path`; the new frame is now the top of the stack.
+  }
+
+  return { solution: null, exhausted: !hitCap };
 }
 
 /**
