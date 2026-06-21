@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
 import { useInstall } from '../../install/useInstall';
 import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
+import { GENERATOR_VERSION } from '../../game/levels.data';
 import { InstallInstructions } from '../InstallBanner/InstallInstructions';
 import styles from './Settings.module.css';
 
@@ -125,6 +126,11 @@ export function Settings() {
           </p>
         </section>
       )}
+
+      <footer className={styles.footer}>
+        <span>Level build {GENERATOR_VERSION}</span>
+        <span>{BAKED_LEVEL_COUNT} levels</span>
+      </footer>
     </div>
   );
 }

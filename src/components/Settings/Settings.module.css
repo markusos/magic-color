@@ -138,3 +138,23 @@
 .adminBtn:disabled {
   opacity: 0.4;
 }
+
+/* Build/version footer — a quiet, always-visible line so the active level build is easy to read off. */
+.footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  font-size: 0.72rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-dim);
+  opacity: 0.6;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.footer > span:not(:first-child)::before {
+  content: '·';
+  margin-right: var(--space-2);
+}
