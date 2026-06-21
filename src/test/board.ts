@@ -3,10 +3,10 @@
  * recolor remap; tests build boards from plain string literals, so these helpers brand them in
  * one place rather than scattering `as Color` casts across every spec.
  */
-import type { Bottle, Color, GameState } from '../game/types';
+import { type Bottle, type Color, type GameState, toColor } from '../game/types';
 
-/** Brand a raw string as a Color. */
-export const color = (id: string): Color => id as Color;
+/** Brand a raw string as a Color (via the shared {@link toColor} factory). */
+export const color = (id: string): Color => toColor(id);
 
 /** Brand a raw string array as a Bottle (bottom-first). */
 export const tube = (cells: string[]): Bottle => cells as Bottle;

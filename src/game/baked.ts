@@ -4,9 +4,9 @@
  * never needs the generator's `solution`/`seed`/`minMoves` (they're used only *during* generation,
  * and collapse into `hidden` + `optimal` here), so we don't ship them. See PLAN.md.
  *
- * Colors are stored as plain strings (the palette ids); the loader casts them back to the branded
- * `Color` type. The board is the generator-canonical layout (the app recolors it for display, like
- * every freshly generated level).
+ * Colors are stored as plain strings (the palette ids); the loader brands them back to the `Color`
+ * type through the shared `toColor`/`toColors` factory (see `types.ts`). The board is the
+ * generator-canonical layout (the app recolors it for display, like every freshly generated level).
  */
 import type { Difficulty, Mechanic } from './types';
 

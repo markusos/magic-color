@@ -33,7 +33,7 @@ import {
   targetPercentile,
 } from './progression';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
-import type { Color, Difficulty, GameState, GeneratedLevel } from './types';
+import { type Difficulty, type GameState, type GeneratedLevel, toColor, toColors } from './types';
 
 /**
  * Largest board (in bottles) for which we attempt the exact optimal at load time. Kept to small,
@@ -343,7 +343,7 @@ export const BAKED_LEVEL_COUNT = BAKED_LEVELS.length;
 /** Convert committed static data into the same `PlayableLevel` shape the generator produces. */
 function bakedToPlayable(baked: BakedLevel): PlayableLevel {
   const state: GameState = {
-    bottles: baked.bottles.map((col) => col.slice() as Color[]),
+    bottles: baked.bottles.map(toColors),
     capacity: baked.capacity,
   };
   // Footprint comes from the baked board itself now (it's no longer a function of the level number).
@@ -363,7 +363,7 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
     phase: baked.phase,
     mechanics: baked.mechanics,
     hidden: baked.hidden,
-    funnels: baked.funnels.map((t) => (t == null ? null : (t as Color))),
+    funnels: baked.funnels.map((t) => (t == null ? null : toColor(t))),
     optimal: baked.optimal,
     twoStarMax: baked.twoStarMax,
   };

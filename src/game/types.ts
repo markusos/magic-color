@@ -13,6 +13,22 @@
 export type Color = string & { readonly __color: unique symbol };
 
 /**
+ * The audited boundary where an *external* raw string (deserialized baked data, a test fixture)
+ * becomes a branded {@link Color}, instead of scattering `as Color` casts across those call sites.
+ * (The in-code origin is the `PALETTE` literal in `generator.ts` — one definition, one cast; every
+ * other color is a remap of those ids, so this and `PALETTE` are the brand's only trust points.) The
+ * brand is purely compile-time, so this is a no-op at runtime.
+ */
+export function toColor(id: string): Color {
+  return id as Color;
+}
+
+/** {@link toColor} over a list — e.g. deserializing a baked bottle of raw palette ids. */
+export function toColors(ids: readonly string[]): Color[] {
+  return ids.map(toColor);
+}
+
+/**
  * A bottle is a stack of color segments, bottom-first.
  * Index 0 is the bottom of the bottle, the last index is the top (where pours happen).
  */

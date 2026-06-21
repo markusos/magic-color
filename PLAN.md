@@ -69,21 +69,28 @@ concealment), so the equality partition — all that callers rely on — is unch
 all 180 boards byte-identically (only the version hash changed) and ran faster (≈431s vs ≈638s, though
 not a controlled comparison).
 
-### 3. Tame the non-null-assertion sprawl (TS safety net)
+### 3. Non-null-assertion sweep — REVIEWED, not worth doing
 
-`noUncheckedIndexedAccess` is on (good), but ~100 `!` assertions across `game/` + `store/` opt straight
-back out of it at nearly every array access (`state.bottles[from]!`, `arr[i]!`, …). Most are provably
-safe inside bounded loops, but each is a latent trap: a refactor that shifts a bound keeps the `!` and
-converts a compile error into a runtime crash. Lower the count where it's cheap — e.g. destructure
-loop iterands, or add a tiny audited accessor for the genuinely-bounded hot paths — and keep `!` only
-where the invariant is local and obvious. Non-functional; no re-bake.
+Surveyed every postfix `!` in `game/` + `store/` (the original "~100" figure was inflated by `!`
+boolean-negations). The genuine assertions are uniformly disciplined and locally justified — each sits
+next to the guard/clamp/modulo that makes it safe: `bottle[bottle.length-1]!` after `length > 0`,
+`state.bottles[from]!` after `canPour`, Fisher–Yates swaps, `PALETTE[c]!` with `c < PALETTE.length`,
+`MECHANIC_SETS[chapter]!`/`LIVE_SHAPES[…%len]!` with clamped/modulo indices, parallel-array reads,
+`history[history.length-1]!` after an early empty-return, `CHAPTER_NAMES[idx]!` after a clamp. Each `!`
+exists only because `noUncheckedIndexedAccess` can't see a local invariant. Removing them mechanically
+means impossible-case fallbacks (which hide future bugs) or guard ceremony — net-negative churn, and
+risky in the hot loops. No typed-accessor win either (call overhead in hot paths; overkill for the ~3
+clamped-table lookups). Conclusion: leave as-is; the existing usage is correct and idiomatic.
 
-### 4. Centralize `Color` brand casts (TS)
+### 4. Centralize `Color` brand casts (TS) — DONE
 
-The brand is undermined at its edges by scattered `as Color` / `as Color[]` casts — palette init
-([generator.ts:32](src/game/generator.ts)), baked deserialization ([levelLoader.ts:348,366](src/game/levelLoader.ts)).
-Each is an unchecked trust point. Funnel a single `toColor`/`asPalette` factory so there's one audited
-place raw strings enter the branded type. Non-functional; no re-bake.
+Added `toColor`/`toColors` to [types.ts](src/game/types.ts) — the audited boundary where an external
+raw string (baked deserialization, test fixtures) becomes a branded `Color`. Routed the scattered
+casts in [levelLoader.ts](src/game/levelLoader.ts) (baked bottles + funnel tints) and the
+[test/board.ts](src/test/board.ts) `color` helper through it. The `PALETTE` literal in `generator.ts`
+is deliberately left as the single in-code origin (one definition, one cast) — touching it would bump
+the bake hash for no real safety gain, so #4 stays re-bake-free. Non-functional; lint/typecheck/182
+tests green.
 
 ### 5. Split the `gameStore` god-closure (SRP)
 
