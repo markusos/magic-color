@@ -110,14 +110,20 @@ caller now spreads only its mode-specific fields (campaign records vs. the endle
 reset) on top. Adding a per-attempt field is now a one-place edit. The `restart` handler (re-shuffles,
 keeps level metadata) and the initial-state object (different shape — full state with un-baked
 fallbacks) are deliberately left out: routing them through the builder would need conditionals for
-little gain. Behavior-preserving (full suite green); non-functional; no re-bake. Non-functional; no re-bake.
+little gain. Behavior-preserving (full suite green); non-functional; no re-bake.
 
-### 7. Collapse the long positional parameter lists in `levelLoader` (clarity)
+### 7. Collapse the long positional parameter lists in `levelLoader` (clarity) — DONE
 
-`optimalFor` / `cutoffsFor` / `toPlayable` ([levelLoader.ts:53,75,110](src/game/levelLoader.ts)) each
-take `(state, solution, hidden, bottles, capacity, funnels)` — six positional args, several derivable
-from the `GeneratedLevel`. Easy to transpose `bottles`/`capacity` at a call site. Pass the generated
-object (plus the overlays) instead. Non-functional; no re-bake.
+`optimalFor` / `cutoffsFor` ([levelLoader.ts](src/game/levelLoader.ts)) took
+`(state, solution, hidden, bottles, capacity, funnels)` — six positional args, four derivable from the
+`GeneratedLevel` (and `bottles`/`capacity` easy to transpose). Now `(generated, hidden, funnels)`,
+destructuring what they need from `generated`; `toPlayable`'s call site drops from a 6-arg spread to
+`cutoffsFor(generated, hidden, funnels)`. Behavior-preserving; non-functional; no re-bake.
 
-**Suggested order:** #1 and #2 first (they compound and cut bake time, do them in one re-bake), then the
-no-re-bake refactors #3–#7 opportunistically.
+---
+
+## Review status
+
+All seven items are resolved: #1, #2, #4, #5, #6, #7 done; #3 reviewed and deliberately skipped. The
+two algorithm items (#1, #2) each required a re-bake (both reproduced earlier chapters
+byte-identically); the rest were non-functional and re-bake-free.

@@ -50,14 +50,8 @@ const EXACT_OPTIMAL_MAX_BOTTLES = 8;
  * (NP-hard, worse under concealment) and would stall the load, so we use a fast, safe upper bound:
  * the stored solution replayed under the capped/reveal rules.
  */
-function optimalFor(
-  state: GeneratedLevel['state'],
-  solution: GeneratedLevel['solution'],
-  hidden: HiddenGrid,
-  bottles: number,
-  capacity: number,
-  funnels: FunnelGrid,
-): number {
+function optimalFor(generated: GeneratedLevel, hidden: HiddenGrid, funnels: FunnelGrid): number {
+  const { state, solution, bottles, capacity } = generated;
   if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
     const exact = optimalCappedMoves(state, hidden, undefined, funnels);
     if (exact !== null) return exact;
@@ -73,14 +67,12 @@ function optimalFor(
  * bake degrades on the few boards its own exact search can't crack.
  */
 function cutoffsFor(
-  state: GeneratedLevel['state'],
-  solution: GeneratedLevel['solution'],
+  generated: GeneratedLevel,
   hidden: HiddenGrid,
-  bottles: number,
-  capacity: number,
   funnels: FunnelGrid,
 ): { optimal: number; twoStarMax: number } {
-  const optimal = optimalFor(state, solution, hidden, bottles, capacity, funnels);
+  const { state, bottles, capacity } = generated;
+  const optimal = optimalFor(generated, hidden, funnels);
   if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
     const tiers = nearOptimalCutoffs(state, hidden, undefined, funnels);
     if (tiers && tiers.optimal === optimal) return tiers;
@@ -114,14 +106,7 @@ function toPlayable(
   hidden: HiddenGrid,
   funnels: FunnelGrid,
 ): PlayableLevel {
-  const { optimal, twoStarMax } = cutoffsFor(
-    generated.state,
-    generated.solution,
-    hidden,
-    generated.bottles,
-    generated.capacity,
-    funnels,
-  );
+  const { optimal, twoStarMax } = cutoffsFor(generated, hidden, funnels);
   return {
     ...generated,
     level,
