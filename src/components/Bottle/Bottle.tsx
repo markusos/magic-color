@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
 import type { Bottle as BottleData, Color } from '../../game/types';
 import { isCapped } from '../../game/hidden';
@@ -13,6 +13,11 @@ interface Props {
   hidden?: boolean[];
   /** Funnel tint (funnel mechanic): the only color this tube accepts, or null for an ordinary tube. */
   funnel?: Color | null;
+  /**
+   * Per-segment ice (ice mechanic), bottom-first: the trigger tint while a cell is still FROZEN, or
+   * null once thawed / never iced. Frozen cells form a contiguous block from the floor, all one tint.
+   */
+  frozen?: (Color | null)[];
   selected: boolean;
   /** Highlight as a valid pour target while another bottle is selected. */
   isTarget?: boolean;
@@ -40,10 +45,67 @@ function coverScaleX(capacity: number): number {
   return Math.cos(tilt) + aspect * Math.sin(tilt) + 0.05;
 }
 
+/**
+ * Geometry for ONE stacked ice chunk, in a 128×72 box. That box is square-scaled: the frost holder is
+ * 128% of the tube wide and each chunk is one segment (0.72 × tube) tall, so 1 unit = 1% of tube width
+ * on both axes — the chunk renders with `preserveAspectRatio="none"` but never actually distorts, and N
+ * chunks stack to exactly match the frozen block. The chunk fills its whole box with translucent facets
+ * (so the liquid reads through); only the DIAGONAL crack edges are stroked, never the horizontal box
+ * edges, so a stack reads as one fractured crystal instead of banded layers. Alternate chunks mirror
+ * horizontally, so the cracks meeting each seam land at different x on either side (a crystal fault, not
+ * a clean line). Facets fan from three off-centre hubs P/Q/R for an irregular low-poly look.
+ */
+const ICE_FACETS: readonly (readonly [string, 'A' | 'B' | 'C'])[] = [
+  ['0,0 44,0 60,30', 'A'],
+  ['44,0 84,0 60,30', 'C'],
+  ['84,0 94,46 60,30', 'C'],
+  ['84,0 128,0 94,46', 'C'],
+  ['128,0 122,34 94,46', 'B'],
+  ['122,34 128,72 94,46', 'B'],
+  ['128,72 84,72 94,46', 'B'],
+  ['84,72 60,30 94,46', 'B'],
+  ['84,72 44,72 60,30', 'C'],
+  ['44,72 34,44 60,30', 'C'],
+  ['44,72 0,72 34,44', 'B'],
+  ['0,72 6,38 34,44', 'A'],
+  ['6,38 0,0 34,44', 'A'],
+  ['0,0 60,30 34,44', 'A'],
+];
+// Only the diagonal facet edges (no horizontal box edges) — these are the visible cracks. Their top-edge
+// endpoints (0/44/84/128) match the crown's base points so each crack flows straight up into a spike,
+// and match the bottom-edge points (also 44/84) so cracks connect across chunk seams. The pinched side
+// points (6,38)/(122,34) keep the stacked column's edges from reading as two dead-straight lines.
+const ICE_CRACKS: readonly string[] = [
+  '0,0 60,30', '44,0 60,30', '84,0 60,30', '84,0 94,46', '128,0 94,46',
+  '122,34 94,46', '128,72 94,46', '84,72 94,46', '84,72 60,30', '44,72 60,30',
+  '44,72 34,44', '0,72 34,44', '6,38 34,44', '0,0 34,44', '60,30 94,46', '60,30 34,44',
+];
+// Frost bubbles trapped in the chunk (x, y, r).
+const ICE_BUBBLES: readonly (readonly [number, number, number])[] = [
+  [30, 40, 2], [88, 30, 1.4], [66, 56, 1.6], [22, 18, 1.1],
+];
+// Irregular crystalline crown, drawn in the topmost chunk's OWN coordinates (rising above its y=0 top
+// edge) so it shares that chunk's single fill layer — no separate translucent overlay stacking on top of
+// the chunk (which would darken the overlap into a broad horizontal band). Jagged peaks of varied
+// height/spacing read as angular ice shards, not even teeth.
+// Three spikes whose valleys (0/44/84/128) sit exactly on the block's top-edge crack endpoints, so each
+// crack line continues straight up into a spike edge — one connected crystal from block to crown.
+const ICE_CROWN: readonly (readonly [string, 'A' | 'B' | 'C'])[] = [
+  ['0,0 22,-26 44,0 64,-34 84,0 106,-26 128,0', 'C'],
+];
+const ICE_CROWN_CRACKS: readonly string[] = [
+  '0,0 22,-26', '22,-26 44,0', '44,0 64,-34', '64,-34 84,0', '84,0 106,-26', '106,-26 128,0',
+];
+
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, hidden, funnel, selected, isTarget, lift, onTap }: Props) {
+export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
-  const capped = isCapped(bottle, capacity, hidden);
+  // The frozen block is a contiguous run of cells from the floor, all sharing one trigger tint.
+  const frozenCount = frozen ? frozen.filter((t) => t != null).length : 0;
+  const iceTint = frozen?.find((t) => t != null) ?? null;
+  const gid = useId(); // unique ids for this tube's ice facet gradients
+  // A tube holding ice isn't finished, so it shows no cap until it fully thaws.
+  const capped = isCapped(bottle, capacity, hidden) && frozenCount === 0;
 
   // Stagger a multi-band pour so the liquid rises bottom-to-top instead of every new band popping
   // in at once. Bands present before this render don't re-animate (AnimatePresence keeps them), so
@@ -134,7 +196,121 @@ export function Bottle({ bottle, capacity, hidden, funnel, selected, isTarget, l
         {funnel != null && (
           <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }} />
         )}
+
         </div>
+
+        {/* Ice: the frozen part of the tube encased in faceted crystalline ice. STACKED one tile per
+            frozen segment (so it never distorts with the count) and SEMI-TRANSPARENT (the liquid colour
+            shows through — never a second hidden state). Rendered in the tube frame, a touch wider than
+            the glass so the ice grips the outside edges; a jagged crystalline surface crowns the top and
+            the badge — centred on the block — names the trigger colour that thaws it. */}
+        <AnimatePresence>
+          {frozenCount > 0 && iceTint != null && (
+            <motion.div
+              key="ice"
+              className={styles.iceFrost}
+              aria-hidden
+              style={{
+                height: `calc(var(--segment-height) * ${frozenCount})`,
+                ['--ice' as string]: cssColor(iceTint),
+              }}
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05, y: 8 }}
+              transition={{ duration: 0.38, ease: 'easeOut' }}
+            >
+              {/* Facet gradients: each face is faintly shaded (lit edge → cool edge) so the chunks
+                  catch light, but kept LOW-opacity so the liquid colour reads clearly through the ice
+                  (like the reference). The thin white crack strokes do most of the structural work. */}
+              <svg className={styles.iceDefs} aria-hidden>
+                <defs>
+                  <linearGradient id={`iceA-${gid}`} x1="0" y1="0" x2="0.4" y2="1">
+                    <stop offset="0" stopColor="#ffffff" stopOpacity="0.55" />
+                    <stop offset="1" stopColor="#cfeefc" stopOpacity="0.24" />
+                  </linearGradient>
+                  <linearGradient id={`iceB-${gid}`} x1="0" y1="0" x2="0.4" y2="1">
+                    <stop offset="0" stopColor="#bfe6f7" stopOpacity="0.32" />
+                    <stop offset="1" stopColor="#8cc4e6" stopOpacity="0.34" />
+                  </linearGradient>
+                  <linearGradient id={`iceC-${gid}`} x1="0" y1="0" x2="0.4" y2="1">
+                    <stop offset="0" stopColor="#eaf8ff" stopOpacity="0.46" />
+                    <stop offset="1" stopColor="#a9d8f1" stopOpacity="0.28" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              {/* One faceted ice chunk per frozen segment, stacked (top-first) to exactly fill the frozen
+                  block. Alternate chunks mirror so the cracks meeting each seam land at different x —
+                  reads as a fractured crystal, not banded layers. */}
+              {Array.from({ length: frozenCount }, (_, k) => {
+                // k=0 is the topmost chunk; mirror by stack position (counted from the floor) for variety.
+                const flip = (frozenCount - 1 - k) % 2 === 1;
+                return (
+                  <div className={styles.iceTile} key={k}>
+                    <svg viewBox="0 0 128 72" preserveAspectRatio="none" aria-hidden>
+                      <g transform={flip ? 'translate(128,0) scale(-1,1)' : undefined}>
+                        {ICE_FACETS.map(([pts, g], fi) => (
+                          <polygon key={fi} points={pts} fill={`url(#ice${g}-${gid})`} />
+                        ))}
+                        <g
+                          stroke="rgba(255,255,255,0.5)"
+                          strokeWidth="0.8"
+                          fill="none"
+                          vectorEffect="non-scaling-stroke"
+                        >
+                          {ICE_CRACKS.map((pts, ci) => (
+                            <polyline key={ci} points={pts} />
+                          ))}
+                        </g>
+                        <g fill="rgba(255,255,255,0.4)">
+                          {ICE_BUBBLES.map(([cx, cy, r], bi) => (
+                            <circle key={bi} cx={cx} cy={cy} r={r} />
+                          ))}
+                        </g>
+                        {/* A delicate snowflake etched on the face. */}
+                        <g
+                          stroke="rgba(255,255,255,0.6)"
+                          strokeWidth="0.7"
+                          fill="none"
+                          vectorEffect="non-scaling-stroke"
+                          transform="translate(94,34)"
+                        >
+                          <path d="M0,-8 V8 M-7,-4 L7,4 M-7,4 L7,-4" />
+                        </g>
+                        {/* The topmost chunk grows an irregular crown above its top edge — drawn in this
+                            same group so it's ONE fill with the chunk (no overlapping translucent layer
+                            that would darken into a broad horizontal band). Pokes above via overflow. */}
+                        {k === 0 && (
+                          <>
+                            {ICE_CROWN.map(([pts, g], ci) => (
+                              <polygon key={`cf${ci}`} points={pts} fill={`url(#ice${g}-${gid})`} />
+                            ))}
+                            <g
+                              stroke="rgba(255,255,255,0.5)"
+                              strokeWidth="0.8"
+                              fill="none"
+                              vectorEffect="non-scaling-stroke"
+                            >
+                              {ICE_CROWN_CRACKS.map((pts, ci) => (
+                                <polyline key={`cc${ci}`} points={pts} />
+                              ))}
+                            </g>
+                          </>
+                        )}
+                      </g>
+                    </svg>
+                  </div>
+                );
+              })}
+
+              {/* A single rainbow refraction streak across the whole block, tying the chunks into one
+                  crystal. */}
+              <div className={styles.iceRainbow} />
+
+              <div className={styles.iceBadge}>❄</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       <AnimatePresence>

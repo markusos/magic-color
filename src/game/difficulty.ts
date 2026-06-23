@@ -11,6 +11,7 @@
  */
 import { isWon, pour } from './engine';
 import { funnelLoad as funnelLoadOf, type FunnelGrid } from './funnels';
+import { iceLoad as iceLoadOf, type IceGrid } from './ice';
 import { cappedSolveMoves, type HiddenGrid } from './hidden';
 import { mulberry32 } from './rng';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
@@ -40,6 +41,8 @@ export interface Metrics {
   digDepth: number;
   /** Funnel load (0 for non-funnel boards): fraction of tubes color-locked, normalized by colors. */
   funnelLoad: number;
+  /** Ice load (0 for non-ice boards): fraction of segments that start frozen. */
+  iceLoad: number;
   /** Distinct colors on the board (for size normalization). */
   colors: number;
   /** Spare tubes (`bottles - colors`) — the slack budget (for the tightness term). */
@@ -141,8 +144,11 @@ export function digDepth(state: GameState, hidden: HiddenGrid): number {
 /**
  * Measure a candidate board's difficulty metrics. `funnels` (chapter 2+) tightens every move-based
  * signal — `optimal`, `twoStarMax`, `forcedMoveRatio`, `deadEndDensity` — to the real funneled board
- * and feeds the `funnelLoad` term. Default `undefined` ⇒ no funnels, so chapters 0–1 measure exactly
- * as before.
+ * and feeds the `funnelLoad` term. `ice` (chapter 3+) likewise tightens the EXACT `optimal`/`twoStarMax`
+ * (frozen cells prune real pours) and feeds the `iceLoad` term; the full-information heuristics
+ * (`forcedMoveRatio`/`deadEndDensity`) measure the un-iced board — a conservative signal, since the
+ * `iceLoad` term carries the ice pressure into the blend. Default `undefined` ⇒ no funnels/ice, so the
+ * earlier chapters measure exactly as before.
  */
 export function measureMetrics(
   state: GameState,
@@ -150,15 +156,22 @@ export function measureMetrics(
   solution: Move[],
   opts: MetricOptions = {},
   funnels?: FunnelGrid,
+  ice?: IceGrid,
 ): Metrics {
   const colors = new Set<string>(state.bottles.flat()).size;
-  const exact = optimalCappedMoves(state, hidden, opts.optimalNodeBudget ?? OPTIMAL_NODE_BUDGET, funnels);
+  const exact = optimalCappedMoves(
+    state,
+    hidden,
+    opts.optimalNodeBudget ?? OPTIMAL_NODE_BUDGET,
+    funnels,
+    ice,
+  );
   const optimal = exact ?? cappedSolveMoves(state, solution, hidden);
   // Adjusted 2★ ceiling. The tier sweep finds its own optimal; only trust its band when that matches
   // the (exact) optimal above — otherwise (proxy fallback, or the sweep overflowed) use optimal + 2.
   // A 0 budget disables it (the live scoring path doesn't use twoStarMax and can't afford the sweep).
   const tierBudget = opts.tierNodeBudget ?? OPTIMAL_NODE_BUDGET;
-  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget, funnels) : null;
+  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget, funnels, ice) : null;
   const twoStarMax = tiers && tiers.optimal === optimal ? tiers.twoStarMax : optimal + 2;
   return {
     optimal,
@@ -175,6 +188,7 @@ export function measureMetrics(
     ),
     digDepth: digDepth(state, hidden),
     funnelLoad: funnels ? funnelLoadOf(funnels, colors) : 0,
+    iceLoad: ice ? iceLoadOf(ice) : 0,
     colors,
     empties: state.bottles.length - colors,
   };
@@ -194,6 +208,7 @@ export const SCORE_WEIGHTS = {
   tightness: 0.6,
   digDepth: 1,
   funnelLoad: 1,
+  iceLoad: 1,
 } as const;
 
 /**
@@ -203,11 +218,11 @@ export const SCORE_WEIGHTS = {
  * (concealment burden), and funnel load (color-lock pressure). The move term is normalized so it
  * contributes *relative* depth rather than raw size.
  *
- * The funnel weight is folded into the blend ONLY when the pool actually contains funnels (any
- * `funnelLoad > 0`). Across a non-funnel pool it would just be an all-zero term that nonetheless
- * shrinks every score (via the denominator) and so could shift selections relative to the absolute
- * `ROTATION_PENALTY` — excluding it keeps chapters 0–1 scoring byte-identical to before this mechanic,
- * so a re-bake reproduces them exactly. (`digDepth` predates this and stays unconditional.)
+ * The funnel and ice weights are each folded into the blend ONLY when the pool actually contains that
+ * mechanic (any `funnelLoad > 0` / `iceLoad > 0`). Across a pool without it the term would be all-zero
+ * yet still shrink every score (via the denominator) and so could shift selections relative to the
+ * absolute `ROTATION_PENALTY` — excluding it keeps the earlier chapters scoring byte-identical, so a
+ * re-bake reproduces them exactly. (`digDepth` predates this and stays unconditional.)
  */
 export function compositeScores(pool: Metrics[]): number[] {
   if (pool.length === 0) return [];
@@ -217,7 +232,8 @@ export function compositeScores(pool: Metrics[]): number[] {
   const normMpc = (x: number) => (hi > lo ? (x - lo) / (hi - lo) : 0.5);
   const w = SCORE_WEIGHTS;
   const wFunnel = pool.some((m) => m.funnelLoad > 0) ? w.funnelLoad : 0;
-  const wSum = w.deadEnd + w.forced + w.movesPerColor + w.tightness + w.digDepth + wFunnel;
+  const wIce = pool.some((m) => m.iceLoad > 0) ? w.iceLoad : 0;
+  const wSum = w.deadEnd + w.forced + w.movesPerColor + w.tightness + w.digDepth + wFunnel + wIce;
 
   return pool.map((m, i) => {
     const tightness = m.colors > 0 ? Math.max(0, Math.min(1, 1 - m.empties / m.colors)) : 0;
@@ -227,7 +243,8 @@ export function compositeScores(pool: Metrics[]): number[] {
       w.movesPerColor * normMpc(movesPerColor[i]!) +
       w.tightness * tightness +
       w.digDepth * m.digDepth +
-      wFunnel * m.funnelLoad;
+      wFunnel * m.funnelLoad +
+      wIce * m.iceLoad;
     return weighted / wSum;
   });
 }

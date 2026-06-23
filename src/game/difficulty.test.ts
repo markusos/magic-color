@@ -14,6 +14,7 @@ function m(over: Partial<Metrics>): Metrics {
     deadEndDensity: 0.2,
     digDepth: 0,
     funnelLoad: 0,
+    iceLoad: 0,
     colors: 4,
     empties: 1,
     ...over,

@@ -17,6 +17,7 @@
 import { DEFAULT_CAPACITY } from './generator';
 import type { FunnelGrid } from './funnels';
 import type { HiddenGrid } from './hidden';
+import type { IceGrid } from './ice';
 import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
 
 /** A board footprint the bake draws candidates from. `family` groups shapes for variety rotation. */
@@ -77,6 +78,7 @@ const MECHANIC_SETS: readonly (readonly Mechanic[])[] = [
   [], // chapter 0 — base game
   ['hidden'], // chapter 1 — + hidden colors
   ['hidden', 'funnel'], // chapter 2 — + color-locked funnels (cumulative)
+  ['hidden', 'funnel', 'ice'], // chapter 3 — + frozen tubes (cumulative)
 ];
 
 /** Highest chapter we actually have content for. */
@@ -198,6 +200,8 @@ export interface PlayableLevel extends GeneratedLevel {
   hidden: HiddenGrid;
   /** Per-tube funnel tints (all-null unless this chapter has the `funnel` mechanic). */
   funnels: FunnelGrid;
+  /** Per-cell ice trigger tints (all-null unless this chapter has the `ice` mechanic). */
+  ice: IceGrid;
   /**
    * Achievable near-optimal move count (the solution replayed under the real capped/reveal
    * rules). Basis for star thresholds — see `stars.ts`. Differs from `minMoves` (bulk solution

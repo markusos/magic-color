@@ -10,6 +10,7 @@
  */
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from './hidden';
 import { funnelAccepts, type FunnelGrid } from './funnels';
+import { anyFrozen, frozenCells, type IceGrid } from './ice';
 import { canPour, isWon, pour, topColor } from './engine';
 import type { GameState } from './types';
 
@@ -128,17 +129,34 @@ interface CappedSuccessor {
  * explore the identical move graph. With `funnels`, a pour into a tube whose tint rejects the poured
  * color is omitted — the same constraint the player plays under (default `undefined` ⇒ no funnels).
  */
-function cappedSuccessors(state: GameState, hidden: HiddenGrid, funnels?: FunnelGrid): CappedSuccessor[] {
+function cappedSuccessors(
+  state: GameState,
+  hidden: HiddenGrid,
+  funnels?: FunnelGrid,
+  ice?: IceGrid,
+): CappedSuccessor[] {
   const out: CappedSuccessor[] = [];
   const n = state.bottles.length;
+  // Frozen cells block a pour exactly like a hidden "?" — they stop the visible run and keep a tube
+  // from being capped — so we fold them into the concealment column the run-cap/cap helpers already
+  // consult. (Derived per node from the static ice grid; only the ice chapter pays the cost.)
+  const frozen = ice ? frozenCells(state, hidden, ice) : null;
+  const blockedOf = (i: number): boolean[] | undefined => {
+    const hd = hidden[i];
+    if (!frozen) return hd;
+    const fr = frozen[i]!;
+    return state.bottles[i]!.map((_, j) => (hd?.[j] ?? false) || fr[j]!);
+  };
   for (let from = 0; from < n; from++) {
     const src = state.bottles[from]!;
+    const blocked = blockedOf(from);
     // A capped (finished) tube can't be poured from — same rule the player plays under.
-    if (src.length === 0 || isCapped(src, state.capacity, hidden[from])) continue;
-    const cap = knownTopRun(src, hidden[from]);
+    if (src.length === 0 || isCapped(src, state.capacity, blocked)) continue;
+    const cap = knownTopRun(src, blocked);
+    if (cap === 0) continue; // top is frozen ⇒ nothing pourable until it thaws
     const srcColor = topColor(src)!;
     const srcUniform = src.every((c) => c === src[0]);
-    const srcConcealed = hidden[from]?.some(Boolean) ?? false;
+    const srcConcealed = blocked?.some(Boolean) ?? false;
     // The representative empty for THIS color: the first empty tube that accepts it. Funnels make
     // empties non-interchangeable (one locked to another color is a different destination), so the
     // representative is color-specific; with no funnels this is just the first empty, as before.
@@ -162,9 +180,9 @@ function cappedSuccessors(state: GameState, hidden: HiddenGrid, funnels?: Funnel
   return out;
 }
 
-/** A fully-solved, fully-revealed board — the search goal. */
-function isSolved(state: GameState, hidden: HiddenGrid): boolean {
-  return isWon(state) && !anyHidden(hidden);
+/** A fully-solved, fully-revealed, fully-thawed board — the search goal. */
+function isSolved(state: GameState, hidden: HiddenGrid, ice?: IceGrid): boolean {
+  return isWon(state) && !anyHidden(hidden) && !(ice && anyFrozen(state, hidden, ice));
 }
 
 /**
@@ -182,6 +200,7 @@ export function optimalCappedMoves(
   hidden0: HiddenGrid,
   maxNodes = 12_000,
   funnels?: FunnelGrid,
+  ice?: IceGrid,
 ): number | null {
   const key0 = stateKey(state0, hidden0);
   const bestG = new Map<string, number>([[key0, 0]]);
@@ -198,10 +217,10 @@ export function optimalCappedMoves(
   while (heap.size > 0) {
     const cur = heap.pop()!;
     if ((bestG.get(cur.key) ?? Infinity) < cur.g) continue; // stale heap entry
-    if (isSolved(cur.state, cur.hidden)) return cur.g;
+    if (isSolved(cur.state, cur.hidden, ice)) return cur.g;
     if (++nodes > maxNodes) return null;
 
-    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden, funnels)) {
+    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden, funnels, ice)) {
       const nextKey = stateKey(next, nextHidden);
       const ng = cur.g + 1;
       if (ng < (bestG.get(nextKey) ?? Infinity)) {
@@ -246,6 +265,7 @@ export function nearOptimalCutoffs(
   hidden0: HiddenGrid,
   maxNodes = 200_000,
   funnels?: FunnelGrid,
+  ice?: IceGrid,
 ): StarCutoffs | null {
   // One layer = every state reachable in exactly `depth` capped pours (deduped within the layer).
   let layer = new Map<string, CappedSuccessor>([[stateKey(state0, hidden0), { state: state0, hidden: hidden0 }]]);
@@ -261,15 +281,15 @@ export function nearOptimalCutoffs(
   };
 
   while (layer.size > 0) {
-    if ([...layer.values()].some(({ state, hidden }) => isSolved(state, hidden))) {
+    if ([...layer.values()].some(({ state, hidden }) => isSolved(state, hidden, ice))) {
       goalDepths.push(depth);
       if (goalDepths.length >= 3) break; // optimal + two sub-optimal tiers is all we need
     }
 
     const next = new Map<string, CappedSuccessor>();
     for (const { state, hidden } of layer.values()) {
-      if (isSolved(state, hidden)) continue; // solved boards have no useful successors
-      for (const succ of cappedSuccessors(state, hidden, funnels)) {
+      if (isSolved(state, hidden, ice)) continue; // solved boards have no useful successors
+      for (const succ of cappedSuccessors(state, hidden, funnels, ice)) {
         if (++nodes > maxNodes) return finalize();
         const key = stateKey(succ.state, succ.hidden);
         if (!next.has(key)) next.set(key, succ);

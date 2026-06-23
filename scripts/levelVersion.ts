@@ -18,6 +18,7 @@ const SOURCES = [
   'src/game/progression.ts',
   'src/game/hidden.ts',
   'src/game/funnels.ts',
+  'src/game/ice.ts',
   'src/game/difficulty.ts',
   'src/game/search.ts',
   'src/game/solver.ts',

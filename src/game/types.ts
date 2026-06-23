@@ -60,9 +60,9 @@ export type Difficulty = 'easy' | 'normal' | 'hard';
 /**
  * Optional board mechanics layered on by later chapters (cumulative). Empty in chapter 0
  * (the base game); `hidden` (covered segments) is chapter 1; `funnel` (color-locked tubes) is
- * chapter 2.
+ * chapter 2; `ice` (frozen tubes that thaw when a trigger color is capped) is chapter 3.
  */
-export type Mechanic = 'hidden' | 'funnel';
+export type Mechanic = 'hidden' | 'funnel' | 'ice';
 
 /**
  * How a level's "par" is measured. `optimal` runs the exact (but heavier) BFS — used for the

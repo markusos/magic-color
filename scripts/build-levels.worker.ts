@@ -13,6 +13,7 @@ import { parentPort } from 'node:worker_threads';
 
 import { measureMetrics, type Metrics } from '../src/game/difficulty';
 import { computeFunnels, type FunnelGrid, funnelEligibleTubes, noFunnels } from '../src/game/funnels';
+import { buildIce, type IceGrid, noIce } from '../src/game/ice';
 import { generateCandidates } from '../src/game/generator';
 import { computeHidden, emptyGrid, exposableCells, type HiddenGrid } from '../src/game/hidden';
 import { seedForLevel, SHAPES } from '../src/game/progression';
@@ -23,6 +24,7 @@ export interface Candidate {
   solution: Move[];
   hidden: HiddenGrid;
   funnels: FunnelGrid;
+  ice: IceGrid;
   metrics: Metrics;
   family: string;
   bottles: number;
@@ -37,6 +39,7 @@ export interface ShapeJob {
   si: number;
   isHidden: boolean;
   isFunnel: boolean;
+  isIce: boolean;
   perShape: number;
   nodeBudget: number;
   deadEndSamples: number;
@@ -44,7 +47,7 @@ export interface ShapeJob {
 
 /** Generate + measure one shape's candidate pool. Pure and deterministic given the job. */
 export function buildShapePool(job: ShapeJob): Candidate[] {
-  const { chapter, si, isHidden, isFunnel, perShape, nodeBudget, deadEndSamples } = job;
+  const { chapter, si, isHidden, isFunnel, isIce, perShape, nodeBudget, deadEndSamples } = job;
   const shape = SHAPES[si]!;
   const seed = seedForLevel(50_000 + chapter * 100 + si);
   const candidates = generateCandidates(
@@ -59,18 +62,22 @@ export function buildShapePool(job: ShapeJob): Candidate[] {
     const funnels = isFunnel
       ? computeFunnels(c.state, seedForLevel(tag), funnelEligibleTubes(c.state, c.solution))
       : noFunnels(c.state);
+    // Ice depends on the hidden grid (thaw keys on capping, which needs a fully-revealed tube).
+    const ice = isIce ? buildIce(c.state, c.solution, hidden, seedForLevel(tag)) : noIce(c.state);
     const metrics = measureMetrics(
       c.state,
       hidden,
       c.solution,
       { optimalNodeBudget: nodeBudget, deadEndSamples, deadEndSeed: tag },
       isFunnel ? funnels : undefined,
+      isIce ? ice : undefined,
     );
     return {
       state: c.state,
       solution: c.solution,
       hidden,
       funnels,
+      ice,
       metrics,
       family: shape.family,
       bottles: shape.bottles,

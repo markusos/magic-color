@@ -130,6 +130,92 @@
   background: linear-gradient(180deg, color-mix(in srgb, var(--funnel) 78%, transparent), transparent);
 }
 
+/* Frozen-tube ice: faceted crystalline ice, STACKED one tile per frozen segment (so it never stretches
+   with the count) and SEMI-TRANSPARENT (the frozen liquid colour reads through it). Rendered in the tube
+   frame, a touch wider than the glass so the ice grips the outside edges. `--ice` carries the (already
+   recolored) trigger tint for the centred badge; `height` is set inline = the frozen block. */
+.iceFrost {
+  position: absolute;
+  left: -14%;
+  width: 128%;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 4;
+  filter: drop-shadow(
+    0 calc(var(--segment-height) * 0.05) calc(var(--segment-height) * 0.06) rgba(20, 50, 90, 0.4)
+  );
+}
+
+/* One translucent ice chunk per frozen segment, stacked by the frost holder's flex column. Fixed
+   one-segment height so it never distorts with the count; the faint facet fills keep the liquid
+   readable. */
+.iceTile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  height: var(--segment-height);
+  z-index: 1;
+}
+
+.iceTile svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The topmost chunk draws its crown above y=0; let those peaks poke out past the tile box. */
+  overflow: visible;
+}
+
+/* Off-layout holder for the facet gradient <defs> (referenced by every chunk + the crown). */
+.iceDefs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* Faint rainbow refraction streak crossing the whole frozen block, tying the stacked chunks into one
+   crystal. A thin diagonal band, screened so it reads as a light caustic rather than paint. */
+.iceRainbow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  background: linear-gradient(
+    58deg,
+    transparent 43%,
+    rgba(255, 210, 140, 0.32) 47%,
+    rgba(150, 230, 170, 0.3) 50%,
+    rgba(150, 200, 245, 0.32) 53%,
+    transparent 57%
+  );
+}
+
+/* Unlock-color chip: a solid swatch of the exact liquid color that melts the ice, with a white ring
+   and snowflake — the unambiguous "complete THIS color" cue. Centred on the frozen block. */
+.iceBadge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--segment-height) * 0.6);
+  height: calc(var(--segment-height) * 0.6);
+  border-radius: 50%;
+  background: var(--ice);
+  border: max(1.5px, calc(var(--bottle-width) * 0.05)) solid #fff;
+  box-shadow: 0 calc(var(--segment-height) * 0.05) calc(var(--segment-height) * 0.08) rgba(20, 40, 80, 0.5),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.55);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: calc(var(--segment-height) * 0.32);
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  z-index: 5;
+}
+
 /* Cork lid on a finished (capped) tube. Perches on the rim; drops in via Framer Motion.
    Horizontal centering is done with motion's own `x: -50%` (not a CSS transform) so it isn't
    clobbered when motion writes the y/scale transform. */

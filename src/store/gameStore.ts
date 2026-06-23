@@ -23,6 +23,7 @@ import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from 
 import { mechanicsForLevel, phaseForLevel, type PlayableLevel } from '../game/progression';
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
 import { funnelAccepts, type FunnelGrid } from '../game/funnels';
+import { anyFrozen, blockedColumns, type IceGrid } from '../game/ice';
 import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
@@ -67,6 +68,15 @@ interface GameStore {
   funnels: FunnelGrid;
   /** The level's starting funnels (generator-canonical ids), for Restart's re-roll. */
   initialFunnels: FunnelGrid;
+  /**
+   * Per-cell ice trigger tints (ice mechanic; all-null otherwise). Static for the whole attempt — the
+   * grid never changes; whether a cell is *currently* frozen is DERIVED from the board (a cell thaws
+   * once its trigger color is capped), so there's no per-pour history to snapshot. Carried in display
+   * (recolored) ids, parallel to `current.bottles`.
+   */
+  ice: IceGrid;
+  /** The level's starting ice (generator-canonical ids), for Restart's re-roll. */
+  initialIce: IceGrid;
   /** Concealment snapshots before each pour, mirroring `history` for undo. */
   hiddenHistory: HiddenGrid[];
   /** Currently selected source bottle, or null. */
@@ -143,11 +153,13 @@ interface GameStore {
  * cap-equivalent, since a completed tube holds all of its color and is never needed to win —
  * see the regression test in solver.test.ts.)
  */
-function noPlayerMove(state: GameState, hidden: HiddenGrid, funnels: FunnelGrid): boolean {
+function noPlayerMove(state: GameState, blocked: HiddenGrid, funnels: FunnelGrid): boolean {
   const n = state.bottles.length;
   for (let from = 0; from < n; from++) {
     const src = state.bottles[from]!;
-    if (src.length === 0 || isCapped(src, state.capacity, hidden[from])) continue;
+    if (src.length === 0 || isCapped(src, state.capacity, blocked[from])) continue;
+    // A tube whose visible top run is frozen has nothing pourable — not an escape move.
+    if (knownTopRun(src, blocked[from]) === 0) continue;
     const color = topColor(src)!;
     for (let to = 0; to < n; to++) {
       // A funnel-blocked pour isn't an escape move — exclude it just as the player can't make it.
@@ -169,10 +181,16 @@ function syncStatus(
   state: GameState,
   hidden: HiddenGrid,
   funnels: FunnelGrid,
+  ice: IceGrid,
   visited: ReadonlySet<string>,
 ): GameStatus {
-  if (isWon(state)) return anyHidden(hidden) ? 'playing' : 'won';
-  if (noPlayerMove(state, hidden, funnels)) return 'deadlocked';
+  // Frozen cells block pours and capping exactly like a hidden "?", so fold them into the columns the
+  // run-cap/cap helpers consult (a no-op when the board carries no ice).
+  const blocked = blockedColumns(state, hidden, ice);
+  // A board is won only once every bottle is sorted AND nothing is concealed AND nothing is frozen —
+  // a tube still holding ice or a "?" isn't finished even if its real colors match.
+  if (isWon(state)) return anyHidden(hidden) || anyFrozen(state, hidden, ice) ? 'playing' : 'won';
+  if (noPlayerMove(state, blocked, funnels)) return 'deadlocked';
   if (isStuckInLoop(state, visited, { funnels })) return 'stuck';
   return 'playing';
 }
@@ -188,8 +206,9 @@ export const useGameStore = create<GameStore>((set, get) => {
   const commit = (current: GameState, extra: Partial<GameStore>) => {
     const hidden = extra.hidden ?? get().hidden;
     const funnels = extra.funnels ?? get().funnels;
+    const ice = extra.ice ?? get().ice;
     const visited = extra.visited ?? get().visited;
-    const status = syncStatus(current, hidden, funnels, visited);
+    const status = syncStatus(current, hidden, funnels, ice, visited);
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -220,12 +239,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     generated: PlayableLevel,
     board: GameState,
     funnels: FunnelGrid,
+    ice: IceGrid,
   ): Partial<GameStore> => ({
     initial: generated.state,
     hidden: generated.hidden,
     initialHidden: generated.hidden,
     funnels,
     initialFunnels: generated.funnels,
+    ice,
+    initialIce: generated.ice,
     hiddenHistory: [],
     history: [],
     moves: [],
@@ -247,9 +269,9 @@ export const useGameStore = create<GameStore>((set, get) => {
     campaign.reach(level);
     // Display the board under a fresh random palette; `freshBoardState` keeps `initial`/`initialFunnels`
     // in the generator's canonical colors so each Restart re-rolls the hues (see `restart`).
-    const { board, funnels } = recolorBoard(generated.state, generated.funnels);
+    const { board, funnels, ice } = recolorBoard(generated.state, generated.funnels, generated.ice);
     commit(board, {
-      ...freshBoardState(generated, board, funnels),
+      ...freshBoardState(generated, board, funnels, ice),
       mode: 'campaign',
       level,
       ...campaign.recordFor(level),
@@ -262,9 +284,9 @@ export const useGameStore = create<GameStore>((set, get) => {
   /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
   const applyRandom = (seed: number) => {
     const generated = generateRandomLevel(seed);
-    const { board, funnels } = recolorBoard(generated.state, generated.funnels);
+    const { board, funnels, ice } = recolorBoard(generated.state, generated.funnels, generated.ice);
     commit(board, {
-      ...freshBoardState(generated, board, funnels),
+      ...freshBoardState(generated, board, funnels, ice),
       mode: 'endless',
       best: null, // random boards have no per-level best/stars
       bestStars: null,
@@ -319,11 +341,13 @@ export const useGameStore = create<GameStore>((set, get) => {
   const startLevel = campaign.furthest;
   const startBaked = hasBakedLevel(startLevel);
   const first = startBaked ? getLevel(startLevel) : null;
-  const firstRecolored = first ? recolorBoard(first.state, first.funnels) : null;
+  const firstRecolored = first ? recolorBoard(first.state, first.funnels, first.ice) : null;
   const firstBoard = firstRecolored?.board ?? { bottles: [], capacity: DEFAULT_CAPACITY };
   const firstHidden = first?.hidden ?? [];
   const firstFunnels: FunnelGrid = firstRecolored?.funnels ?? [];
   const firstInitialFunnels: FunnelGrid = first?.funnels ?? [];
+  const firstIce: IceGrid = firstRecolored?.ice ?? [];
+  const firstInitialIce: IceGrid = first?.ice ?? [];
   const firstVisited = new Set<string>([canonical(firstBoard)]);
   if (!startBaked) deferAfterPaint(() => applyLevel(startLevel));
 
@@ -334,6 +358,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     initialHidden: firstHidden,
     funnels: firstFunnels,
     initialFunnels: firstInitialFunnels,
+    ice: firstIce,
+    initialIce: firstInitialIce,
     hiddenHistory: [],
     history: [],
     moves: [],
@@ -341,7 +367,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     visited: firstVisited,
     selected: null,
     boardNonce: 0,
-    status: first ? syncStatus(firstBoard, firstHidden, firstFunnels, firstVisited) : 'playing',
+    status: first ? syncStatus(firstBoard, firstHidden, firstFunnels, firstIce, firstVisited) : 'playing',
     loading: !startBaked,
     level: startLevel,
     phase: first?.phase ?? phaseForLevel(startLevel),
@@ -385,14 +411,19 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     tapBottle: (i) => {
-      const { current, selected, status, hidden, funnels } = get();
+      const { current, selected, status, hidden, funnels, ice } = get();
       if (status !== 'playing') return;
 
-      // A capped (finished) tube is inert: it can't be selected or poured from/into.
+      // Frozen cells block the run and capping like a hidden "?", so consult the merged columns.
+      const blocked = blockedColumns(current, hidden, ice);
+
+      // A capped (finished) tube is inert. A tube whose visible top run is entirely frozen has nothing
+      // pourable, so it can't be a source either — both are unselectable.
       const selectable = (b: number) =>
         current.bottles[b] !== undefined &&
         current.bottles[b].length > 0 &&
-        !isCapped(current.bottles[b], current.capacity, hidden[b]);
+        !isCapped(current.bottles[b], current.capacity, blocked[b]) &&
+        knownTopRun(current.bottles[b], blocked[b]) > 0;
 
       // No current selection: select a non-empty, un-capped bottle.
       if (selected === null) {
@@ -413,7 +444,8 @@ export const useGameStore = create<GameStore>((set, get) => {
         canPour(current, selected, i) &&
         funnelAccepts(funnels, i, topColor(current.bottles[selected]!)!)
       ) {
-        const cap = knownTopRun(current.bottles[selected]!, hidden[selected]);
+        // Cap the pour at the visible, non-frozen top run — what the player can actually move.
+        const cap = knownTopRun(current.bottles[selected]!, blocked[selected]);
         const { state: next, move } = pour(current, selected, i, cap);
         const revealed = revealExposed(next, hidden);
         const visited = new Set(get().visited).add(canonical(next));
@@ -458,13 +490,19 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Re-roll BOTH the palette and the tube order on every restart: the same puzzle, but with
       // new colors and a new left-to-right arrangement, so a solved level can't be replayed from
       // muscle memory. `initial`/`initialHidden` stay canonical, so each restart re-rolls afresh.
-      const shuffled = shuffleBottles(get().initial, get().initialHidden, get().initialFunnels);
-      const { board, funnels } = recolorBoard(shuffled.state, shuffled.funnels);
+      const shuffled = shuffleBottles(
+        get().initial,
+        get().initialHidden,
+        get().initialFunnels,
+        get().initialIce,
+      );
+      const { board, funnels, ice } = recolorBoard(shuffled.state, shuffled.funnels, shuffled.ice);
       commit(board, {
         history: [],
         hiddenHistory: [],
         hidden: shuffled.hidden,
         funnels,
+        ice,
         moves: [],
         undos: 0,
         visited: new Set([canonical(board)]),

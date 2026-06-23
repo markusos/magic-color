@@ -4,7 +4,7 @@ import { BAKED_LEVEL_COUNT, getLevel } from '../game/levelLoader';
 import { canonical, isSolvable, solve, usefulMoves } from '../game/solver';
 import { pour } from '../game/engine';
 import { optimalCappedMoves } from '../game/search';
-import { board } from '../test/board';
+import { board, color } from '../test/board';
 
 const store = () => useGameStore.getState();
 
@@ -141,6 +141,8 @@ describe('post-campaign "Play Random" mode', () => {
       initialHidden: [[false, false, false], [false], []],
       funnels: [null, null, null],
       initialFunnels: [null, null, null],
+      ice: [[null, null, null], [null], []],
+      initialIce: [[null, null, null], [null], []],
       history: [],
       hiddenHistory: [],
       moves: [],
@@ -173,6 +175,8 @@ describe('post-campaign "Play Random" mode', () => {
       initialHidden: [[false, false, false], [false], []],
       funnels: [null, null, null],
       initialFunnels: [null, null, null],
+      ice: [[null, null, null], [null], []],
+      initialIce: [[null, null, null], [null], []],
       history: [],
       hiddenHistory: [],
       moves: [],
@@ -274,6 +278,63 @@ describe('capped (finished) tubes', () => {
     store().tapBottle(0);
     expect(store().selected).toBeNull();
     expect(store().moves).toHaveLength(0); // no pour into the capped tube
+  });
+});
+
+describe('frozen tubes (chapter 3)', () => {
+  it('a frozen tube cannot be poured from, and thaws when its trigger color is capped', () => {
+    // Tube 0 is full ruby but frozen with trigger teal; teal is not yet capped, so tube 0 is inert.
+    // Capping teal (pouring the two loose teal cells together) thaws tube 0 and completes the board.
+    const ice = [[color('teal'), color('teal')], [null], [null]];
+    useGameStore.setState({
+      current: board([['ruby', 'ruby'], ['teal'], ['teal']], 2),
+      initial: board([['ruby', 'ruby'], ['teal'], ['teal']], 2),
+      hidden: [[false, false], [false], [false]],
+      initialHidden: [[false, false], [false], [false]],
+      funnels: [null, null, null],
+      initialFunnels: [null, null, null],
+      ice,
+      initialIce: ice,
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      selected: null,
+      status: 'playing',
+      optimal: 1,
+    });
+
+    // The frozen tube has nothing pourable → tapping it selects nothing.
+    store().tapBottle(0);
+    expect(store().selected).toBeNull();
+
+    // Cap teal by stacking the two loose teal cells → tube 0 thaws and the board is won.
+    store().tapBottle(2);
+    store().tapBottle(1);
+    expect(store().status).toBe('won');
+  });
+
+  it('does not count a board with frozen ice as won, even if structurally sorted', () => {
+    // Both tubes are structurally complete, but tube 0 holds ice whose trigger (amber) is absent, so
+    // it can never cap — the board is NOT won (and is a genuine deadlock, no legal move thaws it).
+    const ice = [[color('amber'), color('amber')], [null, null]];
+    useGameStore.setState({
+      current: board([['ruby', 'ruby'], ['teal', 'teal']], 2),
+      initial: board([['ruby', 'ruby'], ['teal', 'teal']], 2),
+      hidden: [[false, false], [false, false]],
+      initialHidden: [[false, false], [false, false]],
+      funnels: [null, null],
+      initialFunnels: [null, null],
+      ice,
+      initialIce: ice,
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      selected: null,
+      status: 'playing',
+      optimal: 1,
+    });
+    store().restart(); // recomputes status from the committed board
+    expect(store().status).not.toBe('won');
   });
 });
 

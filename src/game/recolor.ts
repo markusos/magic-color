@@ -12,6 +12,7 @@
  */
 import { PALETTE } from './generator';
 import { recolorFunnels, type FunnelGrid } from './funnels';
+import { recolorIce, type IceGrid } from './ice';
 import { colorDistance } from '../theme/colors';
 import type { Color, GameState } from './types';
 
@@ -104,15 +105,21 @@ export function recolor(state: GameState, random: () => number = Math.random): G
 }
 
 /**
- * Recolor a board AND its funnel tints under ONE fresh random bijection, so the funnel rings stay
- * matched to the recolored liquid. This is what installs a board for display; callers keep the
- * canonical `initial`/`initialFunnels` untouched so each restart re-rolls afresh.
+ * Recolor a board AND its funnel tints AND its ice tints under ONE fresh random bijection, so the
+ * funnel rings and the ice all stay matched to the recolored liquid. This is what installs a board for
+ * display; callers keep the canonical `initial`/`initialFunnels`/`initialIce` untouched so each restart
+ * re-rolls afresh.
  */
 export function recolorBoard(
   state: GameState,
   funnels: FunnelGrid,
+  ice: IceGrid,
   random: () => number = Math.random,
-): { board: GameState; funnels: FunnelGrid } {
+): { board: GameState; funnels: FunnelGrid; ice: IceGrid } {
   const map = randomColorMap(distinctIds(state), random);
-  return { board: applyColorMap(state, map), funnels: recolorFunnels(funnels, map) };
+  return {
+    board: applyColorMap(state, map),
+    funnels: recolorFunnels(funnels, map),
+    ice: recolorIce(ice, map),
+  };
 }

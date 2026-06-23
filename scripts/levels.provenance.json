@@ -1,6 +1,6 @@
 {
-  "version": "33f71c3ab7259844",
-  "count": 180,
+  "version": "7bc4fbb165d8c0ce",
+  "count": 240,
   "perShape": 80,
   "levels": [
     {
@@ -19,6 +19,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -39,6 +40,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -59,6 +61,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -79,6 +82,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -99,6 +103,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -119,6 +124,7 @@
         "deadEndDensity": 0.125,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -139,6 +145,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -159,6 +166,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -179,6 +187,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -199,6 +208,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -219,6 +229,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -239,6 +250,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -259,6 +271,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -279,6 +292,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -299,6 +313,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -319,6 +334,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -339,6 +355,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -359,6 +376,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -379,6 +397,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -399,6 +418,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -419,6 +439,7 @@
         "deadEndDensity": 0.20833333333333334,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -439,6 +460,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -459,6 +481,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -479,6 +502,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -499,6 +523,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -519,6 +544,7 @@
         "deadEndDensity": 0.125,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -539,6 +565,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -559,6 +586,7 @@
         "deadEndDensity": 0.08333333333333333,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -579,6 +607,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -599,6 +628,7 @@
         "deadEndDensity": 0.3333333333333333,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -619,6 +649,7 @@
         "deadEndDensity": 0.125,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -639,6 +670,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -659,6 +691,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -679,6 +712,7 @@
         "deadEndDensity": 0.125,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -699,6 +733,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -719,6 +754,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -739,6 +775,7 @@
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -759,6 +796,7 @@
         "deadEndDensity": 0,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -779,6 +817,7 @@
         "deadEndDensity": 0.125,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -799,6 +838,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -819,6 +859,7 @@
         "deadEndDensity": 0.4166666666666667,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -839,6 +880,7 @@
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -859,6 +901,7 @@
         "deadEndDensity": 0.75,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -879,6 +922,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -899,6 +943,7 @@
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -919,6 +964,7 @@
         "deadEndDensity": 0.20833333333333334,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -939,6 +985,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -959,6 +1006,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -979,6 +1027,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -999,6 +1048,7 @@
         "deadEndDensity": 0.7083333333333334,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1019,6 +1069,7 @@
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -1039,6 +1090,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -1059,6 +1111,7 @@
         "deadEndDensity": 0.5,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1079,6 +1132,7 @@
         "deadEndDensity": 0.4166666666666667,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -1099,6 +1153,7 @@
         "deadEndDensity": 0.875,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1119,6 +1174,7 @@
         "deadEndDensity": 0.625,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1139,6 +1195,7 @@
         "deadEndDensity": 0.75,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -1159,6 +1216,7 @@
         "deadEndDensity": 0.7916666666666666,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1179,6 +1237,7 @@
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -1199,6 +1258,7 @@
         "deadEndDensity": 0.8333333333333334,
         "digDepth": 0,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1219,6 +1279,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.26785714285714285,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -1239,6 +1300,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.21296296296296294,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1259,6 +1321,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.29464285714285715,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -1279,6 +1342,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.3958333333333333,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1299,6 +1363,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2222222222222222,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1319,6 +1384,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.3541666666666667,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1339,6 +1405,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.1851851851851852,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1359,6 +1426,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.29464285714285715,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -1379,6 +1447,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.26704545454545453,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -1399,6 +1468,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2037037037037037,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1419,6 +1489,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2265625,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -1439,6 +1510,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.23148148148148145,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1459,6 +1531,7 @@
         "deadEndDensity": 0.08333333333333333,
         "digDepth": 0.15625,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -1479,6 +1552,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.25,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1499,6 +1573,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0.25,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1519,6 +1594,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.14772727272727273,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -1539,6 +1615,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.21875,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1559,6 +1636,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.36607142857142855,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -1579,6 +1657,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.3148148148148148,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -1599,6 +1678,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2215909090909091,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -1619,6 +1699,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.24107142857142858,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -1639,6 +1720,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.17613636363636365,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -1659,6 +1741,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.15,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1679,6 +1762,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.26136363636363635,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -1699,6 +1783,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.15972222222222224,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1719,6 +1804,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.234375,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -1739,6 +1825,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.2638888888888889,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1759,6 +1846,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.20833333333333334,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -1779,6 +1867,7 @@
         "deadEndDensity": 0.20833333333333334,
         "digDepth": 0.25,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -1799,6 +1888,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.2152777777777778,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1819,6 +1909,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.29545454545454547,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -1839,6 +1930,7 @@
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0.11805555555555557,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1859,6 +1951,7 @@
         "deadEndDensity": 0.3333333333333333,
         "digDepth": 0.125,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -1879,6 +1972,7 @@
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.265625,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1899,6 +1993,7 @@
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0.19444444444444442,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1919,6 +2014,7 @@
         "deadEndDensity": 0.6666666666666666,
         "digDepth": 0.125,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1939,6 +2035,7 @@
         "deadEndDensity": 0.4166666666666667,
         "digDepth": 0.17578125,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1959,6 +2056,7 @@
         "deadEndDensity": 0.6666666666666666,
         "digDepth": 0.265625,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -1979,6 +2077,7 @@
         "deadEndDensity": 0.5,
         "digDepth": 0.21875,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -1999,6 +2098,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0.2552083333333333,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2019,6 +2119,7 @@
         "deadEndDensity": 0.625,
         "digDepth": 0.2222222222222222,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2039,6 +2140,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.2578125,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2059,6 +2161,7 @@
         "deadEndDensity": 0.625,
         "digDepth": 0.21484375,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2079,6 +2182,7 @@
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.234375,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2099,6 +2203,7 @@
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0.265625,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2119,6 +2224,7 @@
         "deadEndDensity": 0.5,
         "digDepth": 0.234375,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2139,6 +2245,7 @@
         "deadEndDensity": 0.625,
         "digDepth": 0.2265625,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2159,6 +2266,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.2708333333333333,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2179,6 +2287,7 @@
         "deadEndDensity": 0.6666666666666666,
         "digDepth": 0.2578125,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2199,6 +2308,7 @@
         "deadEndDensity": 0.875,
         "digDepth": 0.28472222222222227,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2219,6 +2329,7 @@
         "deadEndDensity": 0.7916666666666666,
         "digDepth": 0.2109375,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2239,6 +2350,7 @@
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.2708333333333333,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2259,6 +2371,7 @@
         "deadEndDensity": 0.7916666666666666,
         "digDepth": 0.2708333333333333,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2279,6 +2392,7 @@
         "deadEndDensity": 1,
         "digDepth": 0.125,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2299,6 +2413,7 @@
         "deadEndDensity": 0.7916666666666666,
         "digDepth": 0.23046875,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2319,6 +2434,7 @@
         "deadEndDensity": 0.875,
         "digDepth": 0.25,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2339,6 +2455,7 @@
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.26171875,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2359,6 +2476,7 @@
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.296875,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2379,6 +2497,7 @@
         "deadEndDensity": 0.875,
         "digDepth": 0.23500000000000004,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2399,6 +2518,7 @@
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.25749999999999995,
         "funnelLoad": 0,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2419,6 +2539,7 @@
         "deadEndDensity": 0.08333333333333333,
         "digDepth": 0.21022727272727273,
         "funnelLoad": 0.09090909090909091,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2439,6 +2560,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.15972222222222224,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2459,6 +2581,7 @@
         "deadEndDensity": 0.08333333333333333,
         "digDepth": 0.25892857142857145,
         "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -2479,6 +2602,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2215909090909091,
         "funnelLoad": 0.09090909090909091,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2499,6 +2623,7 @@
         "deadEndDensity": 0.08333333333333333,
         "digDepth": 0.3125,
         "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -2519,6 +2644,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.25,
         "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -2539,6 +2665,7 @@
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0.2109375,
         "funnelLoad": 0.125,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2559,6 +2686,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.20833333333333334,
         "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -2579,6 +2707,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.21875,
         "funnelLoad": 0.125,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2599,6 +2728,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.3541666666666667,
         "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -2619,6 +2749,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.2215909090909091,
         "funnelLoad": 0.09090909090909091,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2639,6 +2770,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2777777777777778,
         "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -2659,6 +2791,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.24431818181818182,
         "funnelLoad": 0.18181818181818182,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2679,6 +2812,7 @@
         "deadEndDensity": 0.20833333333333334,
         "digDepth": 0.1875,
         "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -2699,6 +2833,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.3125,
         "funnelLoad": 0.09090909090909091,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2719,6 +2854,7 @@
         "deadEndDensity": 0.20833333333333334,
         "digDepth": 0.20535714285714285,
         "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -2739,6 +2875,7 @@
         "deadEndDensity": 0.125,
         "digDepth": 0.2109375,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2759,6 +2896,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.26704545454545453,
         "funnelLoad": 0.18181818181818182,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2779,6 +2917,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0.24305555555555555,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2799,6 +2938,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.2604166666666667,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2819,6 +2959,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.28703703703703703,
         "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -2839,6 +2980,7 @@
         "deadEndDensity": 0.4166666666666667,
         "digDepth": 0.21875,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2859,6 +3001,7 @@
         "deadEndDensity": 0.3333333333333333,
         "digDepth": 0.22395833333333334,
         "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2879,6 +3022,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0.1527777777777778,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2899,6 +3043,7 @@
         "deadEndDensity": 0.08333333333333333,
         "digDepth": 0.2159090909090909,
         "funnelLoad": 0.18181818181818182,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -2919,6 +3064,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0.2265625,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2939,6 +3085,7 @@
         "deadEndDensity": 0.25,
         "digDepth": 0.16666666666666666,
         "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -2959,6 +3106,7 @@
         "deadEndDensity": 0.3333333333333333,
         "digDepth": 0.21875,
         "funnelLoad": 0.125,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -2979,6 +3127,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.14583333333333334,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -2999,6 +3148,7 @@
         "deadEndDensity": 0.3333333333333333,
         "digDepth": 0.265625,
         "funnelLoad": 0.125,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -3019,6 +3169,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0.2638888888888889,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3039,6 +3190,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.3125,
         "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -3059,6 +3211,7 @@
         "deadEndDensity": 0.375,
         "digDepth": 0.26171875,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3079,6 +3232,7 @@
         "deadEndDensity": 0.16666666666666666,
         "digDepth": 0.25,
         "funnelLoad": 0.2727272727272727,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -3099,6 +3253,7 @@
         "deadEndDensity": 0.5833333333333334,
         "digDepth": 0.234375,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3119,6 +3274,7 @@
         "deadEndDensity": 0.041666666666666664,
         "digDepth": 0.14814814814814814,
         "funnelLoad": 1,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -3139,6 +3295,7 @@
         "deadEndDensity": 0.7916666666666666,
         "digDepth": 0.265625,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3159,6 +3316,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.23148148148148145,
         "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -3179,6 +3337,7 @@
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0.24479166666666666,
         "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3199,6 +3358,7 @@
         "deadEndDensity": 0,
         "digDepth": 0.3240740740740741,
         "funnelLoad": 1,
+        "iceLoad": 0,
         "colors": 3,
         "empties": 2
       }
@@ -3219,6 +3379,7 @@
         "deadEndDensity": 0.4583333333333333,
         "digDepth": 0.265625,
         "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3239,6 +3400,7 @@
         "deadEndDensity": 0.7083333333333334,
         "digDepth": 0.25,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -3259,6 +3421,7 @@
         "deadEndDensity": 0.7083333333333334,
         "digDepth": 0.3125,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3279,6 +3442,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.22916666666666666,
         "funnelLoad": 0.16666666666666666,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3299,6 +3463,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.1725,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3319,6 +3484,7 @@
         "deadEndDensity": 0.2916666666666667,
         "digDepth": 0.3181818181818182,
         "funnelLoad": 0.45454545454545453,
+        "iceLoad": 0,
         "colors": 11,
         "empties": 4
       }
@@ -3339,6 +3505,7 @@
         "deadEndDensity": 0.625,
         "digDepth": 0.2890625,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -3359,6 +3526,7 @@
         "deadEndDensity": 0.5416666666666666,
         "digDepth": 0.2604166666666667,
         "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3379,6 +3547,7 @@
         "deadEndDensity": 0.875,
         "digDepth": 0.25,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3399,6 +3568,7 @@
         "deadEndDensity": 0.9166666666666666,
         "digDepth": 0.234375,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3419,6 +3589,7 @@
         "deadEndDensity": 0.7916666666666666,
         "digDepth": 0.28515625,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3439,6 +3610,7 @@
         "deadEndDensity": 0.75,
         "digDepth": 0.19270833333333334,
         "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3459,6 +3631,7 @@
         "deadEndDensity": 0.625,
         "digDepth": 0.2825,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3479,6 +3652,7 @@
         "deadEndDensity": 0.9166666666666666,
         "digDepth": 0.18229166666666666,
         "funnelLoad": 0.16666666666666666,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3499,6 +3673,7 @@
         "deadEndDensity": 0.8333333333333334,
         "digDepth": 0.3482142857142857,
         "funnelLoad": 0.7142857142857143,
+        "iceLoad": 0,
         "colors": 7,
         "empties": 3
       }
@@ -3519,6 +3694,7 @@
         "deadEndDensity": 1,
         "digDepth": 0.265625,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3539,6 +3715,7 @@
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.328125,
         "funnelLoad": 0.375,
+        "iceLoad": 0,
         "colors": 8,
         "empties": 2
       }
@@ -3559,6 +3736,7 @@
         "deadEndDensity": 0.875,
         "digDepth": 0.20249999999999999,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
       }
@@ -3579,6 +3757,7 @@
         "deadEndDensity": 0.8333333333333334,
         "digDepth": 0.3125,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 12,
         "empties": 3
       }
@@ -3599,8 +3778,1269 @@
         "deadEndDensity": 0.9583333333333334,
         "digDepth": 0.3075,
         "funnelLoad": 0.25,
+        "iceLoad": 0,
         "colors": 4,
         "empties": 1
+      }
+    },
+    {
+      "level": 181,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.51,
+      "score": 0.354,
+      "metrics": {
+        "optimal": 22,
+        "optimalExact": true,
+        "twoStarMax": 24,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.20833333333333334,
+        "digDepth": 0.22321428571428573,
+        "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0.10714285714285714,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 182,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.511,
+      "score": 0.356,
+      "metrics": {
+        "optimal": 37,
+        "optimalExact": true,
+        "twoStarMax": 39,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.08333333333333333,
+        "digDepth": 0.2897727272727273,
+        "funnelLoad": 0.36363636363636365,
+        "iceLoad": 0.09090909090909091,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 183,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.513,
+      "score": 0.356,
+      "metrics": {
+        "optimal": 14,
+        "optimalExact": true,
+        "twoStarMax": 16,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.16666666666666666,
+        "digDepth": 0.24074074074074073,
+        "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 184,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.516,
+      "score": 0.357,
+      "metrics": {
+        "optimal": 49,
+        "optimalExact": false,
+        "twoStarMax": 51,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.30113636363636365,
+        "funnelLoad": 0.2727272727272727,
+        "iceLoad": 0.1590909090909091,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 185,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.519,
+      "score": 0.357,
+      "metrics": {
+        "optimal": 22,
+        "optimalExact": true,
+        "twoStarMax": 24,
+        "forcedMoveRatio": 0.09375,
+        "deadEndDensity": 0.25,
+        "digDepth": 0.20535714285714285,
+        "funnelLoad": 0.42857142857142855,
+        "iceLoad": 0.03571428571428571,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 186,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.523,
+      "score": 0.359,
+      "metrics": {
+        "optimal": 47,
+        "optimalExact": false,
+        "twoStarMax": 49,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.041666666666666664,
+        "digDepth": 0.1875,
+        "funnelLoad": 0.2727272727272727,
+        "iceLoad": 0.25,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 187,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.528,
+      "score": 0.36,
+      "metrics": {
+        "optimal": 10,
+        "optimalExact": true,
+        "twoStarMax": 12,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.3333333333333333,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.08333333333333333,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 188,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.533,
+      "score": 0.36,
+      "metrics": {
+        "optimal": 14,
+        "optimalExact": true,
+        "twoStarMax": 16,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.20833333333333334,
+        "digDepth": 0.2037037037037037,
+        "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 189,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.539,
+      "score": 0.361,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0.171875,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.03125,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 190,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.545,
+      "score": 0.363,
+      "metrics": {
+        "optimal": 54,
+        "optimalExact": false,
+        "twoStarMax": 56,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.08333333333333333,
+        "digDepth": 0.2897727272727273,
+        "funnelLoad": 0.2727272727272727,
+        "iceLoad": 0.022727272727272728,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 191,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.551,
+      "score": 0.366,
+      "metrics": {
+        "optimal": 21,
+        "optimalExact": true,
+        "twoStarMax": 23,
+        "forcedMoveRatio": 0.5652173913043478,
+        "deadEndDensity": 0.4583333333333333,
+        "digDepth": 0.20833333333333334,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.041666666666666664,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 192,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.558,
+      "score": 0.368,
+      "metrics": {
+        "optimal": 27,
+        "optimalExact": true,
+        "twoStarMax": 29,
+        "forcedMoveRatio": 0.10344827586206896,
+        "deadEndDensity": 0,
+        "digDepth": 0.3671875,
+        "funnelLoad": 0.375,
+        "iceLoad": 0.25,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 193,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.565,
+      "score": 0.369,
+      "metrics": {
+        "optimal": 37,
+        "optimalExact": true,
+        "twoStarMax": 39,
+        "forcedMoveRatio": 0.023255813953488372,
+        "deadEndDensity": 0.4166666666666667,
+        "digDepth": 0.22916666666666666,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.020833333333333332,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 194,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.572,
+      "score": 0.371,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.25,
+        "digDepth": 0.3125,
+        "funnelLoad": 0.2857142857142857,
+        "iceLoad": 0.03571428571428571,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 195,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.58,
+      "score": 0.376,
+      "metrics": {
+        "optimal": 14,
+        "optimalExact": true,
+        "twoStarMax": 16,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.24074074074074073,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.1111111111111111,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 196,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.588,
+      "score": 0.376,
+      "metrics": {
+        "optimal": 48,
+        "optimalExact": false,
+        "twoStarMax": 50,
+        "forcedMoveRatio": 0.020833333333333332,
+        "deadEndDensity": 0.3333333333333333,
+        "digDepth": 0.2552083333333333,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.041666666666666664,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 197,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.597,
+      "score": 0.378,
+      "metrics": {
+        "optimal": 27,
+        "optimalExact": true,
+        "twoStarMax": 29,
+        "forcedMoveRatio": 0.03225806451612903,
+        "deadEndDensity": 0.375,
+        "digDepth": 0.2421875,
+        "funnelLoad": 0.125,
+        "iceLoad": 0.0625,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 198,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "large",
+      "footprint": "11c/15b×4",
+      "targetPercentile": 0.606,
+      "score": 0.379,
+      "metrics": {
+        "optimal": 51,
+        "optimalExact": false,
+        "twoStarMax": 53,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.125,
+        "digDepth": 0.2897727272727273,
+        "funnelLoad": 0.18181818181818182,
+        "iceLoad": 0.20454545454545456,
+        "colors": 11,
+        "empties": 4
+      }
+    },
+    {
+      "level": 199,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.615,
+      "score": 0.381,
+      "metrics": {
+        "optimal": 11,
+        "optimalExact": true,
+        "twoStarMax": 13,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.3541666666666667,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.16666666666666666,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 200,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.624,
+      "score": 0.382,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.375,
+        "funnelLoad": 0.42857142857142855,
+        "iceLoad": 0.2857142857142857,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 201,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.634,
+      "score": 0.385,
+      "metrics": {
+        "optimal": 12,
+        "optimalExact": true,
+        "twoStarMax": 14,
+        "forcedMoveRatio": 0.06666666666666667,
+        "deadEndDensity": 0,
+        "digDepth": 0.1851851851851852,
+        "funnelLoad": 1,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 202,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.644,
+      "score": 0.389,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.3482142857142857,
+        "funnelLoad": 0.5714285714285714,
+        "iceLoad": 0.21428571428571427,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 203,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.654,
+      "score": 0.391,
+      "metrics": {
+        "optimal": 12,
+        "optimalExact": true,
+        "twoStarMax": 14,
+        "forcedMoveRatio": 0.42857142857142855,
+        "deadEndDensity": 0.375,
+        "digDepth": 0.28125,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.4375,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 204,
+      "chapter": 3,
+      "phase": "normal",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.665,
+      "score": 0.395,
+      "metrics": {
+        "optimal": 14,
+        "optimalExact": true,
+        "twoStarMax": 16,
+        "forcedMoveRatio": 0.15,
+        "deadEndDensity": 0,
+        "digDepth": 0.25,
+        "funnelLoad": 1,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 205,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.676,
+      "score": 0.398,
+      "metrics": {
+        "optimal": 24,
+        "optimalExact": true,
+        "twoStarMax": 26,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.5,
+        "digDepth": 0.1796875,
+        "funnelLoad": 0.125,
+        "iceLoad": 0.09375,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 206,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.687,
+      "score": 0.403,
+      "metrics": {
+        "optimal": 9,
+        "optimalExact": true,
+        "twoStarMax": 11,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.3333333333333333,
+        "digDepth": 0.1875,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.08333333333333333,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 207,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.699,
+      "score": 0.407,
+      "metrics": {
+        "optimal": 38,
+        "optimalExact": true,
+        "twoStarMax": 40,
+        "forcedMoveRatio": 0.05555555555555555,
+        "deadEndDensity": 0.625,
+        "digDepth": 0.203125,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.020833333333333332,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 208,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.71,
+      "score": 0.409,
+      "metrics": {
+        "optimal": 10,
+        "optimalExact": true,
+        "twoStarMax": 12,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.2916666666666667,
+        "digDepth": 0.25,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.08333333333333333,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 209,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.722,
+      "score": 0.412,
+      "metrics": {
+        "optimal": 57,
+        "optimalExact": false,
+        "twoStarMax": 59,
+        "forcedMoveRatio": 0.03508771929824561,
+        "deadEndDensity": 0.375,
+        "digDepth": 0.2604166666666667,
+        "funnelLoad": 0.16666666666666666,
+        "iceLoad": 0.0625,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 210,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "small",
+      "footprint": "3c/5b×4",
+      "targetPercentile": 0.735,
+      "score": 0.414,
+      "metrics": {
+        "optimal": 8,
+        "optimalExact": true,
+        "twoStarMax": 10,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0,
+        "digDepth": 0.22916666666666666,
+        "funnelLoad": 1,
+        "iceLoad": 0.3333333333333333,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 211,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.747,
+      "score": 0.417,
+      "metrics": {
+        "optimal": 37,
+        "optimalExact": true,
+        "twoStarMax": 39,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.5416666666666666,
+        "digDepth": 0.234375,
+        "funnelLoad": 0.16666666666666666,
+        "iceLoad": 0.0625,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 212,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.76,
+      "score": 0.422,
+      "metrics": {
+        "optimal": 15,
+        "optimalExact": true,
+        "twoStarMax": 17,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.4583333333333333,
+        "digDepth": 0.2222222222222222,
+        "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 213,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.773,
+      "score": 0.427,
+      "metrics": {
+        "optimal": 40,
+        "optimalExact": true,
+        "twoStarMax": 42,
+        "forcedMoveRatio": 0.01818181818181818,
+        "deadEndDensity": 0.4166666666666667,
+        "digDepth": 0.24479166666666666,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.20833333333333334,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 214,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.786,
+      "score": 0.434,
+      "metrics": {
+        "optimal": 21,
+        "optimalExact": true,
+        "twoStarMax": 23,
+        "forcedMoveRatio": 0.5454545454545454,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0.16666666666666666,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.041666666666666664,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 215,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.8,
+      "score": 0.439,
+      "metrics": {
+        "optimal": 38,
+        "optimalExact": true,
+        "twoStarMax": 40,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.7083333333333334,
+        "digDepth": 0.1875,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.08333333333333333,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 216,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.814,
+      "score": 0.447,
+      "metrics": {
+        "optimal": 13,
+        "optimalExact": true,
+        "twoStarMax": 15,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.375,
+        "digDepth": 0.17592592592592593,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.16666666666666666,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 217,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.828,
+      "score": 0.453,
+      "metrics": {
+        "optimal": 38,
+        "optimalExact": true,
+        "twoStarMax": 40,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0.18229166666666666,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.0625,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 218,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.842,
+      "score": 0.456,
+      "metrics": {
+        "optimal": 13,
+        "optimalExact": true,
+        "twoStarMax": 15,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.4166666666666667,
+        "digDepth": 0.28703703703703703,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 219,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "small",
+      "footprint": "4c/5b×4",
+      "targetPercentile": 0.856,
+      "score": 0.461,
+      "metrics": {
+        "optimal": 11,
+        "optimalExact": true,
+        "twoStarMax": 13,
+        "forcedMoveRatio": 0.4,
+        "deadEndDensity": 0.9166666666666666,
+        "digDepth": 0.28125,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.125,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 220,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 0.871,
+      "score": 0.463,
+      "metrics": {
+        "optimal": 20,
+        "optimalExact": true,
+        "twoStarMax": 22,
+        "forcedMoveRatio": 0.631578947368421,
+        "deadEndDensity": 0.9166666666666666,
+        "digDepth": 0.18055555555555558,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.16666666666666666,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 221,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.886,
+      "score": 0.469,
+      "metrics": {
+        "optimal": 70,
+        "optimalExact": false,
+        "twoStarMax": 72,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.5416666666666666,
+        "digDepth": 0.2760416666666667,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.10416666666666667,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 222,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 0.901,
+      "score": 0.476,
+      "metrics": {
+        "optimal": 26,
+        "optimalExact": true,
+        "twoStarMax": 28,
+        "forcedMoveRatio": 0.6153846153846154,
+        "deadEndDensity": 0.875,
+        "digDepth": 0.25390625,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.03125,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 223,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 0.916,
+      "score": 0.486,
+      "metrics": {
+        "optimal": 40,
+        "optimalExact": true,
+        "twoStarMax": 42,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.6666666666666666,
+        "digDepth": 0.25,
+        "funnelLoad": 0.3333333333333333,
+        "iceLoad": 0.14583333333333334,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 224,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.932,
+      "score": 0.5,
+      "metrics": {
+        "optimal": 28,
+        "optimalExact": true,
+        "twoStarMax": 30,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.7916666666666666,
+        "digDepth": 0.2734375,
+        "funnelLoad": 0.125,
+        "iceLoad": 0.21875,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 225,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "3c/5b×6",
+      "targetPercentile": 0.948,
+      "score": 0.509,
+      "metrics": {
+        "optimal": 15,
+        "optimalExact": true,
+        "twoStarMax": 17,
+        "forcedMoveRatio": 0.1111111111111111,
+        "deadEndDensity": 0.75,
+        "digDepth": 0.18518518518518517,
+        "funnelLoad": 0.6666666666666666,
+        "iceLoad": 0.05555555555555555,
+        "colors": 3,
+        "empties": 2
+      }
+    },
+    {
+      "level": 226,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 0.964,
+      "score": 0.516,
+      "metrics": {
+        "optimal": 27,
+        "optimalExact": true,
+        "twoStarMax": 29,
+        "forcedMoveRatio": 0.1724137931034483,
+        "deadEndDensity": 1,
+        "digDepth": 0.328125,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.03125,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 227,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 0.98,
+      "score": 0.535,
+      "metrics": {
+        "optimal": 35,
+        "optimalExact": true,
+        "twoStarMax": 37,
+        "forcedMoveRatio": 0.4117647058823529,
+        "deadEndDensity": 0.8333333333333334,
+        "digDepth": 0.2325,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.025,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 228,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "7c/10b×4",
+      "targetPercentile": 0.997,
+      "score": 0.546,
+      "metrics": {
+        "optimal": 25,
+        "optimalExact": true,
+        "twoStarMax": 27,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.9166666666666666,
+        "digDepth": 0.21428571428571427,
+        "funnelLoad": 0.5714285714285714,
+        "iceLoad": 0.07142857142857142,
+        "colors": 7,
+        "empties": 3
+      }
+    },
+    {
+      "level": 229,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 1,
+      "score": 0.577,
+      "metrics": {
+        "optimal": 35,
+        "optimalExact": true,
+        "twoStarMax": 37,
+        "forcedMoveRatio": 0.3888888888888889,
+        "deadEndDensity": 1,
+        "digDepth": 0.1825,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.1,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 230,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 1,
+      "score": 0.536,
+      "metrics": {
+        "optimal": 26,
+        "optimalExact": true,
+        "twoStarMax": 28,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 1,
+        "digDepth": 0.28125,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.0625,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 231,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 1,
+      "score": 0.572,
+      "metrics": {
+        "optimal": 34,
+        "optimalExact": true,
+        "twoStarMax": 36,
+        "forcedMoveRatio": 0.35714285714285715,
+        "deadEndDensity": 1,
+        "digDepth": 0.22749999999999998,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.025,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 232,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 1,
+      "score": 0.531,
+      "metrics": {
+        "optimal": 28,
+        "optimalExact": true,
+        "twoStarMax": 30,
+        "forcedMoveRatio": 0.06451612903225806,
+        "deadEndDensity": 0.9166666666666666,
+        "digDepth": 0.3125,
+        "funnelLoad": 0.125,
+        "iceLoad": 0.28125,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 233,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×6",
+      "targetPercentile": 1,
+      "score": 0.561,
+      "metrics": {
+        "optimal": 19,
+        "optimalExact": true,
+        "twoStarMax": 21,
+        "forcedMoveRatio": 0.2777777777777778,
+        "deadEndDensity": 1,
+        "digDepth": 0.2222222222222222,
+        "funnelLoad": 0.5,
+        "iceLoad": 0.125,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 234,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 1,
+      "score": 0.527,
+      "metrics": {
+        "optimal": 41,
+        "optimalExact": true,
+        "twoStarMax": 43,
+        "forcedMoveRatio": 0.01694915254237288,
+        "deadEndDensity": 1,
+        "digDepth": 0.3229166666666667,
+        "funnelLoad": 0.08333333333333333,
+        "iceLoad": 0.125,
+        "colors": 12,
+        "empties": 3
+      }
+    },
+    {
+      "level": 235,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 1,
+      "score": 0.56,
+      "metrics": {
+        "optimal": 31,
+        "optimalExact": true,
+        "twoStarMax": 33,
+        "forcedMoveRatio": 0.38461538461538464,
+        "deadEndDensity": 0.9583333333333334,
+        "digDepth": 0.20500000000000002,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.15,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 236,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 1,
+      "score": 0.525,
+      "metrics": {
+        "optimal": 27,
+        "optimalExact": true,
+        "twoStarMax": 29,
+        "forcedMoveRatio": 0,
+        "deadEndDensity": 0.875,
+        "digDepth": 0.375,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.0625,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 237,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×10",
+      "targetPercentile": 1,
+      "score": 0.557,
+      "metrics": {
+        "optimal": 33,
+        "optimalExact": true,
+        "twoStarMax": 35,
+        "forcedMoveRatio": 0.43243243243243246,
+        "deadEndDensity": 1,
+        "digDepth": 0.23000000000000004,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.025,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 238,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "medium",
+      "footprint": "8c/10b×4",
+      "targetPercentile": 1,
+      "score": 0.522,
+      "metrics": {
+        "optimal": 28,
+        "optimalExact": true,
+        "twoStarMax": 30,
+        "forcedMoveRatio": 0.030303030303030304,
+        "deadEndDensity": 1,
+        "digDepth": 0.3359375,
+        "funnelLoad": 0.125,
+        "iceLoad": 0.03125,
+        "colors": 8,
+        "empties": 2
+      }
+    },
+    {
+      "level": 239,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "tall",
+      "footprint": "4c/5b×8",
+      "targetPercentile": 1,
+      "score": 0.553,
+      "metrics": {
+        "optimal": 23,
+        "optimalExact": true,
+        "twoStarMax": 25,
+        "forcedMoveRatio": 0.19230769230769232,
+        "deadEndDensity": 1,
+        "digDepth": 0.23046875,
+        "funnelLoad": 0.25,
+        "iceLoad": 0.09375,
+        "colors": 4,
+        "empties": 1
+      }
+    },
+    {
+      "level": 240,
+      "chapter": 3,
+      "phase": "hard",
+      "family": "large",
+      "footprint": "12c/15b×4",
+      "targetPercentile": 1,
+      "score": 0.52,
+      "metrics": {
+        "optimal": 56,
+        "optimalExact": false,
+        "twoStarMax": 58,
+        "forcedMoveRatio": 0.018518518518518517,
+        "deadEndDensity": 0.875,
+        "digDepth": 0.2916666666666667,
+        "funnelLoad": 0.16666666666666666,
+        "iceLoad": 0.041666666666666664,
+        "colors": 12,
+        "empties": 3
       }
     }
   ]

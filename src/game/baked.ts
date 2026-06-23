@@ -20,6 +20,8 @@ export interface BakedLevel {
   hidden: boolean[][];
   /** Per-tube funnel tint (palette id), or null for an ordinary tube. All-null outside the funnel chapter. */
   funnels: (string | null)[];
+  /** Per-cell ice trigger tint (palette id) parallel to `bottles`, or null. All-null outside the ice chapter. */
+  ice: (string | null)[][];
   /** Exact (or proxy upper-bound) achievable optimal player pours — the 3★ cutoff. */
   optimal: number;
   /** 2★ ceiling: adjusted near-optimal band upper bound (always `> optimal`). See `stars.ts`. */

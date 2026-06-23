@@ -6,12 +6,13 @@
  * restart, it stops a solved level from being replayed purely from positional muscle memory, the
  * same reason colors are re-rolled.
  *
- * The hidden-colors grid and the funnel grid each have one entry per bottle, so they are permuted in
- * lockstep with the bottles.
+ * The hidden-colors grid, the funnel grid, and the ice grid each have one entry per bottle, so they
+ * are permuted in lockstep with the bottles.
  */
 import type { GameState } from './types';
 import type { FunnelGrid } from './funnels';
 import type { HiddenGrid } from './hidden';
+import type { IceGrid } from './ice';
 
 /** A random permutation of `[0, n)` via Fisher–Yates. */
 function randomPermutation(n: number, random: () => number): number[] {
@@ -24,20 +25,22 @@ function randomPermutation(n: number, random: () => number): number[] {
 }
 
 /**
- * A copy of the board with its bottles — and the parallel concealment and funnel grids — in a fresh
- * random order. `random` is injectable so tests can pin the permutation; gameplay uses `Math.random`,
- * so the order is intentionally NOT reproducible (only the layout is).
+ * A copy of the board with its bottles — and the parallel concealment, funnel, and ice grids — in a
+ * fresh random order. `random` is injectable so tests can pin the permutation; gameplay uses
+ * `Math.random`, so the order is intentionally NOT reproducible (only the layout is).
  */
 export function shuffleBottles(
   state: GameState,
   hidden: HiddenGrid,
   funnels: FunnelGrid,
+  ice: IceGrid,
   random: () => number = Math.random,
-): { state: GameState; hidden: HiddenGrid; funnels: FunnelGrid } {
+): { state: GameState; hidden: HiddenGrid; funnels: FunnelGrid; ice: IceGrid } {
   const perm = randomPermutation(state.bottles.length, random);
   return {
     state: { ...state, bottles: perm.map((i) => state.bottles[i]!) },
     hidden: perm.map((i) => hidden[i]!),
     funnels: perm.map((i) => funnels[i]!),
+    ice: perm.map((i) => ice[i]!),
   };
 }

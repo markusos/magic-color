@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { canPour, topColor } from '../../game/engine';
 import { funnelAccepts } from '../../game/funnels';
+import { frozenCells } from '../../game/ice';
 import { Bottle } from '../Bottle/Bottle';
 import { useBottleMetrics } from './useBottleMetrics';
 import styles from './GameBoard.module.css';
@@ -12,6 +13,7 @@ export function GameBoard() {
   const selected = useGameStore((s) => s.selected);
   const hidden = useGameStore((s) => s.hidden);
   const funnels = useGameStore((s) => s.funnels);
+  const ice = useGameStore((s) => s.ice);
   const tapBottle = useGameStore((s) => s.tapBottle);
   // Bumped on every level load / restart (never on a pour or undo). Folding it into the bottle
   // keys remounts the board on a fresh load, so the liquid fill animation is reserved for pours.
@@ -19,6 +21,10 @@ export function GameBoard() {
 
   const areaRef = useRef<HTMLDivElement>(null);
   const metrics = useBottleMetrics(areaRef, current.bottles.length, current.capacity);
+
+  // Which cells are CURRENTLY frozen (derived from the board: a cell thaws once its trigger color is
+  // capped). Cheap, and all-false when the board carries no ice, so non-ice chapters are unaffected.
+  const frozenGrid = frozenCells(current, hidden, ice);
 
   return (
     <div className={styles.boardArea} ref={areaRef}>
@@ -40,6 +46,7 @@ export function GameBoard() {
             capacity={current.capacity}
             hidden={hidden[i]}
             funnel={funnels[i] ?? null}
+            frozen={bottle.map((_, j) => (frozenGrid[i]?.[j] ? (ice[i]?.[j] ?? null) : null))}
             selected={selected === i}
             isTarget={
               selected !== null &&
