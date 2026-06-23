@@ -40,6 +40,10 @@ export interface ShapeJob {
   isHidden: boolean;
   isFunnel: boolean;
   isIce: boolean;
+  /** Per-mechanic application density for this chapter (see `campaignDensity`). */
+  hiddenProb: number;
+  funnelProb: number;
+  iceProb: number;
   perShape: number;
   nodeBudget: number;
   deadEndSamples: number;
@@ -47,7 +51,8 @@ export interface ShapeJob {
 
 /** Generate + measure one shape's candidate pool. Pure and deterministic given the job. */
 export function buildShapePool(job: ShapeJob): Candidate[] {
-  const { chapter, si, isHidden, isFunnel, isIce, perShape, nodeBudget, deadEndSamples } = job;
+  const { chapter, si, isHidden, isFunnel, isIce, hiddenProb, funnelProb, iceProb, perShape, nodeBudget, deadEndSamples } =
+    job;
   const shape = SHAPES[si]!;
   const seed = seedForLevel(50_000 + chapter * 100 + si);
   const candidates = generateCandidates(
@@ -57,13 +62,13 @@ export function buildShapePool(job: ShapeJob): Candidate[] {
   return candidates.map((c, ci) => {
     const tag = chapter * 1_000_000 + si * 10_000 + ci;
     const hidden = isHidden
-      ? computeHidden(c.state, seedForLevel(tag), exposableCells(c.state, c.solution))
+      ? computeHidden(c.state, seedForLevel(tag), exposableCells(c.state, c.solution), hiddenProb)
       : emptyGrid(c.state);
     const funnels = isFunnel
-      ? computeFunnels(c.state, seedForLevel(tag), funnelEligibleTubes(c.state, c.solution))
+      ? computeFunnels(c.state, seedForLevel(tag), funnelEligibleTubes(c.state, c.solution), funnelProb)
       : noFunnels(c.state);
     // Ice depends on the hidden grid (thaw keys on capping, which needs a fully-revealed tube).
-    const ice = isIce ? buildIce(c.state, c.solution, hidden, seedForLevel(tag)) : noIce(c.state);
+    const ice = isIce ? buildIce(c.state, c.solution, hidden, seedForLevel(tag), iceProb) : noIce(c.state);
     const metrics = measureMetrics(
       c.state,
       hidden,

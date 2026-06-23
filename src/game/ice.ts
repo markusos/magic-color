@@ -207,14 +207,24 @@ export function iceEligibleLines(
  * freezing several tubes at once can be inconsistent (freezing the tube that caps another's trigger
  * delays that cap). {@link buildIce} validates and prunes the candidate into a guaranteed-solvable grid.
  */
-export function computeIce(state: GameState, seed: number, eligible: IceLineOption[][]): IceGrid {
+export function computeIce(
+  state: GameState,
+  seed: number,
+  eligible: IceLineOption[][],
+  prob = ICE_PROB,
+): IceGrid {
   const rng = mulberry32((seed ^ 0x85ebca6b) >>> 0);
   const grid: (Color | null)[][] = state.bottles.map((bottle) => bottle.map(() => null));
   state.bottles.forEach((_, b) => {
-    const roll = rng() < ICE_PROB; // one decision draw per tube, always
-    const options = eligible[b]!;
+    const roll = rng() < prob; // one decision draw per tube, always
+    const options = eligible[b]!; // ascending by `line` (deeper freeze = higher index)
     if (roll && options.length > 0) {
-      const opt = options[Math.floor(rng() * options.length)]!;
+      // Bias toward the highest eligible line (deepest freeze): a tube frozen halfway up reads as more of
+      // a puzzle than a single frozen floor segment. `1 - r²` skews the pick into the upper options while
+      // still allowing the occasional shallow block for variety. (`buildIce` may later step a conflicting
+      // tube's line down for solvability, keeping the freeze as high as still works.)
+      const r = rng();
+      const opt = options[Math.min(options.length - 1, Math.floor((1 - r * r) * options.length))]!;
       const trigger = opt.triggers[Math.floor(rng() * opt.triggers.length)]!;
       for (let i = 0; i <= opt.line; i++) grid[b]![i] = trigger;
     }
@@ -267,18 +277,31 @@ function iceViolation(
 
 /**
  * Build a guaranteed-solvable ice grid for a level: take {@link computeIce}'s seeded candidate, then
- * **prune** — repeatedly unfreeze any tube that makes the grid invalid (see {@link iceViolation}),
- * which is monotone (less ice ⇒ no new violations) and so converges on a valid subset. The ice chapter
- * must always SHOW the mechanic, so if pruning empties the grid we force ONE eligible tube on
- * (seed-chosen); a lone frozen tube is always valid because the tube that caps its trigger stays
- * unfrozen. A board with no eligible tube at all stays ice-free (the bake filters those out).
+ * **prune** — while some tube's ice makes the grid invalid (see {@link iceViolation}), step that tube's
+ * ice line DOWN one cell (remove its topmost frozen segment), only fully clearing the tube once even its
+ * floor segment conflicts. This keeps each freeze as HIGH as still works (vs. discarding the whole tube),
+ * preserving the deeper, more interesting blocks {@link computeIce} aims for. Removing a cell with the
+ * same trigger stays individually eligible (a lower line has a later deadline), and ice only ever shrinks,
+ * so it's monotone and converges. The ice chapter must always SHOW the mechanic, so if pruning empties the
+ * grid we force ONE eligible tube on (seed-chosen); a lone frozen tube is always valid because the tube
+ * that caps its trigger stays unfrozen. A board with no eligible tube at all stays ice-free (filtered out
+ * by the bake).
  */
-export function buildIce(state: GameState, solution: Move[], hidden: HiddenGrid, seed: number): IceGrid {
+export function buildIce(
+  state: GameState,
+  solution: Move[],
+  hidden: HiddenGrid,
+  seed: number,
+  prob = ICE_PROB,
+): IceGrid {
   const eligible = iceEligibleLines(state, solution, hidden);
-  const grid = computeIce(state, seed, eligible).map((col) => [...col]);
+  const grid = computeIce(state, seed, eligible, prob).map((col) => [...col]);
 
   for (let bad = iceViolation(state, solution, hidden, grid); bad != null; ) {
-    grid[bad] = grid[bad]!.map(() => null); // unfreeze the offending tube
+    const col = grid[bad]!;
+    const top = col.reduce((acc, t, i) => (t != null ? i : acc), -1); // topmost frozen cell
+    if (top < 0) break; // defensive: an offender always has frozen ice, so this shouldn't trigger
+    col[top] = null; // lower the ice line one cell, keeping the rest of the block frozen
     bad = iceViolation(state, solution, hidden, grid);
   }
 

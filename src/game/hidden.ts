@@ -105,12 +105,17 @@ export function exposableCells(state: GameState, solution: Move[]): boolean[][] 
  * layers, restricted to cells the solution surfaces (`exposable`) and never the top. A draw is
  * consumed for every cell so the stream stays aligned regardless of eligibility.
  */
-export function computeHidden(state: GameState, seed: number, exposable: boolean[][]): HiddenGrid {
+export function computeHidden(
+  state: GameState,
+  seed: number,
+  exposable: boolean[][],
+  prob = HIDDEN_PROB,
+): HiddenGrid {
   const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);
   const layers = concealableLayers(state.capacity);
   return state.bottles.map((bottle, b) =>
     bottle.map((_, i) => {
-      const conceal = rng() < HIDDEN_PROB;
+      const conceal = rng() < prob;
       const isTop = i === bottle.length - 1;
       const eligible = i < layers && !isTop && (exposable[b]?.[i] ?? false);
       return eligible && conceal;

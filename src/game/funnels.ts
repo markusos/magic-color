@@ -100,10 +100,15 @@ export function funnelEligibleTubes(state: GameState, solution: Move[]): (Color 
  * unchanged). A board with no eligible tube at all stays unfunneled — it can't be funneled without
  * risking unsolvability — so the bake filters those out of the funnel pool (see build-levels.ts).
  */
-export function computeFunnels(state: GameState, seed: number, eligible: (Color | null)[]): FunnelGrid {
+export function computeFunnels(
+  state: GameState,
+  seed: number,
+  eligible: (Color | null)[],
+  prob = FUNNEL_PROB,
+): FunnelGrid {
   const rng = mulberry32((seed ^ 0x6d2b79f5) >>> 0);
   const grid = state.bottles.map((_, t) => {
-    const lock = rng() < FUNNEL_PROB;
+    const lock = rng() < prob;
     const tint = eligible[t] ?? null;
     return lock ? tint : null;
   });

@@ -33,6 +33,7 @@ import type { BakedLevel } from '../src/game/baked';
 import { assignSlots, compositeScores, type Metrics } from '../src/game/difficulty';
 import {
   CAMPAIGN_LENGTH,
+  campaignDensity,
   CHAPTER_LEN,
   mechanicsForLevel,
   phaseForLevel,
@@ -118,6 +119,8 @@ async function main(): Promise<void> {
     const isHidden = chapterMechanics.includes('hidden');
     const isFunnel = chapterMechanics.includes('funnel');
     const isIce = chapterMechanics.includes('ice');
+    // Spotlight this chapter's signature mechanic (dialed up) over inherited ones (seasoned in light).
+    const density = campaignDensity(chapter);
     SHAPES.forEach((_, si) => {
       jobs.push({
         chapter,
@@ -125,6 +128,9 @@ async function main(): Promise<void> {
         isHidden,
         isFunnel,
         isIce,
+        hiddenProb: density.hidden,
+        funnelProb: density.funnel,
+        iceProb: density.ice,
         perShape: PER_SHAPE,
         nodeBudget: NODE_BUDGET,
         deadEndSamples: DEAD_END_SAMPLES,

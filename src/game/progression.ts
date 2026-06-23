@@ -98,6 +98,50 @@ export function mechanicsForLevel(level: number): readonly Mechanic[] {
   return MECHANIC_SETS[chapterForLevel(level)]!;
 }
 
+/** Per-mechanic application density: the fraction of ELIGIBLE tubes/cells that actually get it. */
+export type MechanicDensity = Record<Mechanic, number>;
+
+/**
+ * How densely each mechanic is applied, by ROLE. A chapter dials UP the mechanic it INTRODUCES (its
+ * "signature" — the last in its cumulative set) and seasons INHERITED mechanics in lightly, so each
+ * chapter reads as "the ice chapter" / "the funnel chapter" rather than a uniform stack of everything.
+ * The endless "Play Random" mode uses the BALANCED profile (no signature) so it samples all mechanics
+ * evenly. Values feed the compute* functions as their `prob`. Eligibility differs per mechanic, so equal
+ * probs are NOT equal coverage (ice eligibility is narrowest) — these are tuned against how the chapters
+ * actually read. Tunable knobs; changing any of them forces a re-bake.
+ */
+const SIGNATURE_DENSITY: MechanicDensity = { hidden: 0.7, funnel: 0.62, ice: 0.8 };
+// `hidden` is applied per-CELL across every tube, so the same probability lands on far more tubes than
+// the per-TUBE funnel/ice mechanics. Its inherited rate is therefore set much lower, so seasoning-level
+// hidden reads as roughly as light on the board as seasoning-level funnels.
+const INHERITED_DENSITY: MechanicDensity = { hidden: 0.15, funnel: 0.3, ice: 0.3 };
+const BALANCED_DENSITY: MechanicDensity = { hidden: 0.3, funnel: 0.5, ice: 0.5 };
+
+/** The mechanic a chapter INTRODUCES (the last in its cumulative set), or null for the base game. */
+export function signatureMechanic(chapter: number): Mechanic | null {
+  const set = MECHANIC_SETS[Math.min(Math.max(0, chapter), DEFINED_CHAPTERS - 1)] ?? [];
+  return set.length === 0 ? null : set[set.length - 1]!;
+}
+
+/**
+ * Per-mechanic density for a CAMPAIGN level's chapter: the signature rate for the mechanic the chapter
+ * introduces, the lighter inherited rate for mechanics carried from earlier chapters — so the newest
+ * mechanic dominates the board while older ones remain as seasoning.
+ */
+export function campaignDensity(chapter: number): MechanicDensity {
+  const sig = signatureMechanic(chapter);
+  return {
+    hidden: sig === 'hidden' ? SIGNATURE_DENSITY.hidden : INHERITED_DENSITY.hidden,
+    funnel: sig === 'funnel' ? SIGNATURE_DENSITY.funnel : INHERITED_DENSITY.funnel,
+    ice: sig === 'ice' ? SIGNATURE_DENSITY.ice : INHERITED_DENSITY.ice,
+  };
+}
+
+/** Balanced density for the endless "Play Random" mode — every mechanic at an even moderate rate. */
+export function balancedDensity(): MechanicDensity {
+  return { ...BALANCED_DENSITY };
+}
+
 /** Chapter index and within-chapter position (0-based), with plateau clamping past defined chapters. */
 function chapterPos(level: number): { chapter: number; pos: number } {
   const idx = Math.max(0, Math.floor(level) - 1);
@@ -188,6 +232,8 @@ export interface LevelPlan {
   minPar: number;
   parMode: ParMode;
   mechanics: readonly Mechanic[];
+  /** Per-mechanic application density (see `campaignDensity`/`balancedDensity`). */
+  density: MechanicDensity;
 }
 
 /** A generated, playable level annotated with its campaign metadata. */
@@ -234,5 +280,6 @@ export function planForLevel(level: number): LevelPlan {
     // Exact par only for small, standard-height boards; exact BFS explodes on bigger or taller ones.
     parMode: shape.bottles <= 6 && shape.capacity <= DEFAULT_CAPACITY ? 'optimal' : 'proxy',
     mechanics: MECHANIC_SETS[chapter]!,
+    density: campaignDensity(chapter),
   };
 }

@@ -23,6 +23,7 @@ import { DEFAULT_CAPACITY, generateCandidates, generateLevel } from './generator
 import { cappedSolveMoves, computeHidden, emptyGrid, exposableCells, type HiddenGrid } from './hidden';
 import { BAKED_LEVELS } from './levels.data';
 import {
+  balancedDensity,
   CHAPTER_LEN,
   chapterForLevel,
   type LevelPlan,
@@ -90,7 +91,7 @@ function cutoffsFor(
 /** The initial concealment overlay for a generated board (all-false outside the hidden chapter). */
 function hiddenFor(plan: LevelPlan, generated: GeneratedLevel): HiddenGrid {
   return plan.mechanics.includes('hidden')
-    ? computeHidden(generated.state, plan.seed, exposableCells(generated.state, generated.solution))
+    ? computeHidden(generated.state, plan.seed, exposableCells(generated.state, generated.solution), plan.density.hidden)
     : emptyGrid(generated.state);
 }
 
@@ -101,7 +102,12 @@ function hiddenFor(plan: LevelPlan, generated: GeneratedLevel): HiddenGrid {
  */
 function funnelsFor(plan: LevelPlan, generated: GeneratedLevel): FunnelGrid {
   return plan.mechanics.includes('funnel')
-    ? computeFunnels(generated.state, plan.seed, funnelEligibleTubes(generated.state, generated.solution))
+    ? computeFunnels(
+        generated.state,
+        plan.seed,
+        funnelEligibleTubes(generated.state, generated.solution),
+        plan.density.funnel,
+      )
     : noFunnels(generated.state);
 }
 
@@ -113,7 +119,7 @@ function funnelsFor(plan: LevelPlan, generated: GeneratedLevel): FunnelGrid {
  */
 function iceFor(plan: LevelPlan, generated: GeneratedLevel, hidden: HiddenGrid): IceGrid {
   return plan.mechanics.includes('ice')
-    ? buildIce(generated.state, generated.solution, hidden, plan.seed)
+    ? buildIce(generated.state, generated.solution, hidden, plan.seed, plan.density.ice)
     : noIce(generated.state);
 }
 
@@ -321,13 +327,15 @@ export function generateRandomLevel(seed: number): PlayableLevel {
   const shape = RANDOM_SHAPES[Math.abs(seed) % RANDOM_SHAPES.length]!;
   // Spread difficulty across the normal→hard band instead of pinning every board to the top.
   const target = RANDOM_TARGET_MIN + seedFraction(seed, 1) * (RANDOM_TARGET_MAX - RANDOM_TARGET_MIN);
-  // Vary the mechanics per board: each cumulative mechanic of the top chapter is toggled
-  // independently (≈half the boards carry it), for genuine variety rather than the hardest stack of
-  // mechanics on every board.
+  // Vary the mechanics per board: each cumulative mechanic of the top chapter is toggled independently
+  // (≈half the boards carry it), for genuine variety rather than the hardest stack of mechanics on every
+  // board. A BALANCED density (no chapter signature) applies whichever survive at an even moderate rate,
+  // so the endless mode samples all mechanics evenly instead of spotlighting one.
   const full = mechanicsForLevel(CHAPTER_LEN * 1_000_000); // clamps to the last defined chapter
   let mechanics = full;
   if (seedFraction(seed, 2) >= 0.5) mechanics = mechanics.filter((m) => m !== 'hidden');
   if (seedFraction(seed, 3) >= 0.5) mechanics = mechanics.filter((m) => m !== 'funnel');
+  if (seedFraction(seed, 4) >= 0.5) mechanics = mechanics.filter((m) => m !== 'ice');
   const plan: LevelPlan = {
     level: 0, // sentinel — random boards are not campaign levels
     chapter: chapterForLevel(CHAPTER_LEN * 1_000_000),
@@ -339,6 +347,7 @@ export function generateRandomLevel(seed: number): PlayableLevel {
     minPar: 0,
     parMode: 'proxy',
     mechanics,
+    density: balancedDensity(),
   };
   return pickBest(0, plan, target);
 }

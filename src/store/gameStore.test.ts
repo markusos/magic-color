@@ -27,10 +27,20 @@ const flushLoad = () =>
   new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
 // Live (un-baked) levels past the campaign: generated on demand, so they carry a stored solution and
-// drive the loading spinner. Everything past the baked range is chapter 1 (hidden) via the plateau
-// clamp. Derived from the baked count so they stay live if the campaign is resized.
-const LIVE_HIDDEN = BAKED_LEVEL_COUNT + 25;
-const LIVE_HIDDEN_2 = BAKED_LEVEL_COUNT + 55;
+// drive the loading spinner. The plateau clamps to the last chapter, whose SIGNATURE mechanic is ice —
+// hidden is only seasoned in there (light density), so not every tail board carries it. We therefore
+// scan for live levels that actually conceal something rather than assuming a fixed offset does. (Scan
+// is cheap: `getLevel` is memoized and most boards still conceal at least one cell.)
+function liveLevelsWithHidden(count: number): number[] {
+  const found: number[] = [];
+  for (let level = BAKED_LEVEL_COUNT + 1; found.length < count && level <= BAKED_LEVEL_COUNT + 400; level++) {
+    if (getLevel(level).hidden.some((col) => col.some(Boolean))) found.push(level);
+  }
+  return found;
+}
+const liveHidden = liveLevelsWithHidden(2);
+if (liveHidden.length < 2) throw new Error('expected at least two live levels that conceal a cell');
+const [LIVE_HIDDEN, LIVE_HIDDEN_2] = liveHidden as [number, number];
 
 /** Whether two boards are identical up to a consistent 1:1 color renaming (what recolor does). */
 function sameLayout(a: string[][], b: string[][]): boolean {
