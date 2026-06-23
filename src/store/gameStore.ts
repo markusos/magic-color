@@ -16,23 +16,23 @@
  * while there's still somewhere new to explore — only once they're looping with nowhere to go.
  */
 import { create } from 'zustand';
-import { canPour, isWon, pour, topColor } from '../game/engine';
-import { canonical, isStuckInLoop } from '../game/solver';
+import { canonical } from '../game/solver';
 import { DEFAULT_CAPACITY } from '../game/generator';
 import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
 import { mechanicsForLevel, phaseForLevel, type PlayableLevel } from '../game/progression';
-import { isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
+import { type HiddenGrid } from '../game/hidden';
 import { type FunnelGrid } from '../game/funnels';
 import { type IceGrid } from '../game/ice';
-import { acceptsPour, blockedColumns, blocksCompletion, type OverlaySet } from '../game/mechanics';
+import { type OverlaySet } from '../game/mechanics';
 import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
+import { deriveStatus, type GameStatus, planTap } from './session';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
 import { deferAfterPaint } from './deferAfterPaint';
 
-export type GameStatus = 'playing' | 'won' | 'deadlocked' | 'stuck';
+export type { GameStatus };
 
 /** Campaign play (the numbered track) vs. the post-campaign "Random" challenge. */
 export type GameMode = 'campaign' | 'endless';
@@ -147,54 +147,6 @@ interface GameStore {
   restart: () => void;
 }
 
-/**
- * Whether the player has no legal pour. Cap-aware: a capped (finished) tube can't be a source,
- * so its pours don't count as escape moves — the check mirrors exactly what the player can do.
- * (The expensive "stuck loop" case stays full-information in the worker; that's provably
- * cap-equivalent, since a completed tube holds all of its color and is never needed to win —
- * see the regression test in solver.test.ts.)
- */
-function noPlayerMove(state: GameState, blocked: HiddenGrid, overlays: OverlaySet): boolean {
-  const n = state.bottles.length;
-  for (let from = 0; from < n; from++) {
-    const src = state.bottles[from]!;
-    if (src.length === 0 || isCapped(src, state.capacity, blocked[from])) continue;
-    // A tube whose visible top run is frozen has nothing pourable — not an escape move.
-    if (knownTopRun(src, blocked[from]) === 0) continue;
-    const color = topColor(src)!;
-    for (let to = 0; to < n; to++) {
-      // A mechanic-blocked pour (e.g. a funnel rejecting the color) isn't an escape move — exclude it
-      // just as the player can't make it.
-      if (from !== to && canPour(state, from, to) && acceptsPour(overlays, to, color)) return false;
-    }
-  }
-  return true;
-}
-
-/**
- * Status for a board: a win, a hard wall (no legal move), a `stuck` loop (moves remain but every
- * reachable board has already been seen — `visited`), or normal play. A board only counts as won
- * once every bottle is sorted AND no concealed cell remains — a tube that still holds a "?" isn't
- * finished, even if its real colors already match. The loop check runs full-information, which is a
- * superset of the player's (cap/conceal-limited) moves, so it can only ever *under*-fire — a player
- * who still has a real move available is never told they're stuck.
- */
-function syncStatus(
-  state: GameState,
-  overlays: OverlaySet,
-  visited: ReadonlySet<string>,
-): GameStatus {
-  // Every mechanic's blocking cells (concealed "?"s, frozen ice) folded into the columns the
-  // run-cap/cap helpers consult (a no-op when the board carries no blocking mechanic).
-  const blocked = blockedColumns(overlays, state);
-  // A board is won only once every bottle is sorted AND no mechanic keeps it unfinished — a tube still
-  // holding ice or a "?" isn't finished even if its real colors match.
-  if (isWon(state)) return blocksCompletion(overlays, state) ? 'playing' : 'won';
-  if (noPlayerMove(state, blocked, overlays)) return 'deadlocked';
-  if (isStuckInLoop(state, visited, { funnels: overlays.funnels })) return 'stuck';
-  return 'playing';
-}
-
 export const useGameStore = create<GameStore>((set, get) => {
   // The persisted campaign — the sole owner of progress + localStorage.
   const campaign = createCampaign();
@@ -208,7 +160,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     const funnels = extra.funnels ?? get().funnels;
     const ice = extra.ice ?? get().ice;
     const visited = extra.visited ?? get().visited;
-    const status = syncStatus(current, { hidden, funnels, ice }, visited);
+    const status = deriveStatus(current, { hidden, funnels, ice }, visited);
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -374,7 +326,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     visited: firstVisited,
     selected: null,
     boardNonce: 0,
-    status: first ? syncStatus(firstBoard, firstDisplay, firstVisited) : 'playing',
+    status: first ? deriveStatus(firstBoard, firstDisplay, firstVisited) : 'playing',
     loading: !startBaked,
     level: startLevel,
     phase: first?.phase ?? phaseForLevel(startLevel),
@@ -421,60 +373,29 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { current, selected, status, hidden, funnels, ice } = get();
       if (status !== 'playing') return;
 
-      const overlays: OverlaySet = { hidden, funnels, ice };
-      // Every blocking mechanic (concealed "?"s, frozen ice) folds into the merged columns the
-      // run-cap/cap helpers consult.
-      const blocked = blockedColumns(overlays, current);
-
-      // A capped (finished) tube is inert. A tube whose visible top run is entirely frozen has nothing
-      // pourable, so it can't be a source either — both are unselectable.
-      const selectable = (b: number) =>
-        current.bottles[b] !== undefined &&
-        current.bottles[b].length > 0 &&
-        !isCapped(current.bottles[b], current.capacity, blocked[b]) &&
-        knownTopRun(current.bottles[b], blocked[b]) > 0;
-
-      // No current selection: select a non-empty, un-capped bottle.
-      if (selected === null) {
-        if (selectable(i)) set({ selected: i });
-        return;
-      }
-
-      // Tapping the selected bottle again deselects it.
-      if (selected === i) {
-        set({ selected: null });
-        return;
-      }
-
-      // Attempt a pour from the selected bottle to the tapped one. Concealed cells block the
-      // visible run, so cap the pour at what the player can actually see. A funnel tube rejects any
-      // color but its tint, so a mismatched pour falls through to reselection below.
-      if (
-        canPour(current, selected, i) &&
-        acceptsPour(overlays, i, topColor(current.bottles[selected]!)!)
-      ) {
-        // Cap the pour at the visible, non-frozen top run — what the player can actually move.
-        const cap = knownTopRun(current.bottles[selected]!, blocked[selected]);
-        const { state: next, move } = pour(current, selected, i, cap);
-        const revealed = revealExposed(next, hidden);
-        const visited = new Set(get().visited).add(canonical(next));
-        commit(next, {
-          history: [...get().history, current],
-          hiddenHistory: [...get().hiddenHistory, hidden],
-          hidden: revealed,
-          moves: [...get().moves, move],
-          visited,
-          selected: null,
-        });
-        return;
-      }
-
-      // Illegal pour: switch the selection to the newly tapped bottle if it's selectable,
-      // otherwise just clear the selection.
-      if (selectable(i)) {
-        set({ selected: i });
-      } else {
-        set({ selected: null });
+      // The pure session loop decides what the tap does; the store only applies the outcome.
+      const plan = planTap(current, { hidden, funnels, ice }, selected, i);
+      switch (plan.kind) {
+        case 'ignore':
+          return;
+        case 'select':
+          set({ selected: plan.selected });
+          return;
+        case 'deselect':
+          set({ selected: null });
+          return;
+        case 'pour': {
+          const visited = new Set(get().visited).add(canonical(plan.next));
+          commit(plan.next, {
+            history: [...get().history, current],
+            hiddenHistory: [...get().hiddenHistory, hidden],
+            hidden: plan.revealedHidden,
+            moves: [...get().moves, plan.move],
+            visited,
+            selected: null,
+          });
+          return;
+        }
       }
     },
 

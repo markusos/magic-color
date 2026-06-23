@@ -468,7 +468,22 @@ determinism test (the behavioral guards) all pass unchanged. Re-bake reproduced 
 moved `cb0af6d9…` → `de036f12…`). Live-gen benchmark flat (pure parameter repackaging — no algorithm
 touched). A new static mechanic now adds a *field to `Overlays`*, not an argument to ~8 signatures.
 
-### R3. The store is still a god-closure: the pure game loop is entangled with campaign + persistence (SRP / testability)
+### R3. The store is still a god-closure: the pure game loop is entangled with campaign + persistence (SRP / testability) — DONE (2026-06-23)
+
+**DONE.** The rule-dense game loop now lives in a pure, framework-free [session.ts](src/store/session.ts):
+`deriveStatus` (was the store's `syncStatus` + `noPlayerMove`) and `planTap` (a pure tap decision →
+`select`/`deselect`/`pour`/`ignore`, computing the post-pour board, move, and revealed grid). The store's
+`tapBottle` is now a thin `switch` over the plan, and `commit`/init call `deriveStatus`. The win:
+[session.test.ts](src/store/session.test.ts) exercises win/playing/deadlock detection and every tap
+outcome **directly** — no Zustand, no campaign, no localStorage — 13 new tests that were previously only
+reachable through the full store. Mechanic rules are consulted through the R1 registry helpers, so the
+session loop is mechanic-agnostic too. Re-bake-free (store/session aren't hashed); behavior-preserving
+(all 33 store tests green); lint/tsc/213 tests green.
+
+Deliberately scoped: the store keeps its flat field shape and owns progression/persistence/loading; only
+the *decision logic* moved out (the highest-value, lowest-risk slice). Collapsing the six `*/initial*`
+overlay fields into a stored `OverlaySet` and nesting a `session` sub-object were left out — they'd ripple
+into the UI selectors for modest gain. The design write-up below is kept for rationale.
 
 Round-1 #5 carved out timing and recolor, but the ~514-line `create()` closure in
 [gameStore.ts](src/store/gameStore.ts) still fuses **two** responsibilities: the *pure game-session loop*
@@ -485,7 +500,17 @@ adapter that owns only progression/persistence. The session core becomes directl
 become the exact seam where R1's registry plugs into interaction. Re-bake-free (store isn't hashed);
 behavior-preserving; do it alongside or after R1 so the seam lands once.
 
-### R4. Module-global singletons + env-sniffing undermine test isolation (testability)
+### R4. Module-global singletons + env-sniffing undermine test isolation (testability) — DONE (2026-06-23)
+
+**DONE.** The `process.env.VITEST` sniff is gone: the live-generation budget is now an injected
+[`LiveGenConfig`](src/game/levelLoader.ts) (`poolSize`/`finalists`/`fineDeadEndSamples`) with a production
+default, and the test setup ([src/test/setup.ts](src/test/setup.ts)) installs the small
+`TEST_LIVE_CONFIG` via `configureLiveGenerator` — so the test/prod distinction lives in test setup, not
+inside production code. The memoization cache is now resettable (`configureLiveGenerator` clears it;
+`resetLiveGenerator` is exported for inter-spec isolation). `colorCode` was left as-is (equality-only,
+documented safe — see round-1 #2). Re-bake-free; lint/tsc/213 tests green; the suite stays fast (the
+injected budget is identical in breadth to the old `IN_TEST` path). The write-up below is kept for
+rationale.
 
 Three process-globals in the live path make tests order-dependent and the prod/test paths diverge:
 

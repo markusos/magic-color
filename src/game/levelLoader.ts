@@ -147,38 +147,66 @@ export function generateForLevel(level: number): PlayableLevel {
 }
 
 /**
- * Live quality budget (coarse-to-fine best-of-N; a spinner covers it, so instant is not required):
+ * Live-generation budget (coarse-to-fine best-of-N; a spinner covers it, so instant is not required):
  *
- * - `LIVE_POOL_SIZE` — the COARSE pool, scored cheaply (proxy optimal, no dead-end sampling) to
- *   narrow hundreds of boards to the few nearest the curve target.
- * - `LIVE_FINALISTS` — those few are then re-scored in the FINE pass with dead-end sampling (see
- *   `FINE_METRICS`) and the best fit wins.
+ * - `poolSize` — the COARSE pool, scored cheaply (proxy optimal, no dead-end sampling) to narrow
+ *   hundreds of boards to the few nearest the curve target.
+ * - `finalists` — those few are re-scored in the FINE pass with dead-end sampling and the best fit wins.
+ * - `fineDeadEndSamples` — random playouts per finalist in that fine pass.
  *
- * Sized to land well under a ~1.5s phone budget even on the slowest shape (dense tall 10-tube
- * boards): the fine pass adds the dead-end-density signal — the strongest "feels hard" term, and
- * otherwise entirely absent from the live path — at ~2 ms/board, unaffected by concealment. Bigger
- * ⇒ better picks, slower generation. Under tests we use tiny values so the suite stays fast: the
- * selection logic is identical, only the breadth differs (tests don't assert on specific tail
- * boards). The guard is safe everywhere — `process` is undefined in the production browser bundle
- * (⇒ full budget), and the tsx bake never calls this path. */
-const IN_TEST = typeof process !== 'undefined' && process.env?.VITEST === 'true';
-const LIVE_POOL_SIZE = IN_TEST ? 24 : 600;
-const LIVE_FINALISTS = IN_TEST ? 6 : 30;
+ * Production ({@link DEFAULT_LIVE_CONFIG}) is sized to land well under a ~1.5s phone budget even on the
+ * slowest shape; the test suite installs a tiny budget ({@link TEST_LIVE_CONFIG}) so specs stay fast —
+ * the selection logic is identical, only the breadth differs (tests don't assert on specific tail
+ * boards). Injecting the budget from the test SETUP (see `src/test/setup.ts` → {@link configureLiveGenerator})
+ * keeps production code free of any test-runner awareness — there is no `process.env` sniff here.
+ */
+export interface LiveGenConfig {
+  /** Coarse pool size, scored cheaply to narrow to the finalists. */
+  poolSize: number;
+  /** Finalists re-scored in the fine pass with dead-end sampling. */
+  finalists: number;
+  /** Dead-end playouts per finalist in the fine pass. */
+  fineDeadEndSamples: number;
+}
+
+/** Production budget — the default until something installs another. */
+export const DEFAULT_LIVE_CONFIG: LiveGenConfig = { poolSize: 600, finalists: 30, fineDeadEndSamples: 24 };
+/** Tiny budget the test setup installs so the suite stays fast. */
+export const TEST_LIVE_CONFIG: LiveGenConfig = { poolSize: 24, finalists: 6, fineDeadEndSamples: 6 };
+
+/** The active budget. Mutated only through {@link configureLiveGenerator} (default = production). */
+let liveConfig: LiveGenConfig = DEFAULT_LIVE_CONFIG;
+
+/** Memoized live levels (deterministic by level), so re-loads and replays don't regenerate. */
+const liveCache = new Map<number, PlayableLevel>();
+
+/** Install a live-generation budget and clear the cache (the test setup shrinks the pool this way). */
+export function configureLiveGenerator(config: LiveGenConfig): void {
+  liveConfig = config;
+  liveCache.clear();
+}
+
+/** Clear the memoized live levels — for test isolation between specs that exercise live generation. */
+export function resetLiveGenerator(): void {
+  liveCache.clear();
+}
 
 /** Coarse scoring: proxy optimal (no A*) and no dead-end sampling, to scan the big pool cheaply. */
 const CHEAP_METRICS: MetricOptions = { optimalNodeBudget: 0, tierNodeBudget: 0, deadEndSamples: 0 };
 /**
- * Fine scoring: add dead-end-density sampling on the finalists only. We deliberately keep the proxy
- * optimal here (`optimalNodeBudget: 0`) rather than the exact A* — the A* is 40–65× more expensive
- * and *explodes* on the hidden 10-tube boards the random mode produces, whereas dead-end sampling is
- * ~2 ms/board regardless of concealment and is the heaviest-weighted term in the scorer.
+ * Fine scoring for the current budget: dead-end-density sampling on the finalists only. We deliberately
+ * keep the proxy optimal (`optimalNodeBudget: 0`) rather than the exact A* — the A* is 40–65× more
+ * expensive and *explodes* on the hidden 10-tube boards the random mode produces, whereas dead-end
+ * sampling is ~2 ms/board regardless of concealment and is the heaviest-weighted term in the scorer.
  */
-const FINE_METRICS: MetricOptions = {
-  optimalNodeBudget: 0,
-  tierNodeBudget: 0,
-  deadEndSamples: IN_TEST ? 6 : 24,
-  deadEndNodeBudget: 12_000,
-};
+function fineMetrics(): MetricOptions {
+  return {
+    optimalNodeBudget: 0,
+    tierNodeBudget: 0,
+    deadEndSamples: liveConfig.fineDeadEndSamples,
+    deadEndNodeBudget: 12_000,
+  };
+}
 
 /** Score at percentile `p` of `scores` (mirrors `difficulty.quantile`, which isn't exported). */
 function percentileScore(scores: number[], p: number): number {
@@ -186,9 +214,6 @@ function percentileScore(scores: number[], p: number): number {
   const sorted = [...scores].sort((a, b) => a - b);
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))]!;
 }
-
-/** Memoized live levels (deterministic by level), so re-loads and replays don't regenerate. */
-const liveCache = new Map<number, PlayableLevel>();
 
 /**
  * Coarse-to-fine best-of-N: sample a big pool from `plan`, cheaply rank it to the few finalists
@@ -206,7 +231,7 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
         capacity: plan.capacity,
         seed: salt === 0 ? plan.seed : seedForLevel(level, salt),
       },
-      LIVE_POOL_SIZE,
+      liveConfig.poolSize,
     );
     if (candidates.length === 0) continue;
 
@@ -223,14 +248,15 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     const finalists = built
       .map((b, i) => ({ b, dist: Math.abs(coarse[i]! - coarseTarget) }))
       .sort((a, b) => a.dist - b.dist)
-      .slice(0, Math.min(LIVE_FINALISTS, built.length))
+      .slice(0, Math.min(liveConfig.finalists, built.length))
       .map((x) => x.b);
 
     // Fine pass: re-score the finalists with dead-end sampling (the strongest signal, absent above)
     // and pick the best fit on the curve.
+    const fineOpts = fineMetrics();
     const fine = compositeScores(
       finalists.map(({ g, overlays }) =>
-        measureMetrics(g.state, overlays.hidden, g.solution, FINE_METRICS, staticOverlays(overlays)),
+        measureMetrics(g.state, overlays.hidden, g.solution, fineOpts, staticOverlays(overlays)),
       ),
     );
     const idx = assignSlots(fine.map((score) => ({ score, family: 'live' })), [target])[0]!;
