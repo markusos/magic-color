@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { currentGeneratorVersion } from '../../scripts/levelVersion';
-import { BAKED_LEVELS, GENERATOR_VERSION } from './levels.data';
+import { BAKED_LEVELS } from './levels.data';
+import { GENERATOR_VERSION } from './levels.meta';
 import { CAMPAIGN_LENGTH, chapterForLevel, mechanicsForLevel, phaseForLevel, SHAPES } from './progression';
 import { isSolvable } from './solver';
 import { board } from '../test/board';

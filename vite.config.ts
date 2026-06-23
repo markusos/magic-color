@@ -42,6 +42,11 @@ export default defineConfig({
       },
     }),
   ],
+  // The level loader uses a top-level `await import()` to pull the ~200 kB baked-board blob into its
+  // own lazily-fetched chunk (keeping it out of the main bundle). Top-level await needs a slightly
+  // newer floor than Vite's default 'modules' target (Safari 14 / Chrome 87), so raise it to the TLA
+  // baseline — years old by now and well within any device that can run this PWA.
+  build: { target: ['chrome89', 'edge89', 'firefox89', 'safari15'] },
   // Bind to 0.0.0.0 so the dev/preview server is reachable from other devices on the LAN.
   server: { host: true },
   preview: { host: true },

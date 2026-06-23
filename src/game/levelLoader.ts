@@ -20,7 +20,6 @@ import {
 } from './mechanics';
 import { DEFAULT_CAPACITY, generateCandidates, generateLevel } from './generator';
 import { cappedSolveMoves } from './hidden';
-import { BAKED_LEVELS } from './levels.data';
 import {
   balancedDensity,
   CHAPTER_LEN,
@@ -35,6 +34,15 @@ import {
 } from './progression';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import { type Difficulty, type GameState, type GeneratedLevel, toColors } from './types';
+
+/**
+ * The pre-baked boards, loaded LAZILY via dynamic import so the ~200 kB data blob lands in its own
+ * chunk instead of the main bundle (see levels.data.ts). The top-level `await` here gates module
+ * evaluation: anything importing this loader — notably the game store, which builds the resume board
+ * at construction — won't finish initializing until the data is in, so `getLevel` and friends below
+ * stay fully synchronous. The data is fetched once during boot (and precached by the service worker).
+ */
+const { BAKED_LEVELS } = await import('./levels.data');
 
 /**
  * Largest board (in bottles) for which we attempt the exact optimal at load time. Kept to small,

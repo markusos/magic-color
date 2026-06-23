@@ -4,7 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
 import { useInstall } from '../../install/useInstall';
 import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
-import { GENERATOR_VERSION } from '../../game/levels.data';
+import { GENERATOR_VERSION } from '../../game/levels.meta';
 import { InstallInstructions } from '../InstallBanner/InstallInstructions';
 import styles from './Settings.module.css';
 
