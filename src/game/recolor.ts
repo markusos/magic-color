@@ -11,8 +11,7 @@
  * reproducible, only the layout is. `random` is injectable so tests can pin the mapping.
  */
 import { PALETTE } from './generator';
-import { recolorFunnels, type FunnelGrid } from './funnels';
-import { recolorIce, type IceGrid } from './ice';
+import { recolorOverlays, type OverlaySet } from './mechanics';
 import { colorDistance } from '../theme/colors';
 import type { Color, GameState } from './types';
 
@@ -105,21 +104,19 @@ export function recolor(state: GameState, random: () => number = Math.random): G
 }
 
 /**
- * Recolor a board AND its funnel tints AND its ice tints under ONE fresh random bijection, so the
- * funnel rings and the ice all stay matched to the recolored liquid. This is what installs a board for
- * display; callers keep the canonical `initial`/`initialFunnels`/`initialIce` untouched so each restart
- * re-rolls afresh.
+ * Recolor a board AND its overlay set under ONE fresh random bijection, so the funnel rings and the ice
+ * tints all stay matched to the recolored liquid (concealment carries no color, so it passes through).
+ * This is what installs a board for display; callers keep the canonical `initial`/`initialOverlays`
+ * untouched so each restart re-rolls afresh.
  */
 export function recolorBoard(
   state: GameState,
-  funnels: FunnelGrid,
-  ice: IceGrid,
+  overlays: OverlaySet,
   random: () => number = Math.random,
-): { board: GameState; funnels: FunnelGrid; ice: IceGrid } {
+): { board: GameState; overlays: OverlaySet } {
   const map = randomColorMap(distinctIds(state), random);
   return {
     board: applyColorMap(state, map),
-    funnels: recolorFunnels(funnels, map),
-    ice: recolorIce(ice, map),
+    overlays: recolorOverlays(overlays, map),
   };
 }

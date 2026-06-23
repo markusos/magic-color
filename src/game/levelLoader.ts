@@ -13,14 +13,13 @@
 import type { BakedLevel } from './baked';
 import { assignSlots, compositeScores, measureMetrics, type MetricOptions } from './difficulty';
 import {
-  computeFunnels,
-  funnelEligibleTubes,
-  type FunnelGrid,
-  noFunnels,
-} from './funnels';
-import { buildIce, noIce, type IceGrid } from './ice';
+  buildOverlays,
+  deserializeOverlays,
+  staticOverlays,
+  type OverlaySet,
+} from './mechanics';
 import { DEFAULT_CAPACITY, generateCandidates, generateLevel } from './generator';
-import { cappedSolveMoves, computeHidden, emptyGrid, exposableCells, type HiddenGrid } from './hidden';
+import { cappedSolveMoves } from './hidden';
 import { BAKED_LEVELS } from './levels.data';
 import {
   balancedDensity,
@@ -35,7 +34,7 @@ import {
   targetPercentile,
 } from './progression';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
-import { type Difficulty, type GameState, type GeneratedLevel, toColor, toColors } from './types';
+import { type Difficulty, type GameState, type GeneratedLevel, toColors } from './types';
 
 /**
  * Largest board (in bottles) for which we attempt the exact optimal at load time. Kept to small,
@@ -52,19 +51,14 @@ const EXACT_OPTIMAL_MAX_BOTTLES = 8;
  * (NP-hard, worse under concealment) and would stall the load, so we use a fast, safe upper bound:
  * the stored solution replayed under the capped/reveal rules.
  */
-function optimalFor(
-  generated: GeneratedLevel,
-  hidden: HiddenGrid,
-  funnels: FunnelGrid,
-  ice: IceGrid,
-): number {
+function optimalFor(generated: GeneratedLevel, overlays: OverlaySet): number {
   const { state, solution, bottles, capacity } = generated;
   if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
-    const exact = optimalCappedMoves(state, hidden, undefined, funnels, ice);
+    const exact = optimalCappedMoves(state, overlays.hidden, undefined, staticOverlays(overlays));
     if (exact !== null) return exact;
   }
   // The stored solution is funnel- and ice-legal by construction, so it's still a valid upper bound.
-  return cappedSolveMoves(state, solution, hidden);
+  return cappedSolveMoves(state, solution, overlays.hidden);
 }
 
 /**
@@ -75,73 +69,48 @@ function optimalFor(
  */
 function cutoffsFor(
   generated: GeneratedLevel,
-  hidden: HiddenGrid,
-  funnels: FunnelGrid,
-  ice: IceGrid,
+  overlays: OverlaySet,
 ): { optimal: number; twoStarMax: number } {
   const { state, bottles, capacity } = generated;
-  const optimal = optimalFor(generated, hidden, funnels, ice);
+  const optimal = optimalFor(generated, overlays);
   if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
-    const tiers = nearOptimalCutoffs(state, hidden, undefined, funnels, ice);
+    const tiers = nearOptimalCutoffs(state, overlays.hidden, undefined, staticOverlays(overlays));
     if (tiers && tiers.optimal === optimal) return tiers;
   }
   return { optimal, twoStarMax: optimal + 2 };
 }
 
-/** The initial concealment overlay for a generated board (all-false outside the hidden chapter). */
-function hiddenFor(plan: LevelPlan, generated: GeneratedLevel): HiddenGrid {
-  return plan.mechanics.includes('hidden')
-    ? computeHidden(generated.state, plan.seed, exposableCells(generated.state, generated.solution), plan.density.hidden)
-    : emptyGrid(generated.state);
-}
-
 /**
- * The initial funnel overlay for a generated board (all-null outside the funnel chapter): a
- * seed-chosen subset of solution-eligible tubes (monochrome inflow), each locked to its inflow color
- * so the stored solution stays legal and the board stays solvable.
+ * The initial overlay set for a generated board: each active mechanic built from the stored solution
+ * (so the board stays solvable by construction), all-clear for mechanics this chapter doesn't use. See
+ * {@link buildOverlays} — a new mechanic plugs in via the registry, with no change here.
  */
-function funnelsFor(plan: LevelPlan, generated: GeneratedLevel): FunnelGrid {
-  return plan.mechanics.includes('funnel')
-    ? computeFunnels(
-        generated.state,
-        plan.seed,
-        funnelEligibleTubes(generated.state, generated.solution),
-        plan.density.funnel,
-      )
-    : noFunnels(generated.state);
+function overlaysFor(plan: LevelPlan, generated: GeneratedLevel): OverlaySet {
+  return buildOverlays(plan.mechanics, {
+    state: generated.state,
+    solution: generated.solution,
+    seed: plan.seed,
+    density: plan.density,
+  });
 }
 
-/**
- * The initial ice overlay for a generated board (all-null outside the ice chapter): a seed-chosen,
- * solution-derived-and-pruned set of frozen bottom blocks (see `buildIce`), so the stored solution
- * stays legal and the board stays solvable. Depends on `hidden` because thaw keys on capping, which
- * requires a fully-revealed tube.
- */
-function iceFor(plan: LevelPlan, generated: GeneratedLevel, hidden: HiddenGrid): IceGrid {
-  return plan.mechanics.includes('ice')
-    ? buildIce(generated.state, generated.solution, hidden, plan.seed, plan.density.ice)
-    : noIce(generated.state);
-}
-
-/** Wrap a generated board + its concealment/funnel/ice overlays as a campaign-annotated `PlayableLevel`. */
+/** Wrap a generated board + its overlay set as a campaign-annotated `PlayableLevel`. */
 function toPlayable(
   level: number,
   plan: LevelPlan,
   generated: GeneratedLevel,
-  hidden: HiddenGrid,
-  funnels: FunnelGrid,
-  ice: IceGrid,
+  overlays: OverlaySet,
 ): PlayableLevel {
-  const { optimal, twoStarMax } = cutoffsFor(generated, hidden, funnels, ice);
+  const { optimal, twoStarMax } = cutoffsFor(generated, overlays);
   return {
     ...generated,
     level,
     chapter: plan.chapter,
     phase: plan.phase,
     mechanics: plan.mechanics,
-    hidden,
-    funnels,
-    ice,
+    hidden: overlays.hidden,
+    funnels: overlays.funnels,
+    ice: overlays.ice,
     optimal,
     twoStarMax,
   };
@@ -163,8 +132,7 @@ function generateFromPlan(level: number, plan: LevelPlan): PlayableLevel {
         minPar: plan.minPar,
         parMode: plan.parMode,
       });
-      const hidden = hiddenFor(plan, generated);
-      return toPlayable(level, plan, generated, hidden, funnelsFor(plan, generated), iceFor(plan, generated, hidden));
+      return toPlayable(level, plan, generated, overlaysFor(plan, generated));
     } catch {
       // Extremely unlikely; try a different seed for this same plan.
     }
@@ -242,16 +210,13 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     );
     if (candidates.length === 0) continue;
 
-    const built = candidates.map((g) => {
-      const hidden = hiddenFor(plan, g);
-      return { g, hidden, funnels: funnelsFor(plan, g), ice: iceFor(plan, g, hidden) };
-    });
+    const built = candidates.map((g) => ({ g, overlays: overlaysFor(plan, g) }));
 
     // Coarse pass: cheap-score the whole pool and keep the finalists nearest the curve target —
     // narrowing hundreds of boards to a handful at roughly the right difficulty.
     const coarse = compositeScores(
-      built.map(({ g, hidden, funnels, ice }) =>
-        measureMetrics(g.state, hidden, g.solution, CHEAP_METRICS, funnels, ice),
+      built.map(({ g, overlays }) =>
+        measureMetrics(g.state, overlays.hidden, g.solution, CHEAP_METRICS, staticOverlays(overlays)),
       ),
     );
     const coarseTarget = percentileScore(coarse, target);
@@ -264,13 +229,13 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     // Fine pass: re-score the finalists with dead-end sampling (the strongest signal, absent above)
     // and pick the best fit on the curve.
     const fine = compositeScores(
-      finalists.map(({ g, hidden, funnels, ice }) =>
-        measureMetrics(g.state, hidden, g.solution, FINE_METRICS, funnels, ice),
+      finalists.map(({ g, overlays }) =>
+        measureMetrics(g.state, overlays.hidden, g.solution, FINE_METRICS, staticOverlays(overlays)),
       ),
     );
     const idx = assignSlots(fine.map((score) => ({ score, family: 'live' })), [target])[0]!;
     const chosen = finalists[idx]!;
-    return toPlayable(level, plan, chosen.g, chosen.hidden, chosen.funnels, chosen.ice);
+    return toPlayable(level, plan, chosen.g, chosen.overlays);
   }
 
   return generateFromPlan(level, plan); // pool kept failing — fall back to the light generator
@@ -371,6 +336,7 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
   };
   // Footprint comes from the baked board itself now (it's no longer a function of the level number).
   const colors = new Set<string>(baked.bottles.flat()).size;
+  const overlays = deserializeOverlays(baked); // brands the committed hidden/funnels/ice grids
   return {
     state,
     colors,
@@ -385,9 +351,9 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
     chapter: chapterForLevel(baked.level),
     phase: baked.phase,
     mechanics: baked.mechanics,
-    hidden: baked.hidden,
-    funnels: baked.funnels.map((t) => (t == null ? null : toColor(t))),
-    ice: baked.ice.map((col) => col.map((t) => (t == null ? null : toColor(t)))),
+    hidden: overlays.hidden,
+    funnels: overlays.funnels,
+    ice: overlays.ice,
     optimal: baked.optimal,
     twoStarMax: baked.twoStarMax,
   };

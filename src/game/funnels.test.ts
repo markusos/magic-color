@@ -159,7 +159,7 @@ describe('funnels never make a board easier', () => {
       const funnels = computeFunnels(level.state, seed, eligible);
       if (!anyFunnel(funnels)) continue;
       const base = optimalCappedMoves(level.state, emptyGrid(level.state));
-      const withFunnels = optimalCappedMoves(level.state, emptyGrid(level.state), undefined, funnels);
+      const withFunnels = optimalCappedMoves(level.state, emptyGrid(level.state), undefined, { funnels });
       if (base == null || withFunnels == null) continue; // budget overflow — skip
       expect(withFunnels).toBeGreaterThanOrEqual(base);
     }

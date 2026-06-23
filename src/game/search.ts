@@ -9,8 +9,9 @@
  * other way around.
  */
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from './hidden';
-import { funnelAccepts, type FunnelGrid } from './funnels';
-import { anyFrozen, frozenCells, type IceGrid } from './ice';
+import { funnelAccepts } from './funnels';
+import { anyFrozen, frozenCells } from './ice';
+import type { Overlays } from './overlays';
 import { canPour, isWon, pour, topColor } from './engine';
 import type { GameState } from './types';
 
@@ -126,15 +127,16 @@ interface CappedSuccessor {
  * finished/capped tubes can't be poured from, and the obviously-pointless moves are pruned
  * (interchangeable empties collapsed; relocating a fully-revealed solid block to an empty tube
  * dropped). Shared by `optimalCappedMoves` (exact A*) and `nearOptimalCutoffs` (tier BFS) so both
- * explore the identical move graph. With `funnels`, a pour into a tube whose tint rejects the poured
- * color is omitted — the same constraint the player plays under (default `undefined` ⇒ no funnels).
+ * explore the identical move graph. With `overlays.funnels`, a pour into a tube whose tint rejects the
+ * poured color is omitted — the same constraint the player plays under; with `overlays.ice`, frozen
+ * cells block the run and capping. Default `undefined` ⇒ no overlays, i.e. the un-mechanic'd game.
  */
 function cappedSuccessors(
   state: GameState,
   hidden: HiddenGrid,
-  funnels?: FunnelGrid,
-  ice?: IceGrid,
+  overlays?: Overlays,
 ): CappedSuccessor[] {
+  const { funnels, ice } = overlays ?? {};
   const out: CappedSuccessor[] = [];
   const n = state.bottles.length;
   // Frozen cells block a pour exactly like a hidden "?" — they stop the visible run and keep a tube
@@ -181,7 +183,8 @@ function cappedSuccessors(
 }
 
 /** A fully-solved, fully-revealed, fully-thawed board — the search goal. */
-function isSolved(state: GameState, hidden: HiddenGrid, ice?: IceGrid): boolean {
+function isSolved(state: GameState, hidden: HiddenGrid, overlays?: Overlays): boolean {
+  const ice = overlays?.ice;
   return isWon(state) && !anyHidden(hidden) && !(ice && anyFrozen(state, hidden, ice));
 }
 
@@ -199,8 +202,7 @@ export function optimalCappedMoves(
   state0: GameState,
   hidden0: HiddenGrid,
   maxNodes = 12_000,
-  funnels?: FunnelGrid,
-  ice?: IceGrid,
+  overlays?: Overlays,
 ): number | null {
   const key0 = stateKey(state0, hidden0);
   const bestG = new Map<string, number>([[key0, 0]]);
@@ -217,10 +219,10 @@ export function optimalCappedMoves(
   while (heap.size > 0) {
     const cur = heap.pop()!;
     if ((bestG.get(cur.key) ?? Infinity) < cur.g) continue; // stale heap entry
-    if (isSolved(cur.state, cur.hidden, ice)) return cur.g;
+    if (isSolved(cur.state, cur.hidden, overlays)) return cur.g;
     if (++nodes > maxNodes) return null;
 
-    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden, funnels, ice)) {
+    for (const { state: next, hidden: nextHidden } of cappedSuccessors(cur.state, cur.hidden, overlays)) {
       const nextKey = stateKey(next, nextHidden);
       const ng = cur.g + 1;
       if (ng < (bestG.get(nextKey) ?? Infinity)) {
@@ -264,8 +266,7 @@ export function nearOptimalCutoffs(
   state0: GameState,
   hidden0: HiddenGrid,
   maxNodes = 200_000,
-  funnels?: FunnelGrid,
-  ice?: IceGrid,
+  overlays?: Overlays,
 ): StarCutoffs | null {
   // One layer = every state reachable in exactly `depth` capped pours (deduped within the layer).
   let layer = new Map<string, CappedSuccessor>([[stateKey(state0, hidden0), { state: state0, hidden: hidden0 }]]);
@@ -281,15 +282,15 @@ export function nearOptimalCutoffs(
   };
 
   while (layer.size > 0) {
-    if ([...layer.values()].some(({ state, hidden }) => isSolved(state, hidden, ice))) {
+    if ([...layer.values()].some(({ state, hidden }) => isSolved(state, hidden, overlays))) {
       goalDepths.push(depth);
       if (goalDepths.length >= 3) break; // optimal + two sub-optimal tiers is all we need
     }
 
     const next = new Map<string, CappedSuccessor>();
     for (const { state, hidden } of layer.values()) {
-      if (isSolved(state, hidden, ice)) continue; // solved boards have no useful successors
-      for (const succ of cappedSuccessors(state, hidden, funnels, ice)) {
+      if (isSolved(state, hidden, overlays)) continue; // solved boards have no useful successors
+      for (const succ of cappedSuccessors(state, hidden, overlays)) {
         if (++nodes > maxNodes) return finalize();
         const key = stateKey(succ.state, succ.hidden);
         if (!next.has(key)) next.set(key, succ);

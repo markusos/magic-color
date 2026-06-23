@@ -12,19 +12,15 @@
 import { parentPort } from 'node:worker_threads';
 
 import { measureMetrics, type Metrics } from '../src/game/difficulty';
-import { computeFunnels, type FunnelGrid, funnelEligibleTubes, noFunnels } from '../src/game/funnels';
-import { buildIce, type IceGrid, noIce } from '../src/game/ice';
+import { buildOverlays, type OverlaySet, staticOverlays } from '../src/game/mechanics';
 import { generateCandidates } from '../src/game/generator';
-import { computeHidden, emptyGrid, exposableCells, type HiddenGrid } from '../src/game/hidden';
 import { seedForLevel, SHAPES } from '../src/game/progression';
-import type { GameState, Move } from '../src/game/types';
+import type { GameState, Mechanic, Move } from '../src/game/types';
 
-export interface Candidate {
+/** A measured candidate. Carries its full {@link OverlaySet} (hidden/funnels/ice) for slot assignment. */
+export interface Candidate extends OverlaySet {
   state: GameState;
   solution: Move[];
-  hidden: HiddenGrid;
-  funnels: FunnelGrid;
-  ice: IceGrid;
   metrics: Metrics;
   family: string;
   bottles: number;
@@ -37,13 +33,10 @@ export interface ShapeJob {
   chapter: number;
   /** Index into SHAPES. */
   si: number;
-  isHidden: boolean;
-  isFunnel: boolean;
-  isIce: boolean;
+  /** The chapter's cumulative mechanic set (drives the registry's overlay build). */
+  mechanics: Mechanic[];
   /** Per-mechanic application density for this chapter (see `campaignDensity`). */
-  hiddenProb: number;
-  funnelProb: number;
-  iceProb: number;
+  density: Record<Mechanic, number>;
   perShape: number;
   nodeBudget: number;
   deadEndSamples: number;
@@ -51,8 +44,7 @@ export interface ShapeJob {
 
 /** Generate + measure one shape's candidate pool. Pure and deterministic given the job. */
 export function buildShapePool(job: ShapeJob): Candidate[] {
-  const { chapter, si, isHidden, isFunnel, isIce, hiddenProb, funnelProb, iceProb, perShape, nodeBudget, deadEndSamples } =
-    job;
+  const { chapter, si, mechanics, density, perShape, nodeBudget, deadEndSamples } = job;
   const shape = SHAPES[si]!;
   const seed = seedForLevel(50_000 + chapter * 100 + si);
   const candidates = generateCandidates(
@@ -61,28 +53,23 @@ export function buildShapePool(job: ShapeJob): Candidate[] {
   );
   return candidates.map((c, ci) => {
     const tag = chapter * 1_000_000 + si * 10_000 + ci;
-    const hidden = isHidden
-      ? computeHidden(c.state, seedForLevel(tag), exposableCells(c.state, c.solution), hiddenProb)
-      : emptyGrid(c.state);
-    const funnels = isFunnel
-      ? computeFunnels(c.state, seedForLevel(tag), funnelEligibleTubes(c.state, c.solution), funnelProb)
-      : noFunnels(c.state);
-    // Ice depends on the hidden grid (thaw keys on capping, which needs a fully-revealed tube).
-    const ice = isIce ? buildIce(c.state, c.solution, hidden, seedForLevel(tag), iceProb) : noIce(c.state);
+    const overlays = buildOverlays(mechanics, {
+      state: c.state,
+      solution: c.solution,
+      seed: seedForLevel(tag),
+      density,
+    });
     const metrics = measureMetrics(
       c.state,
-      hidden,
+      overlays.hidden,
       c.solution,
       { optimalNodeBudget: nodeBudget, deadEndSamples, deadEndSeed: tag },
-      isFunnel ? funnels : undefined,
-      isIce ? ice : undefined,
+      staticOverlays(overlays),
     );
     return {
       state: c.state,
       solution: c.solution,
-      hidden,
-      funnels,
-      ice,
+      ...overlays,
       metrics,
       family: shape.family,
       bottles: shape.bottles,

@@ -20,11 +20,11 @@ describe('shuffleBottles', () => {
     const ice = [['ruby' as Color, null], [null, null], []];
     // A pinned PRNG gives a deterministic permutation we can assert against.
     const rng = mulberry32(7);
-    const out = shuffleBottles(state, hidden, funnels, ice, rng);
+    const out = shuffleBottles(state, { hidden, funnels, ice }, rng);
 
     // The multiset of (tube, hidden-row, funnel, ice-row) tuples is preserved — overlays still match tubes.
     const tuples = out.state.bottles.map((b, i) =>
-      JSON.stringify([b, out.hidden[i], out.funnels[i], out.ice[i]]),
+      JSON.stringify([b, out.overlays.hidden[i], out.overlays.funnels[i], out.overlays.ice[i]]),
     );
     const original = state.bottles.map((b, i) => JSON.stringify([b, hidden[i], funnels[i], ice[i]]));
     expect(tuples.slice().sort()).toEqual(original.slice().sort());
@@ -37,9 +37,7 @@ describe('shuffleBottles', () => {
       const empty = level.state.bottles.map((b) => b.map(() => false));
       const out = shuffleBottles(
         level.state,
-        empty,
-        noFunnels(level.state),
-        noIce(level.state),
+        { hidden: empty, funnels: noFunnels(level.state), ice: noIce(level.state) },
         mulberry32(seed * 31 + 1),
       );
       expect(isSolvable(out.state)).toBe(true);
@@ -51,7 +49,7 @@ describe('shuffleBottles', () => {
     const empty = state.bottles.map(() => []);
     const orders = new Set<string>();
     for (let seed = 0; seed < 20; seed++) {
-      const out = shuffleBottles(state, empty, noFunnels(state), noIce(state), mulberry32(seed));
+      const out = shuffleBottles(state, { hidden: empty, funnels: noFunnels(state), ice: noIce(state) }, mulberry32(seed));
       orders.add(out.state.bottles.map((b) => b[0]).join(','));
     }
     expect(orders.size).toBeGreaterThan(1);

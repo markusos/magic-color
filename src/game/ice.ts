@@ -101,22 +101,6 @@ export function anyFrozen(state: GameState, hidden: HiddenGrid, ice: IceGrid): b
   return frozenCells(state, hidden, ice).some((col) => col.some(Boolean));
 }
 
-/**
- * The concealment columns the run-cap/cap helpers should consult under ice: `hidden` merged with the
- * derived frozen cells, since a frozen cell blocks the visible run and prevents capping exactly like a
- * hidden "?". Returns `hidden` unchanged when the board carries no ice, so non-ice callers are
- * unaffected. This is what lets `knownTopRun`/`isCapped` stay ice-unaware — callers pass the merged
- * column instead of the raw `hidden` one.
- */
-export function blockedColumns(state: GameState, hidden: HiddenGrid, ice: IceGrid): HiddenGrid {
-  if (!anyIce(ice)) return hidden;
-  const frozen = frozenCells(state, hidden, ice);
-  return state.bottles.map((bottle, b) => {
-    const hd = hidden[b];
-    const fr = frozen[b]!;
-    return bottle.map((_, i) => (hd?.[i] ?? false) || fr[i]!);
-  });
-}
 
 /** One way to freeze a tube: its ice line (freeze cells `0..line`) and the triggers that keep it legal. */
 export interface IceLineOption {

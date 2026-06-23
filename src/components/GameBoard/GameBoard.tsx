@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { canPour, topColor } from '../../game/engine';
-import { funnelAccepts } from '../../game/funnels';
+import { acceptsPour } from '../../game/mechanics';
 import { frozenCells } from '../../game/ice';
 import { Bottle } from '../Bottle/Bottle';
 import { useBottleMetrics } from './useBottleMetrics';
@@ -52,7 +52,7 @@ export function GameBoard() {
               selected !== null &&
               selected !== i &&
               canPour(current, selected, i) &&
-              funnelAccepts(funnels, i, topColor(current.bottles[selected]!)!)
+              acceptsPour({ hidden, funnels, ice }, i, topColor(current.bottles[selected]!)!)
             }
             lift={metrics.segmentHeight * 0.7}
             onTap={() => tapBottle(i)}

@@ -10,9 +10,10 @@
  * PLAN.md, "Revised model v2").
  */
 import { isWon, pour } from './engine';
-import { funnelLoad as funnelLoadOf, type FunnelGrid } from './funnels';
-import { iceLoad as iceLoadOf, type IceGrid } from './ice';
+import { funnelLoad as funnelLoadOf } from './funnels';
+import { iceLoad as iceLoadOf } from './ice';
 import { cappedSolveMoves, type HiddenGrid } from './hidden';
+import type { Overlays } from './overlays';
 import { mulberry32 } from './rng';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import { isUnsolvable, usefulMoves } from './solver';
@@ -70,12 +71,12 @@ export interface MetricOptions {
  * board that railroads you through forced moves is easier than one that constantly offers (and
  * punishes) choices. Measured against `usefulMoves`, the same pruned branching the solver explores.
  */
-function forcedMoveRatio(state: GameState, solution: Move[], funnels?: FunnelGrid): number {
+function forcedMoveRatio(state: GameState, solution: Move[], overlays?: Overlays): number {
   let current = state;
   let forced = 0;
   let total = 0;
   for (const move of solution) {
-    if (usefulMoves(current, funnels).length <= 1) forced++;
+    if (usefulMoves(current, overlays).length <= 1) forced++;
     total++;
     current = pour(current, move.from, move.to).state;
   }
@@ -95,7 +96,7 @@ function deadEndDensity(
   samples: number,
   nodeBudget: number,
   seed: number,
-  funnels?: FunnelGrid,
+  overlays?: Overlays,
 ): number {
   if (samples <= 0) return 0;
   const rng = mulberry32(seed >>> 0);
@@ -109,13 +110,13 @@ function deadEndDensity(
     for (let k = 0; k < steps; k++) {
       // Wander only along funnel-legal moves, and judge dead-ends under the funnel rule, so the
       // estimate reflects the real (tighter) board the player faces.
-      const moves = usefulMoves(current, funnels);
+      const moves = usefulMoves(current, overlays);
       if (moves.length === 0) break;
       const mv = moves[Math.floor(rng() * moves.length)]!;
       current = pour(current, mv.from, mv.to).state;
       if (isWon(current)) break;
     }
-    if (!isWon(current) && isUnsolvable(current, { maxNodes: nodeBudget, funnels })) dead++;
+    if (!isWon(current) && isUnsolvable(current, { maxNodes: nodeBudget, ...overlays })) dead++;
   }
   return dead / samples;
 }
@@ -142,49 +143,48 @@ export function digDepth(state: GameState, hidden: HiddenGrid): number {
 }
 
 /**
- * Measure a candidate board's difficulty metrics. `funnels` (chapter 2+) tightens every move-based
- * signal — `optimal`, `twoStarMax`, `forcedMoveRatio`, `deadEndDensity` — to the real funneled board
- * and feeds the `funnelLoad` term. `ice` (chapter 3+) likewise tightens the EXACT `optimal`/`twoStarMax`
- * (frozen cells prune real pours) and feeds the `iceLoad` term; the full-information heuristics
- * (`forcedMoveRatio`/`deadEndDensity`) measure the un-iced board — a conservative signal, since the
- * `iceLoad` term carries the ice pressure into the blend. Default `undefined` ⇒ no funnels/ice, so the
- * earlier chapters measure exactly as before.
+ * Measure a candidate board's difficulty metrics. `overlays.funnels` (chapter 2+) tightens every
+ * move-based signal — `optimal`, `twoStarMax`, `forcedMoveRatio`, `deadEndDensity` — to the real
+ * funneled board and feeds the `funnelLoad` term. `overlays.ice` (chapter 3+) likewise tightens the
+ * EXACT `optimal`/`twoStarMax` (frozen cells prune real pours) and feeds the `iceLoad` term; the
+ * full-information heuristics (`forcedMoveRatio`/`deadEndDensity`) measure the un-iced board — a
+ * conservative signal, since the `iceLoad` term carries the ice pressure into the blend. Default
+ * `undefined` ⇒ no overlays, so the earlier chapters measure exactly as before.
  */
 export function measureMetrics(
   state: GameState,
   hidden: HiddenGrid,
   solution: Move[],
   opts: MetricOptions = {},
-  funnels?: FunnelGrid,
-  ice?: IceGrid,
+  overlays?: Overlays,
 ): Metrics {
+  const { funnels, ice } = overlays ?? {};
   const colors = new Set<string>(state.bottles.flat()).size;
   const exact = optimalCappedMoves(
     state,
     hidden,
     opts.optimalNodeBudget ?? OPTIMAL_NODE_BUDGET,
-    funnels,
-    ice,
+    overlays,
   );
   const optimal = exact ?? cappedSolveMoves(state, solution, hidden);
   // Adjusted 2★ ceiling. The tier sweep finds its own optimal; only trust its band when that matches
   // the (exact) optimal above — otherwise (proxy fallback, or the sweep overflowed) use optimal + 2.
   // A 0 budget disables it (the live scoring path doesn't use twoStarMax and can't afford the sweep).
   const tierBudget = opts.tierNodeBudget ?? OPTIMAL_NODE_BUDGET;
-  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget, funnels, ice) : null;
+  const tiers = tierBudget > 0 ? nearOptimalCutoffs(state, hidden, tierBudget, overlays) : null;
   const twoStarMax = tiers && tiers.optimal === optimal ? tiers.twoStarMax : optimal + 2;
   return {
     optimal,
     optimalExact: exact !== null,
     twoStarMax,
-    forcedMoveRatio: forcedMoveRatio(state, solution, funnels),
+    forcedMoveRatio: forcedMoveRatio(state, solution, overlays),
     deadEndDensity: deadEndDensity(
       state,
       solution.length,
       opts.deadEndSamples ?? 24,
       opts.deadEndNodeBudget ?? 50_000,
       opts.deadEndSeed ?? 1,
-      funnels,
+      overlays,
     ),
     digDepth: digDepth(state, hidden),
     funnelLoad: funnels ? funnelLoadOf(funnels, colors) : 0,

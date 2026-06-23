@@ -197,7 +197,7 @@ describe('ice never makes a board easier (exact optimal)', () => {
       const g = buildIce(level.state, level.solution, hidden, seed);
       if (!anyIce(g)) continue;
       const base = optimalCappedMoves(level.state, hidden);
-      const withIce = optimalCappedMoves(level.state, hidden, undefined, undefined, g);
+      const withIce = optimalCappedMoves(level.state, hidden, undefined, { ice: g });
       if (base == null || withIce == null) continue; // budget overflow — skip
       checked++;
       expect(withIce).toBeGreaterThanOrEqual(base);

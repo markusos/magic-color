@@ -31,6 +31,7 @@ import { Worker } from 'node:worker_threads';
 
 import type { BakedLevel } from '../src/game/baked';
 import { assignSlots, compositeScores, type Metrics } from '../src/game/difficulty';
+import { filterPresence, serializeOverlays } from '../src/game/mechanics';
 import {
   CAMPAIGN_LENGTH,
   campaignDensity,
@@ -116,21 +117,14 @@ async function main(): Promise<void> {
   const jobs: ShapeJob[] = [];
   for (const chapter of chapters) {
     const chapterMechanics = mechanicsForLevel(chapter * CHAPTER_LEN + 1);
-    const isHidden = chapterMechanics.includes('hidden');
-    const isFunnel = chapterMechanics.includes('funnel');
-    const isIce = chapterMechanics.includes('ice');
     // Spotlight this chapter's signature mechanic (dialed up) over inherited ones (seasoned in light).
     const density = campaignDensity(chapter);
     SHAPES.forEach((_, si) => {
       jobs.push({
         chapter,
         si,
-        isHidden,
-        isFunnel,
-        isIce,
-        hiddenProb: density.hidden,
-        funnelProb: density.funnel,
-        iceProb: density.ice,
+        mechanics: [...chapterMechanics],
+        density,
         perShape: PER_SHAPE,
         nodeBudget: NODE_BUDGET,
         deadEndSamples: DEAD_END_SAMPLES,
@@ -151,27 +145,15 @@ async function main(): Promise<void> {
     const mechanics = mechanicsForLevel(firstLevel);
 
     // Reassemble the chapter's pool in (shape index, candidate index) order — identical to serial.
-    const pool: Candidate[] = [];
+    const assembled: Candidate[] = [];
     jobs.forEach((job, ji) => {
-      if (job.chapter === chapter) pool.push(...jobResults[ji]!);
+      if (job.chapter === chapter) assembled.push(...jobResults[ji]!);
     });
 
-    // Funnel chapters must show the mechanic on every level: drop candidates with no eligible tube
-    // (those `computeFunnels` can't lock anything on), so a board without a color-locked tube can
-    // never be assigned to a slot.
-    if (mechanics.includes('funnel')) {
-      const funneled = pool.filter((c) => c.funnels.some((t) => t != null));
-      pool.length = 0;
-      pool.push(...funneled);
-    }
-
-    // Likewise the ice chapter: drop candidates `buildIce` couldn't freeze (no ice-eligible tube), so
-    // every ice level actually shows a frozen tube.
-    if (mechanics.includes('ice')) {
-      const iced = pool.filter((c) => c.ice.some((col) => col.some((t) => t != null)));
-      pool.length = 0;
-      pool.push(...iced);
-    }
+    // A chapter must SHOW each of its `requiresPresence` mechanics (funnels, ice) on every level, so
+    // drop candidates that ended up without one — they can never be assigned to a slot. Driven off the
+    // registry, so a future "must show" mechanic is covered automatically (see `filterPresence`).
+    const pool = filterPresence(assembled, mechanics);
 
     console.log(`\nChapter ${chapter} (levels ${firstLevel}–${lastLevel}, mechanics [${mechanics.join(',')}])`);
     const scores = compositeScores(pool.map((c) => c.metrics));
@@ -188,9 +170,7 @@ async function main(): Promise<void> {
         level,
         bottles: chosen.state.bottles.map((col) => [...col]),
         capacity: chosen.capacity,
-        hidden: chosen.hidden.map((col) => [...col]),
-        funnels: chosen.funnels.map((t) => t ?? null),
-        ice: chosen.ice.map((col) => col.map((t) => t ?? null)),
+        ...serializeOverlays(chosen), // hidden, funnels, ice — same key order as before
         optimal: chosen.metrics.optimal,
         twoStarMax: chosen.metrics.twoStarMax,
         par: chosen.par,

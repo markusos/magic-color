@@ -4,7 +4,8 @@
  * known solution and its step count. The same machinery can later power a "hint" tool.
  */
 import { isWon, legalMoves, pour, topColor } from './engine';
-import { funnelAccepts, type FunnelGrid } from './funnels';
+import { funnelAccepts } from './funnels';
+import type { Overlays } from './overlays';
 import { stateKey } from './search';
 import type { GameState, Move } from './types';
 
@@ -17,15 +18,15 @@ export function canonical(state: GameState): string {
   return stateKey(state);
 }
 
-interface SolveOptions {
+/**
+ * Search options. Carries the static mechanic {@link Overlays} (so a pour the destination funnel
+ * rejects is omitted from the search — the same constraint the player plays under) alongside the node
+ * budget. The solver is full-information and consults only `funnels`; ice is not solver-aware (see
+ * `overlays.ts`). With no overlays every search behaves exactly as the un-mechanic'd game.
+ */
+interface SolveOptions extends Overlays {
   /** Safety cap on explored nodes so generation can never hang. Default 200k. */
   maxNodes?: number;
-  /**
-   * Color-locked funnels overlay (chapter 2+). When present, a pour into a tube whose tint rejects
-   * the poured color is omitted from the search — the same constraint the player plays under. Default
-   * `undefined` ⇒ no funnels, so every search behaves exactly as the un-funneled game.
-   */
-  funnels?: FunnelGrid;
 }
 
 /**
@@ -38,9 +39,10 @@ interface SolveOptions {
  * `isStuckInLoop`, `bfsOptimal`, and `usefulMoves` (the difficulty metrics) — honors funnels through
  * one shared check.
  */
-function isUsefulMove(state: GameState, from: number, to: number, funnels?: FunnelGrid): boolean {
+function isUsefulMove(state: GameState, from: number, to: number, overlays?: Overlays): boolean {
   const src = state.bottles[from]!;
   const dst = state.bottles[to]!;
+  const funnels = overlays?.funnels;
 
   const color = topColor(src)!;
   // A funnel rejects any inflow that isn't its tint — not a legal move to consider.
@@ -72,9 +74,9 @@ function isUsefulMove(state: GameState, from: number, to: number, funnels?: Funn
  */
 export function usefulMoves(
   state: GameState,
-  funnels?: FunnelGrid,
+  overlays?: Overlays,
 ): Array<{ from: number; to: number }> {
-  return legalMoves(state).filter(({ from, to }) => isUsefulMove(state, from, to, funnels));
+  return legalMoves(state).filter(({ from, to }) => isUsefulMove(state, from, to, overlays));
 }
 
 export interface SolveResult {
@@ -138,7 +140,7 @@ export function search(state: GameState, options: SolveOptions = {}): SolveResul
     const key = canonical(current);
     if (visited.has(key)) return 'pruned';
     visited.add(key);
-    stack.push({ state: current, moves: usefulMoves(current, options.funnels), next: 0 });
+    stack.push({ state: current, moves: usefulMoves(current, options), next: 0 });
     return 'pushed';
   };
 
@@ -218,7 +220,7 @@ export function isStuckInLoop(
     const current = stack.pop()!;
     if (++nodes > maxNodes) return false; // inconclusive — don't nag
     for (const { from, to } of legalMoves(current)) {
-      if (!isUsefulMove(current, from, to, options.funnels)) continue;
+      if (!isUsefulMove(current, from, to, options)) continue;
       const { state: next } = pour(current, from, to);
       if (isWon(next)) return false; // a win is reachable (and would be unvisited anyway)
       const key = canonical(next);
@@ -250,7 +252,7 @@ export function bfsOptimal(state: GameState, options: SolveOptions = {}): number
     depth++;
     for (const current of frontier) {
       for (const { from, to } of legalMoves(current)) {
-        if (!isUsefulMove(current, from, to, options.funnels)) continue;
+        if (!isUsefulMove(current, from, to, options)) continue;
         const { state: child } = pour(current, from, to);
         if (isWon(child)) return depth;
         const key = canonical(child);
