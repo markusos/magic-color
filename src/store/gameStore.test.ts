@@ -474,6 +474,44 @@ describe('undo / restart', () => {
   });
 });
 
+describe('hint', () => {
+  it('surfaces a hint that pulses two distinct tubes and marks the attempt', () => {
+    store().requestHint();
+    const h = store().hint;
+    expect(h).not.toBeNull();
+    expect(h!.from).not.toBe(h!.to);
+    expect(store().hintUsed).toBe(true);
+  });
+
+  it('dismisses the pulse on the next tap but keeps the penalty for the attempt', () => {
+    store().requestHint();
+    const h = store().hint!;
+    // The hinted pour, then an undo: dismisses the pulse and rewinds the board…
+    store().tapBottle(h.from);
+    store().tapBottle(h.to);
+    expect(store().hint).toBeNull();
+    store().undo();
+    expect(store().moves).toHaveLength(0);
+    // …but the 1-star penalty can't be laundered by undoing.
+    expect(store().hintUsed).toBe(true);
+  });
+
+  it('caps a hinted solve to 1 star', () => {
+    store().startOver(); // isolate level 1's recorded result from other tests' wins
+    store().requestHint();
+    playSolution();
+    expect(store().status).toBe('won');
+    expect(store().bestStars).toBe(1);
+  });
+
+  it('resets the penalty on restart', () => {
+    store().requestHint();
+    expect(store().hintUsed).toBe(true);
+    store().restart();
+    expect(store().hintUsed).toBe(false);
+  });
+});
+
 describe('deadlock detection (genuine walls only)', () => {
   const seed = (bottles: string[][], capacity: number) => {
     const grid = bottles.map((b) => b.map(() => false));

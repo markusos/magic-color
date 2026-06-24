@@ -27,10 +27,12 @@ import { type OverlaySet } from '../game/mechanics';
 import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
-import { deriveStatus, type GameStatus, planTap } from './session';
+import { hintMove, type HintMove } from '../game/search';
+import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
 import { deferAfterPaint } from './deferAfterPaint';
+import { feedback } from '../audio/feedback';
 
 export type { GameStatus };
 
@@ -82,6 +84,18 @@ interface GameStore {
   hiddenHistory: HiddenGrid[];
   /** Currently selected source bottle, or null. */
   selected: number | null;
+  /**
+   * The currently-pulsing hint pour (`{ from, to }` tube indices), or null. Set by `requestHint` and
+   * cleared on the next tap / undo / restart / new board, so the pulse never lingers onto a stale
+   * board. Display-order indices, parallel to `current.bottles`.
+   */
+  hint: HintMove | null;
+  /**
+   * Whether a hint was taken this attempt — a hinted solve is capped to 1 star (no 3★ for a board you
+   * were shown the line on). Sticks across undos (so undoing the hinted move can't launder the
+   * penalty) and only resets on a fresh board / restart.
+   */
+  hintUsed: boolean;
   /**
    * Bumped whenever a whole new board is installed (level load or restart) — never on a pour or
    * undo. The UI folds it into the bottles' React keys so a fresh board remounts rather than
@@ -145,7 +159,19 @@ interface GameStore {
   tapBottle: (i: number) => void;
   undo: () => void;
   restart: () => void;
+  /**
+   * Surface one optimal next pour for the current board and pulse those two tubes. Computed lazily on
+   * demand (no solver kept running). A no-op when the board isn't in play; on a won/stuck board there's
+   * no move to show, so it just fires the muted "invalid" cue.
+   */
+  requestHint: () => void;
 }
+
+/**
+ * Node budget for the on-demand hint A*. Generous — a hint is a one-shot user action, so a brief
+ * pause beats giving up — but bounded so a pathological board can't hang the tap handler.
+ */
+const HINT_NODE_BUDGET = 100_000;
 
 export const useGameStore = create<GameStore>((set, get) => {
   // The persisted campaign — the sole owner of progress + localStorage.
@@ -170,10 +196,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       const streak = get().endlessStreak + 1;
       set({ endlessStreak: streak, endlessBestStreak: campaign.recordRandomHard(streak) });
     } else {
-      const { level, moves, undos, optimal, twoStarMax } = get();
+      const { level, moves, undos, optimal, twoStarMax, hintUsed } = get();
       // Undos count toward the rating: the score is the real move count plus undos used.
       const score = moves.length + undos;
-      const record = campaign.complete(level, score, starsFor(score, optimal, twoStarMax));
+      // A hinted solve is capped to 1 star regardless of move count (see `hintUsed`).
+      const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
+      const record = campaign.complete(level, score, stars);
       // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
       set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
     }
@@ -205,6 +233,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     undos: 0,
     visited: new Set([canonical(board)]),
     selected: null,
+    hint: null,
+    hintUsed: false,
     boardNonce: get().boardNonce + 1,
     loading: false,
     phase: generated.phase,
@@ -325,6 +355,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     undos: 0,
     visited: firstVisited,
     selected: null,
+    hint: null,
+    hintUsed: false,
     boardNonce: 0,
     status: first ? deriveStatus(firstBoard, firstDisplay, firstVisited) : 'playing',
     loading: !startBaked,
@@ -373,17 +405,18 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { current, selected, status, hidden, funnels, ice } = get();
       if (status !== 'playing') return;
 
-      // The pure session loop decides what the tap does; the store only applies the outcome.
+      // The pure session loop decides what the tap does; the store only applies the outcome. Any tap
+      // also dismisses a showing hint (the pulse shouldn't outlive the move it suggested).
       const plan = planTap(current, { hidden, funnels, ice }, selected, i);
       switch (plan.kind) {
         case 'ignore':
-          return;
+          break;
         case 'select':
-          set({ selected: plan.selected });
-          return;
+          set({ selected: plan.selected, hint: null });
+          break;
         case 'deselect':
-          set({ selected: null });
-          return;
+          set({ selected: null, hint: null });
+          break;
         case 'pour': {
           const visited = new Set(get().visited).add(canonical(plan.next));
           commit(plan.next, {
@@ -393,9 +426,22 @@ export const useGameStore = create<GameStore>((set, get) => {
             moves: [...get().moves, plan.move],
             visited,
             selected: null,
+            hint: null,
           });
-          return;
+          break;
         }
+      }
+
+      // Fire the matching audio/haptic cue off the (now-applied) outcome — a thin adapter over the
+      // pure session classification, read against the post-tap status (a pour may have won the board).
+      // For a pour, pass the destination's resulting fill so the blip rises as a tube fills up.
+      const cue = cueForTap(plan, current, hidden, ice, get().status, selected, i);
+      if (cue) {
+        const level =
+          plan.kind === 'pour'
+            ? plan.next.bottles[plan.move.to]!.length / plan.next.capacity
+            : undefined;
+        feedback(cue, level);
       }
     },
 
@@ -413,6 +459,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         moves: moves.slice(0, -1),
         undos: get().undos + 1,
         selected: null,
+        hint: null,
       });
     },
 
@@ -436,8 +483,26 @@ export const useGameStore = create<GameStore>((set, get) => {
         undos: 0,
         visited: new Set([canonical(board)]),
         selected: null,
+        hint: null,
+        hintUsed: false,
         boardNonce: get().boardNonce + 1,
       });
+    },
+
+    requestHint: () => {
+      const { current, hidden, funnels, ice, status } = get();
+      if (status !== 'playing') return;
+      // Optimal *from the current board* (after any undos / partial solve) under the live overlays —
+      // not necessarily the baked solution's next move. Honors exactly what the player can see/pour.
+      const move = hintMove(current, hidden, { funnels, ice }, HINT_NODE_BUDGET);
+      if (move) {
+        // Taking a hint caps this attempt's rating to 1 star (see `hintUsed`).
+        set({ hint: move, selected: null, hintUsed: true });
+        feedback('select');
+      } else {
+        // Won → nothing to hint; stuck/exhausted → no continuation to offer (use Undo/Restart).
+        feedback('invalid');
+      }
     },
   };
 });

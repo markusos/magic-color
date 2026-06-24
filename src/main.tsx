@@ -4,6 +4,9 @@ import './theme/tokens.css';
 // Side-effect import: attaches the `beforeinstallprompt` listener at startup, before the event can
 // fire, no matter which route the app booted into (Home may not be mounted yet).
 import './install/installState';
+// Side-effect import: creates the settings store so its persisted Sound/Haptics flags are pushed into
+// the audio/haptics modules before the first cue can fire (regardless of whether Settings is mounted).
+import './store/settings';
 import App from './App';
 
 // iOS standalone PWAs mis-measure 100dvh on launch (the layout comes up short until a

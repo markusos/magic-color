@@ -14,6 +14,7 @@ export function GameBoard() {
   const hidden = useGameStore((s) => s.hidden);
   const funnels = useGameStore((s) => s.funnels);
   const ice = useGameStore((s) => s.ice);
+  const hint = useGameStore((s) => s.hint);
   const tapBottle = useGameStore((s) => s.tapBottle);
   // Bumped on every level load / restart (never on a pour or undo). Folding it into the bottle
   // keys remounts the board on a fresh load, so the liquid fill animation is reserved for pours.
@@ -48,6 +49,7 @@ export function GameBoard() {
             funnel={funnels[i] ?? null}
             frozen={bottle.map((_, j) => (frozenGrid[i]?.[j] ? (ice[i]?.[j] ?? null) : null))}
             selected={selected === i}
+            hintRole={hint?.from === i ? 'from' : hint?.to === i ? 'to' : undefined}
             isTarget={
               selected !== null &&
               selected !== i &&

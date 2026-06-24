@@ -8,8 +8,11 @@
   margin: 0 auto;
 }
 
-/* iOS toolbar-style buttons: borderless, soft filled pill, comfortable tap target. */
+/* iOS toolbar-style buttons: borderless, soft filled pill, comfortable tap target. Three buttons
+   share the bar equally (flex:1), so they stay within the narrowest (iPhone) widths without overflow. */
 .toolbar button {
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -17,11 +20,14 @@
   border: none;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  padding: var(--space-2) var(--space-5);
+  padding: var(--space-2) var(--space-3);
   font-weight: 600;
-  min-width: 116px;
 }
 
 .toolbar button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.16);
+}
+
+.toolbar button:disabled {
+  opacity: 0.4;
 }

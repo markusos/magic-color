@@ -10,9 +10,11 @@
  */
 import { canPour, isWon, pour, topColor } from '../game/engine';
 import { isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
+import { cappedColors, frozenCells, type IceGrid } from '../game/ice';
 import { acceptsPour, blockedColumns, blocksCompletion, type OverlaySet } from '../game/mechanics';
 import { isStuckInLoop } from '../game/solver';
 import type { GameState, Move } from '../game/types';
+import type { Cue } from '../audio/cues';
 
 export type GameStatus = 'playing' | 'won' | 'deadlocked' | 'stuck';
 
@@ -112,4 +114,48 @@ export function planTap(
 
   // Illegal pour: switch selection to the newly tapped bottle if selectable, else clear it.
   return selectable(state, blocked, i) ? { kind: 'select', selected: i } : { kind: 'deselect' };
+}
+
+/** Count of cells currently frozen on a board (0 when there's no ice). */
+function frozenCount(state: GameState, hidden: HiddenGrid, ice: IceGrid): number {
+  let n = 0;
+  for (const col of frozenCells(state, hidden, ice)) for (const f of col) if (f) n++;
+  return n;
+}
+
+/**
+ * The sound/haptic {@link Cue} a tap should fire, or `null` for silence — a PURE classification of the
+ * already-decided {@link TapPlan} (plus the resulting status and what the pour accomplished), so the
+ * store stays a thin adapter and the mapping is unit-testable without any audio. Drives audio off the
+ * existing session decision points rather than component renders (PLAN.md A1).
+ *
+ * A pour is refined by EFFECT: a win outranks a thaw (a pour can both win and thaw), a thaw outranks a
+ * cap (thawing ice is the more delightful event), and a cap outranks a plain pour. A `deselect` caused
+ * by an *illegal pour* (the tapped tube isn't the selected one) reads as `invalid`; tapping the
+ * selected tube again is an ordinary `deselect`. A no-op `ignore` tap stays silent.
+ */
+export function cueForTap(
+  plan: TapPlan,
+  prev: GameState,
+  hidden: HiddenGrid,
+  ice: IceGrid,
+  status: GameStatus,
+  selected: number | null,
+  i: number,
+): Cue | null {
+  switch (plan.kind) {
+    case 'ignore':
+      return null;
+    case 'select':
+      return 'select';
+    case 'deselect':
+      return selected !== null && selected !== i ? 'invalid' : 'deselect';
+    case 'pour': {
+      if (status === 'won') return 'win';
+      if (frozenCount(plan.next, plan.revealedHidden, ice) < frozenCount(prev, hidden, ice)) return 'thaw';
+      const before = cappedColors(prev, hidden, ice).size;
+      const after = cappedColors(plan.next, plan.revealedHidden, ice).size;
+      return after > before ? 'cap' : 'pour';
+    }
+  }
 }

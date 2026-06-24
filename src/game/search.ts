@@ -115,10 +115,15 @@ export function runsHeuristic(state: GameState): number {
   return runs - colors.size;
 }
 
-/** A successor (board, concealment) state reached by one capped pour. */
+/** A successor (board, concealment) state reached by one capped pour, with the pour that reached it. */
 interface CappedSuccessor {
   state: GameState;
   hidden: HiddenGrid;
+  /**
+   * The (from, to) pour that produced this state — used to surface the first move of a hint. Absent
+   * only on a search's seed/root node (no producing pour); every genuine successor carries it.
+   */
+  move?: { from: number; to: number };
 }
 
 /**
@@ -176,7 +181,7 @@ function cappedSuccessors(
         if (srcUniform && !srcConcealed) continue;
       }
       const { state: next } = pour(state, from, to, cap);
-      out.push({ state: next, hidden: revealExposed(next, hidden) });
+      out.push({ state: next, hidden: revealExposed(next, hidden), move: { from, to } });
     }
   }
   return out;
@@ -301,4 +306,68 @@ export function nearOptimalCutoffs(
   }
 
   return finalize();
+}
+
+/** A single suggested pour: the source and destination tube indices, in display (board) order. */
+export interface HintMove {
+  from: number;
+  to: number;
+}
+
+/**
+ * The FIRST move of an optimal continuation from the *current* board, for the in-game hint — the same
+ * capped/reveal/overlay-aware A* as {@link optimalCappedMoves}, but it carries the root's first move
+ * along each path and returns it on reaching the goal. Honors exactly what the player sees: pours are
+ * capped to the visible run, concealed cells reveal as they surface, funnels reject mismatched inflow,
+ * and frozen cells block. The result may differ from the baked solution's next move — it's optimal
+ * *from here*, which is correct after undos / a partial solve.
+ *
+ * Returns `null` when there is nothing to suggest: the board is already solved, or it's genuinely
+ * stuck (no continuation), or the node budget was exhausted (an extremely tangled board) — callers
+ * treat all three as "no hint".
+ */
+export function hintMove(
+  state0: GameState,
+  hidden0: HiddenGrid,
+  overlays?: Overlays,
+  maxNodes = 100_000,
+): HintMove | null {
+  if (isSolved(state0, hidden0, overlays)) return null;
+  const key0 = stateKey(state0, hidden0);
+  const bestG = new Map<string, number>([[key0, 0]]);
+  const heap = new MinHeap<{
+    state: GameState;
+    hidden: HiddenGrid;
+    g: number;
+    f: number;
+    key: string;
+    first: HintMove | null;
+  }>((a, b) => a.f - b.f);
+  heap.push({ state: state0, hidden: hidden0, g: 0, f: runsHeuristic(state0), key: key0, first: null });
+
+  let nodes = 0;
+  while (heap.size > 0) {
+    const cur = heap.pop()!;
+    if ((bestG.get(cur.key) ?? Infinity) < cur.g) continue; // stale heap entry
+    if (isSolved(cur.state, cur.hidden, overlays)) return cur.first;
+    if (++nodes > maxNodes) return null;
+
+    for (const { state: next, hidden: nextHidden, move } of cappedSuccessors(cur.state, cur.hidden, overlays)) {
+      const nextKey = stateKey(next, nextHidden);
+      const ng = cur.g + 1;
+      if (ng < (bestG.get(nextKey) ?? Infinity)) {
+        bestG.set(nextKey, ng);
+        // The root's successors stamp `first`; every deeper node inherits it unchanged.
+        heap.push({
+          state: next,
+          hidden: nextHidden,
+          g: ng,
+          f: ng + runsHeuristic(next),
+          key: nextKey,
+          first: cur.first ?? move ?? null,
+        });
+      }
+    }
+  }
+  return null;
 }

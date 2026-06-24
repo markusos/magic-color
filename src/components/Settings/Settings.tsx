@@ -1,12 +1,81 @@
 import { useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
+import { previewSound, useSettings } from '../../store/settings';
+import { hapticsSupported } from '../../audio/haptics';
 import { navigate } from '../../useHashRoute';
 import { useInstall } from '../../install/useInstall';
 import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
 import { GENERATOR_VERSION } from '../../game/levels.meta';
 import { InstallInstructions } from '../InstallBanner/InstallInstructions';
 import styles from './Settings.module.css';
+
+/** A labeled on/off switch row (an accessible toggle button). */
+function ToggleRow({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className={styles.toggleRow}>
+      <span className={styles.toggleLabel}>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={styles.switch}
+        onClick={onToggle}
+      >
+        <span className={styles.knob} />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A labeled volume slider row (0–100%). The filled portion of the track is drawn with an inline
+ * gradient driven by the value (native range tracks aren't fill-styleable cross-browser). `onCommit`
+ * fires when the drag/keypress ends — used to play a preview cue so the player hears the level.
+ */
+function SliderRow({
+  label,
+  value,
+  onChange,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  onCommit?: () => void;
+}) {
+  const pct = Math.round(value * 100);
+  return (
+    <div className={styles.toggleRow}>
+      <span className={styles.toggleLabel}>{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={value}
+        aria-label={label}
+        aria-valuetext={`${pct}%`}
+        className={styles.range}
+        style={{
+          background: `linear-gradient(90deg, var(--accent) ${pct}%, rgba(255,255,255,0.18) ${pct}%)`,
+        }}
+        onChange={(e) => onChange(Number(e.target.value))}
+        onPointerUp={onCommit}
+        onKeyUp={onCommit}
+      />
+    </div>
+  );
+}
 
 /** Number of rapid title taps that reveals the hidden admin level-unlock panel. */
 const ADMIN_TAP_COUNT = 7;
@@ -27,6 +96,12 @@ export function Settings() {
   const furthest = useGameStore((s) => s.furthest);
   const startOver = useGameStore((s) => s.startOver);
   const unlockUpTo = useGameStore((s) => s.unlockUpTo);
+  const soundVolume = useSettings((s) => s.soundVolume);
+  const musicVolume = useSettings((s) => s.musicVolume);
+  const haptics = useSettings((s) => s.haptics);
+  const setSoundVolume = useSettings((s) => s.setSoundVolume);
+  const setMusicVolume = useSettings((s) => s.setMusicVolume);
+  const toggleHaptics = useSettings((s) => s.toggleHaptics);
   // Surface the same install affordance as the home banner, but always (no dismissal) when the app
   // isn't already installed and the platform can offer it.
   const { platform, install } = useInstall();
@@ -86,6 +161,19 @@ export function Settings() {
           </div>
         </section>
       )}
+
+      <section className={styles.group}>
+        <SliderRow
+          label="Sound Effects"
+          value={soundVolume}
+          onChange={setSoundVolume}
+          onCommit={previewSound}
+        />
+        <SliderRow label="Music" value={musicVolume} onChange={setMusicVolume} />
+        {hapticsSupported() && (
+          <ToggleRow label="Haptics" checked={haptics} onToggle={toggleHaptics} />
+        )}
+      </section>
 
       <section className={styles.group}>
         <button className={styles.danger} onClick={onStartOver} disabled={fresh}>

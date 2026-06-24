@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
+import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
 import type { Bottle as BottleData, Color } from '../../game/types';
 import { isCapped } from '../../game/hidden';
 import { cssColor } from '../../theme/colors';
@@ -19,6 +20,11 @@ interface Props {
    */
   frozen?: (Color | null)[];
   selected: boolean;
+  /**
+   * This tube's role in a shown hint, or undefined: `'from'` (pour the liquid out of here) or `'to'`
+   * (pour it into here). Drives the directional chip + pulse so the suggested move is unambiguous.
+   */
+  hintRole?: 'from' | 'to';
   /** Highlight as a valid pour target while another bottle is selected. */
   isTarget?: boolean;
   /** How far (px) the bottle lifts when selected; scales with bottle size. */
@@ -98,7 +104,7 @@ const ICE_CROWN_CRACKS: readonly string[] = [
 ];
 
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, isTarget, lift, onTap }: Props) {
+export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, hintRole, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
   // The frozen block is a contiguous run of cells from the floor, all sharing one trigger tint.
   const frozenCount = frozen ? frozen.filter((t) => t != null).length : 0;
@@ -133,7 +139,9 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, isT
   return (
     <motion.button
       type="button"
-      className={`${styles.bottle} ${isTarget ? styles.target : ''}`}
+      className={`${styles.bottle} ${isTarget ? styles.target : ''} ${
+        hintRole ? `${styles.hint} ${hintRole === 'from' ? styles.hintFrom : styles.hintTo}` : ''
+      }`}
       onClick={onTap}
       aria-label={`bottle with ${bottle.length} of ${capacity} filled`}
       animate={{ y: selected ? -lift : 0 }}
@@ -322,6 +330,28 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, isT
             exit={{ x: '-50%', y: -lift, opacity: 0, scale: 0.85 }}
             transition={{ type: 'spring', stiffness: 600, damping: 22 }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Hint direction chip floating above the tube: an "out" arrow on the source (pour FROM here),
+          an "in" arrow on the destination (pour INTO here) — so the suggested move reads unambiguously. */}
+      <AnimatePresence>
+        {hintRole && (
+          <motion.div
+            key="hintChip"
+            className={`${styles.hintChip} ${hintRole === 'from' ? styles.hintChipFrom : styles.hintChipTo}`}
+            aria-hidden
+            initial={{ opacity: 0, y: 6, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.8 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 24 }}
+          >
+            {hintRole === 'from' ? (
+              <ArrowUpFromLine size={16} strokeWidth={2.5} />
+            ) : (
+              <ArrowDownToLine size={16} strokeWidth={2.5} />
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.button>

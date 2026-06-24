@@ -18,6 +18,7 @@ export function Overlay() {
   const undos = useGameStore((s) => s.undos);
   const optimal = useGameStore((s) => s.optimal);
   const twoStarMax = useGameStore((s) => s.twoStarMax);
+  const hintUsed = useGameStore((s) => s.hintUsed);
   const nextLevel = useGameStore((s) => s.nextLevel);
   const restart = useGameStore((s) => s.restart);
   const mode = useGameStore((s) => s.mode);
@@ -25,8 +26,9 @@ export function Overlay() {
 
   const endless = mode === 'endless';
   const visible = status === 'won' || status === 'deadlocked' || status === 'stuck';
-  // The score (and thus the rating) counts undos used, mirroring the live Stats preview.
-  const stars = starsFor(moves.length + undos, optimal, twoStarMax);
+  // The score (and thus the rating) counts undos used; a hinted solve is capped to 1 star — both
+  // mirror the live Stats preview and the recorded result.
+  const stars = hintUsed ? 1 : starsFor(moves.length + undos, optimal, twoStarMax);
   const praise = endless
     ? `Streak ${endlessStreak}!`
     : stars === 3

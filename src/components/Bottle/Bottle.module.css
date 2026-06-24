@@ -116,6 +116,85 @@
   box-shadow: 0 0 0 2px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
+/* Hint pulse: a glowing ring on the suggested pour's two tubes, color-coded by role — accent on the
+   SOURCE (pour from), success-green on the DESTINATION (pour into) — so the two never read alike. The
+   `--hint` custom property carries the role color into the shared keyframes. Runs a few iterations
+   then settles (the hint stays dismissable by any tap); reduced-motion users get a static ring. */
+.hintFrom {
+  --hint: var(--accent);
+}
+
+.hintTo {
+  --hint: var(--success);
+}
+
+.hint .glass {
+  animation: hintPulse 0.9s ease-in-out 3;
+}
+
+@keyframes hintPulse {
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.55);
+    box-shadow: 0 0 0 0 transparent, 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    border-color: var(--hint);
+    box-shadow: 0 0 0 3px var(--hint), 0 0 18px var(--hint), 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Direction chip floating above the tube mouth: a colored badge carrying the in/out arrow icon. Bobs
+   gently to draw the eye toward the suggested move. */
+.hintChip {
+  position: absolute;
+  top: calc(var(--segment-height) * -0.62);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(var(--bottle-width) * 0.46);
+  height: calc(var(--bottle-width) * 0.46);
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #1a1a1a;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 6;
+  animation: hintChipBob 0.9s ease-in-out infinite;
+}
+
+.hintChipFrom {
+  background: var(--accent);
+}
+
+.hintChipTo {
+  background: var(--success);
+}
+
+@keyframes hintChipBob {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-15%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint .glass {
+    animation: none;
+    border-color: var(--hint);
+    box-shadow: 0 0 0 3px var(--hint), 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .hintChip {
+    animation: none;
+  }
+}
+
 /* Funnel collar: a tinted gradient fading down from the tube neck, marking the only color the tube
    accepts. The `--funnel` custom property carries the (already recolored) tint; the gradient reads as
    a stained glass collar without obscuring the liquid below. */
