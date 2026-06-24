@@ -15,7 +15,6 @@ export function Home() {
   const loadLevel = useGameStore((s) => s.loadLevel);
   const playRandom = useGameStore((s) => s.playRandom);
   const campaignComplete = useGameStore((s) => s.campaignComplete);
-  const endlessBestStreak = useGameStore((s) => s.endlessBestStreak);
   const fresh = furthest <= 1;
 
   // Resume the campaign frontier; only reload if we're not already on it (preserves an
@@ -61,8 +60,10 @@ export function Home() {
             Levels
           </button>
         )}
-        {campaignComplete && endlessBestStreak > 0 && (
-          <p className={styles.streak}>Best streak {endlessBestStreak}</p>
+        {!fresh && (
+          <button className={styles.secondary} onClick={() => navigate('stats')}>
+            Stats
+          </button>
         )}
       </div>
 

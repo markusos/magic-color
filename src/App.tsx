@@ -2,6 +2,7 @@ import { Home } from './components/Home/Home';
 import { GameScreen } from './components/GameScreen/GameScreen';
 import { Settings } from './components/Settings/Settings';
 import { LevelSelect } from './components/LevelSelect/LevelSelect';
+import { StatsScreen } from './components/StatsScreen/StatsScreen';
 import { useScreen } from './useHashRoute';
 import styles from './App.module.css';
 
@@ -13,6 +14,7 @@ export default function App() {
       {screen === 'play' && <GameScreen />}
       {screen === 'settings' && <Settings />}
       {screen === 'levels' && <LevelSelect />}
+      {screen === 'stats' && <StatsScreen />}
       {screen === 'home' && <Home />}
     </div>
   );

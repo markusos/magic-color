@@ -31,6 +31,7 @@ import { hintMove, type HintMove } from '../game/search';
 import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
+import type { CampaignStats } from './progressStats';
 import { deferAfterPaint } from './deferAfterPaint';
 import { feedback } from '../audio/feedback';
 
@@ -147,6 +148,8 @@ interface GameStore {
   playRandom: () => void;
   /** Wipe saved progress and return to level 1. */
   startOver: () => void;
+  /** Read-only aggregate of all saved progress, for the stats screen. Computed on demand. */
+  campaignStats: () => CampaignStats;
   /**
    * Admin/testing hatch: raise the unlock frontier so every level up to `level` (clamped to the
    * baked campaign) becomes playable. Never lowers progress, never touches earned stars/best scores.
@@ -394,6 +397,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       campaign.reset();
       loadLevel(1);
     },
+    campaignStats: () => campaign.stats(),
 
     unlockUpTo: (level) => {
       campaign.unlockTo(level, MAX_UNLOCK_LEVEL);

@@ -16,6 +16,7 @@ import {
   saveProgress,
   type Progress,
 } from './progress';
+import { aggregateProgress, type CampaignStats } from './progressStats';
 import { BAKED_LEVEL_COUNT } from '../game/levelLoader';
 import type { Stars } from '../game/stars';
 
@@ -42,6 +43,8 @@ export interface Campaign {
   readonly randomHardBestStreak: number;
   /** The player's saved record for a level. */
   recordFor: (level: number) => LevelRecord;
+  /** Read-only aggregate of all saved progress, for the stats screen. */
+  stats: () => CampaignStats;
   /** Mark a level as reached (raises the frontier, never lowers it) and persist. */
   reach: (level: number) => void;
   /** Record a completed level's result (keeps the best moves/stars) and persist. */
@@ -87,6 +90,7 @@ export function createCampaign(): Campaign {
       return progress.randomHardBestStreak;
     },
     recordFor,
+    stats: () => aggregateProgress(progress),
     reach(level) {
       progress = { ...progress, current: Math.max(progress.current, level) };
       saveProgress(progress);

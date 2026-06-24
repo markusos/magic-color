@@ -1,50 +1,19 @@
 # Plan
 
-This file carries **open work only**. Everything already shipped is condensed to a one-line pointer
-below — the full design rationale and as-built notes live in the memory notes, the README
+This file carries **open work only**. Shipped work is condensed to one-line pointers in
+[DONE.md](DONE.md); the full design rationale and as-built notes live in the memory notes, the README
 "Architecture" section, and git history.
 
-## Done (pointers, not tracked here)
-
-- **Pre-baked curated levels (v2, difficulty-first)** — offline bake, size-normalized scoring, live
-  budget + spinner, endless mode. See `baked-levels-plan` memo.
-- **Chapter 1 — hidden colors** / **Chapter 2 — color-locked funnels** / **Chapter 3 — frozen tubes
-  (ice)** — the three cumulative derived-overlay mechanics, all solvable-by-construction. See the
-  `funnels-mechanic` and `ice-mechanic` memos. 240 levels baked across 4 chapters (Classic / Hidden
-  Colors / Color Locks / Deep Freeze).
-- **Mechanics made first-class** — the `MechanicModule` registry (`mechanics.ts`) + `Overlays` bundle
-  (`overlays.ts`); the pipeline iterates the registry instead of naming mechanics. See `mechanic-registry`
-  memo. (Round-2 R1/R2.)
-- **Pure session loop** (`session.ts`, R3) + **injected live-gen budget/cache** (R4). Store is a thin
-  adapter; the game-loop decision logic is unit-testable without Zustand/campaign/localStorage.
-- **Round-1 code-quality sweep** (iterative solver DFS, interned `stateKey`, brand casts, store split,
-  DRY fresh-state, param-list collapse). Items #1–#7 resolved; see git history.
-- **Track A — polish (audio + haptics + hints)** — synthesized Web Audio SFX cues + a generative
-  ambient **music** loop (default off) + `navigator.vibrate` haptics, driven off the pure
-  `session.cueForTap` classification; Settings has Sound-Effects + Music **volume sliders** (music
-  default 0/off) and a Haptics toggle (`store/settings.ts`, own localStorage key), and a Toolbar Hint
-  button surfacing one optimal next
-  pour via `search.hintMove`. **Taking a hint caps that attempt's rating to 1 star** (`hintUsed` flag,
-  sticks across undos, resets on fresh board/restart; reflected live in `Stats`). Additive
-  store→component layer; no engine change. NB it touched
-  `search.ts` (a `levelVersion` SOURCE), so it forced a **byte-identical re-bake** — A was *not*
-  fully re-bake-free as first scoped, but the board data is unchanged (only the version stamp moved).
-- **Track C — accessibility (colorblind patterns)** — a "Color Patterns" Settings toggle (off by
-  default) that overlays a distinct texture per palette color (`PATTERN_FOR` in `theme/colors.ts` →
-  `.cb-pattern[data-cb]` rules in `theme/tokens.css`), so a color is identifiable without hue. Applied
-  to liquid segments, the funnel collar, and the ice-trigger badge (the color-carrying overlays);
-  hidden `?` stays plain. Pure render-layer (`patterns` flag threaded GameBoard→Bottle→LiquidSegment);
-  no engine/bake touch. Dark-only app, palette already ΔE-tuned, so the contrast pass was a no-op.
-
-Baseline today: lint / tsc / ~213 tests green; the engine/solver/generator split, derived-overlay
+Baseline today: lint / tsc / 234 tests green; the engine/solver/generator split, derived-overlay
 design, and registry are healthy. The work below is **growth and polish**, not debt.
 
 ---
 
 # Next steps
 
-Tracks chosen 2026-06-23. **A (polish) and C (accessibility) have SHIPPED** (see Done pointers above).
-The remaining near-term track is **B (engagement — stats screen + daily challenge)**, medium effort.
+Tracks chosen 2026-06-23. **A (polish) and C (accessibility) have SHIPPED** (see [DONE.md](DONE.md)).
+Track **B (engagement)** is in progress: **B1 (stats screen) and B3 (endless framing) SHIPPED
+2026-06-24**; **B2 (daily challenge) is the remaining piece**, medium effort.
 
 **Track D (chapter 5 / new mechanic) is DEFERRED** (decided 2026-06-23) — design kept on file below, not
 scheduled. Revisit once A/B/C have shipped and (per track B) there's playtest signal to justify a
@@ -69,12 +38,14 @@ the GH Pages static deploy is unchanged. Consequences to honor: the daily seed i
 **copyable text result**, not a posted score; there are **no global leaderboards or cross-device sync**.
 If those are ever wanted they're a separate backend project, explicitly out of scope here.
 
-### B1. Real stats screen
-`Stats.tsx` today shows only the *live attempt's* star rating. There is no aggregate view. The data is
-already persisted in `campaign`/`progress` (`store/`): levels cleared, per-level stars, current frontier.
-- Add an aggregate view (own screen or a Home panel): levels completed, total stars / 3-star count,
-  chapter-by-chapter progress, current campaign position.
-- Pure read over the existing persisted progress — no new persistence schema, no engine touch.
+### B1. Real stats screen — SHIPPED (2026-06-24)
+New `StatsScreen` at route `stats` (linked from Home, shown once past level 1). Aggregation is a pure
+fold `aggregateProgress(progress)` in `store/progressStats.ts` (tested against hand-built fixtures);
+exposed via `campaign.stats()` → `gameStore.campaignStats()` so the component never touches
+localStorage directly. Shows levels cleared / total, stars earned / max, 3-star clears, current
+campaign position, and a per-chapter breakdown (completed/total + stars + progress bar). "Completed"
+counts only star-recorded levels, so the admin-unlock sentinel is excluded. Pure read; no new
+persistence, no engine touch.
 
 ### B2. Daily challenge
 - Generation is already **seeded and deterministic**. Derive a seed from the UTC date (`YYYY-MM-DD`),
@@ -90,9 +61,10 @@ already persisted in `campaign`/`progress` (`store/`): levels cleared, per-level
 - Reuse the loading spinner + live budget; the daily board is just another live-generated level with a
   fixed seed.
 
-### B3. Endless-mode framing (small)
-"Play Random" exists but has no best/streak framing. Add a personal-best move/streak counter (reads the
-same progress store). Low effort; bundle with B1.
+### B3. Endless-mode framing (small) — SHIPPED (2026-06-24)
+The random-hard best streak (already persisted as `randomHardBestStreak`) is now surfaced on the new
+Stats screen ("Best random streak" row, shown when > 0), alongside the existing Home "Best streak N"
+line. Bundled with B1 as planned; no new persistence.
 
 ### Tests / verification
 Daily: same date → same board (determinism), different dates → different boards; result persistence

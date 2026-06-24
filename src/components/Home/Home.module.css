@@ -115,10 +115,3 @@
   border-radius: var(--radius-md);
 }
 
-/* Post-campaign best-streak caption under the actions. */
-.streak {
-  margin: var(--space-1) 0 0;
-  color: var(--text-dim);
-  font-size: 0.9rem;
-}
-
