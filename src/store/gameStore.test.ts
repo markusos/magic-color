@@ -324,9 +324,15 @@ describe('frozen tubes (chapter 3)', () => {
   });
 
   it('does not count a board with frozen ice as won, even if structurally sorted', () => {
-    // Both tubes are structurally complete, but tube 0 holds ice whose trigger (amber) is absent, so
-    // it can never cap — the board is NOT won (and is a genuine deadlock, no legal move thaws it).
-    const ice = [[color('amber'), color('amber')], [null, null]];
+    // Both tubes are structurally complete, but tube 0 holds ice whose trigger color is one the board
+    // can never hold, so it can never cap — the board is NOT won (a genuine deadlock, nothing thaws it).
+    //
+    // The trigger is deliberately a NON-palette color ('never'). `restart()` re-rolls the board's two
+    // colors across the whole 12-hue palette (`recolorBoard`), so a palette trigger that's merely absent
+    // here (e.g. amber) could be re-introduced onto a tube by the re-roll — thawing the ice and making
+    // the sorted board read as won (a ~1-in-N flake). A non-palette trigger can never be produced by the
+    // recolor, so the ice stays frozen on every re-roll.
+    const ice = [[color('never'), color('never')], [null, null]];
     useGameStore.setState({
       current: board([['ruby', 'ruby'], ['teal', 'teal']], 2),
       initial: board([['ruby', 'ruby'], ['teal', 'teal']], 2),
