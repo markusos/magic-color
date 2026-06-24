@@ -31,6 +31,33 @@ describe('deriveStatus', () => {
     expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('playing');
   });
 
+  it('reports a color-sorted board as deadlocked when remaining ice can no longer be thawed', () => {
+    // Both tubes are full single-color (so `isWon` is true), but tube 0 is frozen to the top by a
+    // trigger ('g') that nothing on the board can ever cap. No pour is possible (every top is frozen or
+    // full), so the player is genuinely out of moves — not "still playing".
+    const state = board([['r', 'r', 'r', 'r'], ['b', 'b', 'b', 'b']], 4);
+    const ice = [[color('g'), color('g'), color('g'), color('g')], []];
+    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('deadlocked');
+  });
+
+  it('stays playing when a sorted-but-frozen board still has a move that can free the ice', () => {
+    // Tube 0 is full red with a frozen floor; the red above the ice can still be poured into the empty
+    // tube, so the board is not out of moves even though ice keeps it unfinished.
+    const state = board([['r', 'r', 'r', 'r'], []], 4);
+    const ice = [[color('b'), null, null, null], []];
+    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('playing');
+  });
+
+  it('does not count a frozen-topped tube as a source even when its color matches an open tube', () => {
+    // Tube 0 is full red but frozen to the top by a trigger ('g') nothing can cap, so its (red) top
+    // can't move. Tube 1 is open red with room — the colors MATCH, but the only pour the match implies
+    // is tube0 -> tube1, which is illegal (frozen source). Tube 1 has nowhere else to go (tube 0 is
+    // full), so the board is genuinely out of moves.
+    const state = board([['r', 'r', 'r', 'r'], ['r', 'r']], 4);
+    const ice = [[color('g'), color('g'), color('g'), color('g')], []];
+    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('deadlocked');
+  });
+
   it('reports a board with no legal move as deadlocked', () => {
     // Two full tubes of clashing colors, no empty: nothing can be poured anywhere.
     const state = board([['r', 'b', 'r', 'b'], ['b', 'r', 'b', 'r']], 4);

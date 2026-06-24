@@ -44,6 +44,13 @@ function noPlayerMove(state: GameState, blocked: HiddenGrid, overlays: OverlaySe
  * every bottle is sorted AND no mechanic keeps it unfinished (a concealed "?" or a frozen block). The
  * loop check runs full-information, a superset of the player's (cap/conceal-limited) moves, so it can
  * only ever *under*-fire — a player who still has a real move is never told they're stuck.
+ *
+ * `isWon` (pure engine) treats a full single-color tube as complete even when it's frozen, so a board
+ * that's sorted by color but still holds ice reads as "won-but-blocked". We must NOT short-circuit such
+ * a board to `playing` without first checking for moves: if the only thing left is ice the player can no
+ * longer thaw (no move remains to cap its trigger), that's a genuine `deadlocked` wall, not play. So the
+ * no-move check runs in the blocked-completion branch too, and the out-of-moves alert correctly accounts
+ * for frozen segments. (A blocked board that DOES still have a move stays `playing`.)
  */
 export function deriveStatus(
   state: GameState,
@@ -53,8 +60,9 @@ export function deriveStatus(
   // Every blocking mechanic (concealed "?"s, frozen ice) folded into the columns the run-cap/cap
   // helpers consult (a no-op when the board carries no blocking mechanic).
   const blocked = blockedColumns(overlays, state);
-  if (isWon(state)) return blocksCompletion(overlays, state) ? 'playing' : 'won';
+  if (isWon(state) && !blocksCompletion(overlays, state)) return 'won';
   if (noPlayerMove(state, blocked, overlays)) return 'deadlocked';
+  if (isWon(state)) return 'playing'; // sorted but mechanic-blocked, and a thawing/revealing move remains
   if (isStuckInLoop(state, visited, { funnels: overlays.funnels })) return 'stuck';
   return 'playing';
 }
