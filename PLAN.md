@@ -29,6 +29,12 @@ below — the full design rationale and as-built notes live in the memory notes,
   store→component layer; no engine change. NB it touched
   `search.ts` (a `levelVersion` SOURCE), so it forced a **byte-identical re-bake** — A was *not*
   fully re-bake-free as first scoped, but the board data is unchanged (only the version stamp moved).
+- **Track C — accessibility (colorblind patterns)** — a "Color Patterns" Settings toggle (off by
+  default) that overlays a distinct texture per palette color (`PATTERN_FOR` in `theme/colors.ts` →
+  `.cb-pattern[data-cb]` rules in `theme/tokens.css`), so a color is identifiable without hue. Applied
+  to liquid segments, the funnel collar, and the ice-trigger badge (the color-carrying overlays);
+  hidden `?` stays plain. Pure render-layer (`patterns` flag threaded GameBoard→Bottle→LiquidSegment);
+  no engine/bake touch. Dark-only app, palette already ΔE-tuned, so the contrast pass was a no-op.
 
 Baseline today: lint / tsc / ~213 tests green; the engine/solver/generator split, derived-overlay
 design, and registry are healthy. The work below is **growth and polish**, not debt.
@@ -37,9 +43,8 @@ design, and registry are healthy. The work below is **growth and polish**, not d
 
 # Next steps
 
-Tracks chosen 2026-06-23. **A (polish) has SHIPPED** (see Done pointer above). Remaining near-term work
-is **B (engagement)** and **C (accessibility)** — ordered by leverage-per-risk: **C (accessibility)** is
-small, **B (engagement)** is medium. They're independent and can land in either order or in parallel.
+Tracks chosen 2026-06-23. **A (polish) and C (accessibility) have SHIPPED** (see Done pointers above).
+The remaining near-term track is **B (engagement — stats screen + daily challenge)**, medium effort.
 
 **Track D (chapter 5 / new mechanic) is DEFERRED** (decided 2026-06-23) — design kept on file below, not
 scheduled. Revisit once A/B/C have shipped and (per track B) there's playtest signal to justify a
@@ -93,34 +98,6 @@ same progress store). Low effort; bundle with B1.
 Daily: same date → same board (determinism), different dates → different boards; result persistence
 round-trips. Stats: aggregates match a hand-built progress fixture. Preview-verify the new screen in
 light/dark and a small viewport.
-
----
-
-## C. Accessibility — colorblind support + cue audit  (re-bake-free)
-
-The liquids are **hue-only** today. Ice added a frost texture and funnels a collar, but the base color
-identity is still pure hue — a problem for the ~8% with color-vision deficiency, and the chapters stack
-hue-coded cues (ice tint, funnel tint) on top of hue-coded liquid.
-
-- **Per-color pattern/texture toggle** (decided 2026-06-23 — patterns, not glyphs). Fill each color
-  with a distinct **pattern/texture** (e.g. diagonal stripes, dots, cross-hatch, solid) keyed off the
-  branded `Color` — one stable pattern per palette entry in `theme/colors.ts`. **Off by default**, a
-  Settings toggle. The `Color` brand makes it a clean render-layer change in `LiquidSegment`/`Bottle`
-  (SVG `<pattern>` fills or a CSS background layered over the liquid color).
-- **Design watch-out:** patterns must read cleanly *through* the existing overlay treatments — the ice
-  frost layer and funnel collar sit on top of liquids, so verify the pattern + frost + tint don't turn
-  into visual noise. Keep patterns low-contrast/subtle so they aid identification without fighting the
-  liquid aesthetic. Pattern density must stay legible at the smallest segment height on mobile.
-- **Cue audit across mechanics.** Confirm each mechanic is distinguishable **without** hue: hidden `?`
-  glyph (ok), ice frost texture + rime line (ok), funnel collar shape (check it's not tint-only). Where a
-  cue is tint-only, pair it with a shape/texture. Extend the same discipline to funnels and the new
-  chapter (its lock indicator must carry a non-hue cue too).
-- **Contrast pass** on the palette + text in light/dark.
-
-### Verification
-Preview the pattern toggle across a hidden+funnel+ice board, dark mode, small viewport; eyeball each
-mechanic with patterns on to confirm no cue relies on hue alone AND that patterns stay legible under the
-frost/collar overlays at the smallest segment size.
 
 ---
 

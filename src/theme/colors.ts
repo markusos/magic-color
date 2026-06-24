@@ -28,6 +28,33 @@ export function cssColor(id: string): string {
 }
 
 /**
+ * A distinct texture per palette id, for the colorblind "Color Patterns" aid (off by default). Each id
+ * maps to one stable pattern key (see the `.cb-pattern[data-cb=…]` rules in `theme/tokens.css`), so a
+ * color is identifiable by texture without relying on hue. The assignment gives the perceptually-closest
+ * pairs the most-different patterns: the blue–purple band (sapphire/cobalt/violet/amethyst) and the
+ * red–pink band (ruby/magenta/rose) each get a spread of orientation + dot/grid styles.
+ */
+export const PATTERN_FOR: Record<string, string> = {
+  ruby: 'diag-fwd',
+  magenta: 'grid',
+  rose: 'horiz',
+  tangerine: 'thick-diag',
+  amber: 'thick-horiz',
+  lime: 'dots-dense',
+  emerald: 'cross',
+  teal: 'thick-vert',
+  sapphire: 'vert',
+  cobalt: 'dots',
+  violet: 'diag-back',
+  amethyst: 'checker',
+};
+
+/** The pattern key for a palette id (empty string if unknown — renders no overlay). */
+export function patternFor(id: string): string {
+  return PATTERN_FOR[id] ?? '';
+}
+
+/**
  * Convert a `#rrggbb` string to CIE Lab. Lab approximates perceptual color space, so plain
  * Euclidean distance between two Lab points (≈ CIE76 ΔE) is a decent "how different do these
  * look" measure — good enough to keep a board's palette visually distinct.

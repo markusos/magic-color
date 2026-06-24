@@ -99,9 +99,11 @@ export function Settings() {
   const soundVolume = useSettings((s) => s.soundVolume);
   const musicVolume = useSettings((s) => s.musicVolume);
   const haptics = useSettings((s) => s.haptics);
+  const patterns = useSettings((s) => s.patterns);
   const setSoundVolume = useSettings((s) => s.setSoundVolume);
   const setMusicVolume = useSettings((s) => s.setMusicVolume);
   const toggleHaptics = useSettings((s) => s.toggleHaptics);
+  const togglePatterns = useSettings((s) => s.togglePatterns);
   // Surface the same install affordance as the home banner, but always (no dismissal) when the app
   // isn't already installed and the platform can offer it.
   const { platform, install } = useInstall();
@@ -173,6 +175,11 @@ export function Settings() {
         {hapticsSupported() && (
           <ToggleRow label="Haptics" checked={haptics} onToggle={toggleHaptics} />
         )}
+      </section>
+
+      <section className={styles.group}>
+        <ToggleRow label="Color Patterns" checked={patterns} onToggle={togglePatterns} />
+        <p className={styles.hint}>Adds a distinct texture to each color, for easier telling apart.</p>
       </section>
 
       <section className={styles.group}>

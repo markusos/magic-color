@@ -295,6 +295,12 @@
   z-index: 5;
 }
 
+/* Clip the colorblind texture overlay to the round ice badge (the swatch is a circle). */
+.iceBadgePattern {
+  border-radius: 50%;
+  overflow: hidden;
+}
+
 /* Cork lid on a finished (capped) tube. Perches on the rim; drops in via Framer Motion.
    Horizontal centering is done with motion's own `x: -50%` (not a CSS transform) so it isn't
    clobbered when motion writes the y/scale transform. */

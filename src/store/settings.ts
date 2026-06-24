@@ -26,10 +26,12 @@ interface Persisted {
   /** Background-music volume (the ambient loop), 0–1; 0 = off. */
   musicVolume: number;
   haptics: boolean;
+  /** Colorblind aid: fill each color with a distinct texture/pattern. Off by default. */
+  patterns: boolean;
 }
 
 function defaults(): Persisted {
-  return { soundVolume: DEFAULT_SOUND, musicVolume: 0, haptics: true };
+  return { soundVolume: DEFAULT_SOUND, musicVolume: 0, haptics: true, patterns: false };
 }
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
@@ -54,6 +56,7 @@ function load(): Persisted {
       // Music stays opt-in: a legacy `music: true` carries over at a modest level, everything else off.
       musicVolume: readVolume(p.musicVolume, p.music, 0.6, 0),
       haptics: typeof p.haptics === 'boolean' ? p.haptics : true,
+      patterns: typeof p.patterns === 'boolean' ? p.patterns : false,
     };
   } catch {
     return defaults();
@@ -72,6 +75,7 @@ interface SettingsStore extends Persisted {
   setSoundVolume: (v: number) => void;
   setMusicVolume: (v: number) => void;
   toggleHaptics: () => void;
+  togglePatterns: () => void;
 }
 
 /** The persisted subset of the store (drops the action functions). */
@@ -79,6 +83,7 @@ const persistedOf = (s: SettingsStore): Persisted => ({
   soundVolume: s.soundVolume,
   musicVolume: s.musicVolume,
   haptics: s.haptics,
+  patterns: s.patterns,
 });
 
 export const useSettings = create<SettingsStore>((set, get) => {
@@ -108,6 +113,12 @@ export const useSettings = create<SettingsStore>((set, get) => {
       set({ haptics });
       save(persistedOf(get()));
       if (haptics) vibrate('select');
+    },
+    togglePatterns: () => {
+      // Purely a render-layer flag (read by LiquidSegment/Bottle) — no audio module to notify.
+      const patterns = !get().patterns;
+      set({ patterns });
+      save(persistedOf(get()));
     },
   };
 });

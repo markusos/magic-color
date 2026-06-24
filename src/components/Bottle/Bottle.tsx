@@ -3,7 +3,7 @@ import { animate, AnimatePresence, motion, useMotionValue, useTransform } from '
 import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
 import type { Bottle as BottleData, Color } from '../../game/types';
 import { isCapped } from '../../game/hidden';
-import { cssColor } from '../../theme/colors';
+import { cssColor, patternFor } from '../../theme/colors';
 import { LiquidSegment } from '../LiquidSegment/LiquidSegment';
 import styles from './Bottle.module.css';
 
@@ -20,6 +20,8 @@ interface Props {
    */
   frozen?: (Color | null)[];
   selected: boolean;
+  /** Colorblind aid: overlay each color's distinct texture (liquids, funnel collar, ice badge). */
+  patterns?: boolean;
   /**
    * This tube's role in a shown hint, or undefined: `'from'` (pour the liquid out of here) or `'to'`
    * (pour it into here). Drives the directional chip + pulse so the suggested move is unambiguous.
@@ -104,7 +106,7 @@ const ICE_CROWN_CRACKS: readonly string[] = [
 ];
 
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, hintRole, isTarget, lift, onTap }: Props) {
+export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, patterns, hintRole, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
   // The frozen block is a contiguous run of cells from the floor, all sharing one trigger tint.
   const frozenCount = frozen ? frozen.filter((t) => t != null).length : 0;
@@ -171,6 +173,7 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, hin
                   isBottom={i === 0}
                   isTop={i === segments.length - 1}
                   hidden={hidden?.[i]}
+                  patterns={patterns}
                   fillDelay={i >= prevFill ? (i - prevFill) * 0.08 : 0}
                 />
               ))}
@@ -202,7 +205,11 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, hin
             Lives in the glass (clipped to the rim) and so tilts with the tube. Drawn above the liquid
             but it sits at the very top, where liquid only reaches once the tube is full. */}
         {funnel != null && (
-          <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }} />
+          <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }}>
+            {/* Colorblind aid: the collar's accepted color also carries its texture, so which color a
+                funnel locks to reads without hue. */}
+            {patterns && <div className="cb-pattern" data-cb={patternFor(funnel)} aria-hidden />}
+          </div>
         )}
 
         </div>
@@ -315,7 +322,14 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, hin
                   crystal. */}
               <div className={styles.iceRainbow} />
 
-              <div className={styles.iceBadge}>❄</div>
+              <div className={styles.iceBadge}>
+                ❄
+                {/* Colorblind aid: the trigger-color swatch carries its texture too, so the "complete
+                    THIS color" badge reads without hue. Clipped to the round badge. */}
+                {patterns && (
+                  <div className={`${styles.iceBadgePattern} cb-pattern`} data-cb={patternFor(iceTint)} aria-hidden />
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { cssColor } from '../../theme/colors';
+import { cssColor, patternFor } from '../../theme/colors';
 import styles from './LiquidSegment.module.css';
 
 interface Props {
@@ -10,6 +10,8 @@ interface Props {
   isTop: boolean;
   /** Concealed (hidden-colors mechanic): paint a black band (the "?" is drawn by the Bottle). */
   hidden?: boolean;
+  /** Colorblind aid: overlay this color's distinct texture (see `patternFor`). */
+  patterns?: boolean;
   /** Seconds to delay this band's fill-in, so a multi-band pour rises bottom-to-top. */
   fillDelay?: number;
 }
@@ -21,12 +23,14 @@ interface Props {
  * a non-bottom layer carries a wavy bottom that overlaps down into the layer below, so adjacent
  * colors interlock along the wave with no gap; the top-most layer also gets a wavy open surface.
  */
-export function LiquidSegment({ color, isBottom, isTop, hidden, fillDelay = 0 }: Props) {
+export function LiquidSegment({ color, isBottom, isTop, hidden, patterns, fillDelay = 0 }: Props) {
   // The interface with the layer below is wavy on every layer except the base (which keeps its
   // rounded bottom). The open surface is wavy only on the top-most layer.
   const waveBottom = !isBottom;
   const waveTop = isTop;
   const spring = { type: 'spring', stiffness: 500, damping: 32 } as const;
+  // Colorblind aid: a per-color texture overlay (only when enabled and the band isn't concealed).
+  const pattern = patterns && !hidden ? patternFor(color) : '';
   return (
     <motion.div
       initial={{ scaleY: 0, opacity: 0 }}
@@ -43,6 +47,8 @@ export function LiquidSegment({ color, isBottom, isTop, hidden, fillDelay = 0 }:
         .filter(Boolean)
         .join(' ')}
       style={hidden ? undefined : { backgroundColor: cssColor(color) }}
-    />
+    >
+      {pattern && <div className="cb-pattern" data-cb={pattern} aria-hidden />}
+    </motion.div>
   );
 }
