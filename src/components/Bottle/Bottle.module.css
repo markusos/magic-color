@@ -281,12 +281,21 @@
   );
 }
 
-/* Phones drop the screen blend on the caustic. A blend mode samples its backdrop, and iOS WebKit is
-   unreliable about keeping that sampling confined to the isolated layer above — a tube tap elsewhere
-   can still force the rainbow to re-blend and the ice to "vibrate". The plain gradient reads almost
-   the same. The frost's drop-shadow filter stays: it's now painted once into the promoted GPU layer,
-   so it no longer re-rasterizes when neighbours animate. Desktop keeps the full screened caustic. */
+/* Phones neutralize everything that gives the ice overlay its own compositing surface. Both `filter`
+   and `translateZ(0)` hand the element a separate backing store, and on iOS WebKit that store (a) re-
+   rasterizes and (b) re-snaps to a different device-pixel row whenever a neighbouring tube animates —
+   so the ice shimmers and drifts a few px up/down relative to the liquid it sits on, even when a tube
+   two over is tapped. Stripping the filter, the layer promotion and the screen blend keeps the frost
+   as plain translucent content inside the tube's own paint layer: it moves with the tube and nothing
+   else can repaint or reposition it. We lose the soft shadow and the screened caustic; the static
+   gradient still reads as ice. Desktop (fine pointer) keeps the full effect — the bug is iOS-only. */
 @media (hover: none) and (pointer: coarse) {
+  .iceFrost {
+    filter: none;
+    transform: none;
+    backface-visibility: visible;
+    isolation: auto;
+  }
   .iceRainbow {
     mix-blend-mode: normal;
     opacity: 0.5;
