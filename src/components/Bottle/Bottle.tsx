@@ -262,17 +262,19 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, pat
                 const flip = (frozenCount - 1 - k) % 2 === 1;
                 return (
                   <div className={styles.iceTile} key={k}>
-                    <svg viewBox="0 0 128 72" preserveAspectRatio="none" aria-hidden>
+                    {/* No `preserveAspectRatio="none"` and no `non-scaling-stroke`: both force iOS
+                        WebKit to recompute geometry in device space on every rasterization, so when a
+                        neighbouring tube's animation triggers a repaint the ice re-rasters at a slightly
+                        different sub-pixel offset and visibly jitters (the box itself never moves — only
+                        the painted pixels). The viewBox aspect (128:72) already equals the tile box
+                        (1.28w : 0.72w), so the default `meet` fits identically; strokes are given plain
+                        viewBox-unit widths that scale with the tube so any repaint is pixel-deterministic. */}
+                    <svg viewBox="0 0 128 72" aria-hidden>
                       <g transform={flip ? 'translate(128,0) scale(-1,1)' : undefined}>
                         {ICE_FACETS.map(([pts, g], fi) => (
                           <polygon key={fi} points={pts} fill={`url(#ice${g}-${gid})`} />
                         ))}
-                        <g
-                          stroke="rgba(255,255,255,0.5)"
-                          strokeWidth="0.8"
-                          fill="none"
-                          vectorEffect="non-scaling-stroke"
-                        >
+                        <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" fill="none">
                           {ICE_CRACKS.map((pts, ci) => (
                             <polyline key={ci} points={pts} />
                           ))}
@@ -285,9 +287,8 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, pat
                         {/* A delicate snowflake etched on the face. */}
                         <g
                           stroke="rgba(255,255,255,0.6)"
-                          strokeWidth="0.7"
+                          strokeWidth="1.2"
                           fill="none"
-                          vectorEffect="non-scaling-stroke"
                           transform="translate(94,34)"
                         >
                           <path d="M0,-8 V8 M-7,-4 L7,4 M-7,4 L7,-4" />
@@ -300,12 +301,7 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, pat
                             {ICE_CROWN.map(([pts, g], ci) => (
                               <polygon key={`cf${ci}`} points={pts} fill={`url(#ice${g}-${gid})`} />
                             ))}
-                            <g
-                              stroke="rgba(255,255,255,0.5)"
-                              strokeWidth="0.8"
-                              fill="none"
-                              vectorEffect="non-scaling-stroke"
-                            >
+                            <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" fill="none">
                               {ICE_CROWN_CRACKS.map((pts, ci) => (
                                 <polyline key={`cc${ci}`} points={pts} />
                               ))}
