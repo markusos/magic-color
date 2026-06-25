@@ -1,6 +1,9 @@
-import { Settings as SettingsIcon } from 'lucide-react';
+import { useState } from 'react';
+import { CalendarDays, Check, Flame, Settings as SettingsIcon, Share } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
+import { GAME_URL } from '../../game/daily';
+import { shareOrCopy } from '../../share';
 import { InstallBanner } from '../InstallBanner/InstallBanner';
 import styles from './Home.module.css';
 
@@ -14,8 +17,25 @@ export function Home() {
   const furthest = useGameStore((s) => s.furthest);
   const loadLevel = useGameStore((s) => s.loadLevel);
   const playRandom = useGameStore((s) => s.playRandom);
+  const playDaily = useGameStore((s) => s.playDaily);
+  const dailyStreak = useGameStore((s) => s.dailyStreak);
+  const dailyDone = useGameStore((s) => s.dailyResult !== null);
   const campaignComplete = useGameStore((s) => s.campaignComplete);
   const fresh = furthest <= 1;
+  const [copied, setCopied] = useState(false);
+
+  // Share the game: the native share sheet on phones, a clipboard copy of the link elsewhere.
+  const onShare = async () => {
+    const outcome = await shareOrCopy({
+      title: 'Magic Color',
+      text: 'Sort the colors. One tube at a time.',
+      url: GAME_URL,
+    });
+    if (outcome === 'copied') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Resume the campaign frontier; only reload if we're not already on it (preserves an
   // in-progress board when continuing the furthest level).
@@ -29,8 +49,25 @@ export function Home() {
     navigate('play');
   };
 
+  const onPlayDaily = () => {
+    playDaily();
+    navigate('play');
+  };
+
   return (
     <div className={styles.home}>
+      <button
+        className={styles.shareLink}
+        onClick={() => void onShare()}
+        aria-label={copied ? 'Link copied' : 'Share Magic Color'}
+      >
+        {copied ? (
+          <Check size={24} strokeWidth={2} aria-hidden />
+        ) : (
+          <Share size={24} strokeWidth={2} aria-hidden />
+        )}
+      </button>
+
       <button
         className={styles.settingsLink}
         onClick={() => navigate('settings')}
@@ -54,6 +91,23 @@ export function Home() {
             {fresh ? 'Play' : `Continue · Level ${furthest}`}
           </button>
         )}
+        {/* The daily challenge is independent of campaign progress — always available. */}
+        <button className={styles.daily} onClick={onPlayDaily}>
+          <CalendarDays size={18} strokeWidth={2} aria-hidden />
+          <span className={styles.dailyLabel}>Daily Challenge</span>
+          {dailyDone ? (
+            <span className={styles.dailyMeta} aria-label="Solved today">
+              <Check size={14} strokeWidth={2.5} aria-hidden />
+            </span>
+          ) : (
+            dailyStreak > 0 && (
+              <span className={styles.dailyMeta} aria-label={`${dailyStreak} day streak`}>
+                <Flame size={14} strokeWidth={2.5} aria-hidden />
+                {dailyStreak}
+              </span>
+            )
+          )}
+        </button>
         {/* Only meaningful once more than one level is unlocked. */}
         {!fresh && (
           <button className={styles.secondary} onClick={() => navigate('levels')}>

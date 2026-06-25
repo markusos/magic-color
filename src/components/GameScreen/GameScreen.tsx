@@ -20,6 +20,7 @@ export function GameScreen() {
   const loading = useGameStore((s) => s.loading);
   const mode = useGameStore((s) => s.mode);
   const endlessStreak = useGameStore((s) => s.endlessStreak);
+  const dailyKey = useGameStore((s) => s.dailyKey);
 
   return (
     <>
@@ -28,7 +29,14 @@ export function GameScreen() {
           <ChevronLeft size={26} strokeWidth={2} aria-hidden />
         </button>
         <div className={styles.levelInfo}>
-          {mode === 'endless' ? (
+          {mode === 'daily' ? (
+            <>
+              <span className={styles.level}>Daily</span>
+              <span className={styles.phase} data-phase={phase}>
+                {dailyKey ?? PHASE_LABEL[phase]}
+              </span>
+            </>
+          ) : mode === 'endless' ? (
             <>
               <span className={styles.level}>Random</span>
               <span className={styles.phase} data-phase={phase}>

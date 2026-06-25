@@ -11,6 +11,7 @@
 import {
   clearProgress,
   loadProgress,
+  recordDaily,
   recordHint,
   recordRandomHardStreak,
   recordResult,
@@ -19,6 +20,7 @@ import {
 } from './progress';
 import { aggregateProgress, type CampaignStats } from './progressStats';
 import { BAKED_LEVEL_COUNT } from '../game/levelLoader';
+import { type DailyRecord, dailyStreak } from '../game/daily';
 import type { Stars } from '../game/stars';
 
 /** A player's saved result for a single level. */
@@ -54,6 +56,12 @@ export interface Campaign {
   recordRandomHard: (streak: number) => number;
   /** Tally one hint taken and persist. */
   recordHint: () => void;
+  /** The player's stored daily result for `key` (UTC date), or null if not yet solved. */
+  dailyResult: (key: string) => DailyRecord | null;
+  /** Current daily-challenge streak as of `today` (consecutive solved days ending at today). */
+  dailyStreak: (today: string) => number;
+  /** Record a daily result for `key` (keeps the best) and persist; returns the stored best. */
+  recordDaily: (key: string, stars: Stars, moves: number) => DailyRecord;
   /**
    * Raise the frontier toward `level` (clamped to 1..`max`) for the admin unlock; persist.
    * Unlocking to `max` also flips `campaignComplete`, opening "Play Random".
@@ -111,6 +119,13 @@ export function createCampaign(): Campaign {
     recordHint() {
       progress = recordHint(progress);
       saveProgress(progress);
+    },
+    dailyResult: (key) => progress.daily[key] ?? null,
+    dailyStreak: (today) => dailyStreak(progress.daily, today),
+    recordDaily(key, stars, moves) {
+      progress = recordDaily(progress, key, stars, moves);
+      saveProgress(progress);
+      return progress.daily[key]!;
     },
     unlockTo(level, max) {
       const target = Math.max(1, Math.min(max, Math.floor(level)));

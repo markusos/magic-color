@@ -42,3 +42,19 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
 - **Track B3 — endless-mode framing** (2026-06-24) — the persisted `randomHardBestStreak` is surfaced
   as a "Best random streak" row on the stats screen; the redundant Home "Best streak N" caption was
   removed. No new persistence. Bundled with B1.
+- **Track B2 — daily challenge** (2026-06-24) — a date-seeded showcase board, fully backendless. Pure
+  date↔seed↔streak↔share logic in `game/daily.ts` (`dailyKey`/`dailySeed`/`dailyStreak`/`dailyShareText`,
+  UTC so the board is identical across devices with no server); `generateDailyLevel(key)` in
+  `levelLoader.ts` picks a mid/hard shape best-of-N with the FULL mechanic set + balanced density,
+  memoized per date. New `'daily'` `GameMode` in the store (`playDaily`/`applyDaily`; win records via
+  `campaign.recordDaily`, refreshes `dailyStreak`/`dailyResult`; `nextLevel` no-ops). Additive
+  `daily: Record<date, {stars,moves}>` on the progress blob (no version bump; older saves default `{}`).
+  UI: Home "Daily Challenge" button with streak/done chip, GameScreen "Daily · date" header, win overlay
+  with copy-to-clipboard "Share Result" + "Home", and a daily-streak row on the stats screen. Completes
+  Track B. See `track-b-engagement` memo.
+  - **Sharing** — `dailyShareText` (daily.ts) appends the deployed game URL (`GAME_URL`) on its own line
+    so a paste links back to play. A UI-agnostic `shareOrCopy` helper (`src/share.ts`, unit-tested)
+    prefers the native Web Share API (system share sheet on phones), falls back to a clipboard copy
+    elsewhere, and respects a user-cancelled share (AbortError → no silent copy). A share button in
+    Home's top-left corner (mirroring the Settings cog) shares the game itself; it flips to a check
+    ("Link copied") for 2s on the copy fallback.

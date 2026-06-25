@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   clearProgress,
   loadProgress,
+  recordDaily,
   recordHint,
   recordRandomHardStreak,
   recordResult,
@@ -16,6 +17,7 @@ const base = (over: Partial<Progress> = {}): Progress => ({
   stars: {},
   randomHardBestStreak: 0,
   hintsUsed: 0,
+  daily: {},
   ...over,
 });
 
@@ -30,6 +32,7 @@ describe('progress persistence', () => {
       stars: {},
       randomHardBestStreak: 0,
       hintsUsed: 0,
+      daily: {},
     });
   });
 
@@ -42,13 +45,32 @@ describe('progress persistence', () => {
       stars: { 3: 2 },
       randomHardBestStreak: 4,
       hintsUsed: 9,
+      daily: {},
     });
   });
 
-  it('defaults the random-hard streak and hint count to 0 for older saves that lack them', () => {
+  it('defaults the random-hard streak, hint count, and daily map for older saves that lack them', () => {
     localStorage.setItem('magic-color:v1', JSON.stringify({ version: 1, current: 5, best: {}, stars: {} }));
     expect(loadProgress().randomHardBestStreak).toBe(0);
     expect(loadProgress().hintsUsed).toBe(0);
+    expect(loadProgress().daily).toEqual({});
+  });
+
+  it('round-trips and sanitizes the daily map (dropping malformed entries)', () => {
+    saveProgress(base({ daily: { '2026-06-24': { stars: 2, moves: 14 } } }));
+    expect(loadProgress().daily).toEqual({ '2026-06-24': { stars: 2, moves: 14 } });
+
+    localStorage.setItem(
+      'magic-color:v1',
+      JSON.stringify({
+        version: 1,
+        current: 1,
+        best: {},
+        stars: {},
+        daily: { good: { stars: 3, moves: 5 }, bad: { stars: 'x' }, alsoBad: 7 },
+      }),
+    );
+    expect(loadProgress().daily).toEqual({ good: { stars: 3, moves: 5 } });
   });
 
   it('tallies hints immutably', () => {
@@ -94,6 +116,33 @@ describe('progress persistence', () => {
       recordResult(start, 1, 5, 3);
       expect(start.best[1]).toBeUndefined();
       expect(start.stars[1]).toBeUndefined();
+    });
+  });
+
+  describe('recordDaily', () => {
+    const key = '2026-06-24';
+
+    it('records the first result for a day', () => {
+      const r = recordDaily(base(), key, 2, 14);
+      expect(r.daily[key]).toEqual({ stars: 2, moves: 14 });
+    });
+
+    it('keeps a better result (more stars, or fewer moves at equal stars)', () => {
+      const first = recordDaily(base(), key, 2, 14);
+      expect(recordDaily(first, key, 3, 20).daily[key]).toEqual({ stars: 3, moves: 20 }); // more stars
+      expect(recordDaily(first, key, 2, 10).daily[key]).toEqual({ stars: 2, moves: 10 }); // fewer moves
+    });
+
+    it('ignores a worse result', () => {
+      const first = recordDaily(base(), key, 3, 12);
+      expect(recordDaily(first, key, 1, 8).daily[key]).toEqual({ stars: 3, moves: 12 }); // fewer stars
+      expect(recordDaily(first, key, 3, 20).daily[key]).toEqual({ stars: 3, moves: 12 }); // more moves
+    });
+
+    it('does not mutate the input', () => {
+      const start = base();
+      recordDaily(start, key, 3, 5);
+      expect(start.daily[key]).toBeUndefined();
     });
   });
 

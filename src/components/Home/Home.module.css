@@ -30,6 +30,26 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* Share button, mirroring the settings cog in the opposite (top-left) corner. */
+.shareLink {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+}
+
+.shareLink:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .title {
   margin: 0;
   font-size: clamp(2.2rem, 11vw, 3.4rem);
@@ -113,5 +133,38 @@
   background: rgba(255, 255, 255, 0.08);
   border: 0.5px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-md);
+}
+
+/* The daily-challenge button: same weight as a secondary action, with the icon + a trailing
+   streak/done chip laid out in a row. */
+.daily {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-md);
+}
+
+.dailyLabel {
+  /* Push the streak/done chip to the trailing edge while the label + icon stay centered as a group. */
+  margin-inline: var(--space-1);
+}
+
+.dailyMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(255, 183, 3, 0.15);
 }
 

@@ -102,4 +102,29 @@ describe('createCampaign', () => {
     expect(c.levelStars).toEqual({});
     expect(c.recordFor(9)).toEqual({ best: null, bestStars: null });
   });
+
+  describe('daily challenge', () => {
+    it('records a daily result, keeps the best, and exposes it', () => {
+      const c = createCampaign();
+      expect(c.dailyResult('2026-06-24')).toBeNull();
+      expect(c.recordDaily('2026-06-24', 2, 14)).toEqual({ stars: 2, moves: 14 });
+      // A better attempt improves it; a worse one doesn't.
+      expect(c.recordDaily('2026-06-24', 3, 20)).toEqual({ stars: 3, moves: 20 });
+      expect(c.recordDaily('2026-06-24', 1, 5)).toEqual({ stars: 3, moves: 20 });
+      expect(c.dailyResult('2026-06-24')).toEqual({ stars: 3, moves: 20 });
+    });
+
+    it('computes the consecutive-day streak and persists daily results', () => {
+      const c = createCampaign();
+      c.recordDaily('2026-06-22', 3, 10);
+      c.recordDaily('2026-06-23', 2, 12);
+      c.recordDaily('2026-06-24', 1, 18);
+      expect(c.dailyStreak('2026-06-24')).toBe(3);
+
+      // Survives a reload.
+      const reloaded = createCampaign();
+      expect(reloaded.dailyResult('2026-06-23')).toEqual({ stars: 2, moves: 12 });
+      expect(reloaded.dailyStreak('2026-06-24')).toBe(3);
+    });
+  });
 });

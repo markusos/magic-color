@@ -12,6 +12,7 @@ const base = (over: Partial<Progress> = {}): Progress => ({
   stars: {},
   randomHardBestStreak: 0,
   hintsUsed: 0,
+  daily: {},
   ...over,
 });
 

@@ -18,7 +18,14 @@
 import { create } from 'zustand';
 import { canonical } from '../game/solver';
 import { DEFAULT_CAPACITY } from '../game/generator';
-import { BAKED_LEVEL_COUNT, generateRandomLevel, getLevel, hasBakedLevel } from '../game/levelLoader';
+import {
+  BAKED_LEVEL_COUNT,
+  generateDailyLevel,
+  generateRandomLevel,
+  getLevel,
+  hasBakedLevel,
+} from '../game/levelLoader';
+import { type DailyRecord, todayKey } from '../game/daily';
 import { mechanicsForLevel, phaseForLevel, type PlayableLevel } from '../game/progression';
 import { type HiddenGrid } from '../game/hidden';
 import { type FunnelGrid } from '../game/funnels';
@@ -37,8 +44,8 @@ import { feedback } from '../audio/feedback';
 
 export type { GameStatus };
 
-/** Campaign play (the numbered track) vs. the post-campaign "Random" challenge. */
-export type GameMode = 'campaign' | 'endless';
+/** Campaign play (the numbered track), the post-campaign "Random" challenge, or the daily challenge. */
+export type GameMode = 'campaign' | 'endless' | 'daily';
 
 /** Upper bound for the admin level-unlock hatch (see `unlockUpTo`) — the full baked campaign. */
 const MAX_UNLOCK_LEVEL = BAKED_LEVEL_COUNT;
@@ -151,6 +158,12 @@ interface GameStore {
   endlessStreak: number;
   /** Longest random-board win streak ever (persisted). */
   endlessBestStreak: number;
+  /** The UTC date key of the active daily board (`YYYY-MM-DD`), or null when not in daily mode. */
+  dailyKey: string | null;
+  /** Today's stored daily result (best stars/moves), or null if today's daily isn't solved yet. */
+  dailyResult: DailyRecord | null;
+  /** Current daily-challenge streak (consecutive solved days ending today). */
+  dailyStreak: number;
 
   /** Load a specific level into play (regenerates its board) and persist it as reached. */
   loadLevel: (level: number) => void;
@@ -158,6 +171,8 @@ interface GameStore {
   nextLevel: () => void;
   /** Start the post-campaign "Play Random" mode (resets the current streak). */
   playRandom: () => void;
+  /** Start today's daily challenge (the date-seeded showcase board). */
+  playDaily: () => void;
   /** Wipe saved progress and return to level 1. */
   startOver: () => void;
   /** Read-only aggregate of all saved progress, for the stats screen. Computed on demand. */
@@ -239,16 +254,29 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Endless: count the win toward the streak and keep the longest seen (no per-level records).
       const streak = get().endlessStreak + 1;
       set({ endlessStreak: streak, endlessBestStreak: campaign.recordRandomHard(streak) });
-    } else {
-      const { level, moves, undos, optimal, twoStarMax, hintUsed } = get();
-      // Undos count toward the rating: the score is the real move count plus undos used.
-      const score = moves.length + undos;
-      // A hinted solve is capped to 1 star regardless of move count (see `hintUsed`).
-      const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
-      const record = campaign.complete(level, score, stars);
-      // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
-      set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
+      return;
     }
+
+    if (get().mode === 'daily') {
+      // Daily: record today's result (best kept) and refresh the streak. No per-level/campaign record.
+      const { dailyKey, moves, undos, optimal, twoStarMax, hintUsed } = get();
+      if (dailyKey) {
+        const score = moves.length + undos;
+        const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
+        const record = campaign.recordDaily(dailyKey, stars, score);
+        set({ dailyResult: record, dailyStreak: campaign.dailyStreak(todayKey()) });
+      }
+      return;
+    }
+
+    const { level, moves, undos, optimal, twoStarMax, hintUsed } = get();
+    // Undos count toward the rating: the score is the real move count plus undos used.
+    const score = moves.length + undos;
+    // A hinted solve is capped to 1 star regardless of move count (see `hintUsed`).
+    const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
+    const record = campaign.complete(level, score, stars);
+    // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
+    set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
   };
 
   /**
@@ -328,6 +356,23 @@ export const useGameStore = create<GameStore>((set, get) => {
     });
   };
 
+  /** Generate and commit the date-seeded daily board. Mirrors `applyRandom` (no per-level records). */
+  const applyDaily = (key: string) => {
+    const generated = generateDailyLevel(key);
+    const { board, overlays } = recolorBoard(generated.state, {
+      hidden: generated.hidden,
+      funnels: generated.funnels,
+      ice: generated.ice,
+    });
+    commit(board, {
+      ...freshBoardState(generated, board, overlays),
+      mode: 'daily',
+      dailyKey: key,
+      best: null, // the daily has no per-level best/stars
+      bestStars: null,
+    });
+  };
+
   /** A fresh 32-bit seed for a random board. */
   const randomSeed = () => (Math.random() * 2 ** 32) >>> 0;
 
@@ -368,6 +413,24 @@ export const useGameStore = create<GameStore>((set, get) => {
       mechanics: mechanicsForLevel(MAX_UNLOCK_LEVEL),
     });
     deferAfterPaint(() => applyRandom(seed));
+  };
+
+  /**
+   * Enter today's daily challenge: flip on the spinner (the daily is always live) and generate the
+   * date-seeded board on the next macrotask. `phase` is a provisional spinner-header label; `applyDaily`
+   * sets the board's real phase. Always for today (UTC) so the board matches every other device.
+   */
+  const playDaily = () => {
+    const key = todayKey();
+    set({
+      loading: true,
+      selected: null,
+      mode: 'daily',
+      dailyKey: key,
+      phase: 'hard',
+      mechanics: mechanicsForLevel(MAX_UNLOCK_LEVEL),
+    });
+    deferAfterPaint(() => applyDaily(key));
   };
 
   // Initial level: resume where the player left off. The displayed board gets fresh random hues;
@@ -420,9 +483,14 @@ export const useGameStore = create<GameStore>((set, get) => {
     mode: 'campaign',
     endlessStreak: 0,
     endlessBestStreak: campaign.randomHardBestStreak,
+    dailyKey: null,
+    dailyResult: campaign.dailyResult(todayKey()),
+    dailyStreak: campaign.dailyStreak(todayKey()),
 
     loadLevel,
     nextLevel: () => {
+      // The daily is a single board per day — there's no "next" (the win overlay offers Share/Home).
+      if (get().mode === 'daily') return;
       if (get().mode === 'endless') {
         // Keep the streak going; just re-roll a new random board.
         const seed = randomSeed();
@@ -438,6 +506,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       loadLevel(get().level + 1);
     },
     playRandom,
+    playDaily,
     startOver: () => {
       campaign.reset();
       loadLevel(1);

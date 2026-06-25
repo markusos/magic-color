@@ -20,8 +20,10 @@ import {
 } from './mechanics';
 import { DEFAULT_CAPACITY, generateCandidates, generateLevel } from './generator';
 import { cappedSolveMoves } from './hidden';
+import { dailySeed } from './daily';
 import {
   balancedDensity,
+  CAMPAIGN_LENGTH,
   CHAPTER_LEN,
   chapterForLevel,
   type LevelPlan,
@@ -188,15 +190,17 @@ let liveConfig: LiveGenConfig = DEFAULT_LIVE_CONFIG;
 /** Memoized live levels (deterministic by level), so re-loads and replays don't regenerate. */
 const liveCache = new Map<number, PlayableLevel>();
 
-/** Install a live-generation budget and clear the cache (the test setup shrinks the pool this way). */
+/** Install a live-generation budget and clear the caches (the test setup shrinks the pool this way). */
 export function configureLiveGenerator(config: LiveGenConfig): void {
   liveConfig = config;
   liveCache.clear();
+  dailyCache.clear();
 }
 
 /** Clear the memoized live levels — for test isolation between specs that exercise live generation. */
 export function resetLiveGenerator(): void {
   liveCache.clear();
+  dailyCache.clear();
 }
 
 /** Coarse scoring: proxy optimal (no A*) and no dead-end sampling, to scan the big pool cheaply. */
@@ -349,6 +353,56 @@ export function generateRandomLevel(seed: number): PlayableLevel {
     density: balancedDensity(),
   };
   return pickBest(0, plan, target);
+}
+
+/**
+ * Mid/hard showcase shapes the daily challenge draws from: medium and large boards plus the compact
+ * tall variants — no trivial 5×4 starter shapes. A daily is a showcase, so it skips the easy footprints
+ * but isn't pinned to the single hardest 15-tube board every day either.
+ */
+const DAILY_SHAPES = SHAPES.filter(
+  (s) =>
+    s.family === 'medium' ||
+    s.family === 'large' ||
+    (s.family === 'tall' && s.capacity >= 6 && s.capacity <= 10),
+);
+
+/** The daily's difficulty band — a mid→hard slice of the curve (a showcase, not the absolute wall every day). */
+const DAILY_TARGET_MIN = 0.5;
+const DAILY_TARGET_MAX = 0.85;
+
+/** Memoized daily boards keyed by UTC date string, so re-opening today's daily doesn't regenerate. */
+const dailyCache = new Map<string, PlayableLevel>();
+
+/**
+ * The date-seeded daily challenge board (Track B2): a mid/hard showcase using the FULL mechanic set
+ * and balanced density, picked best-of-N from a seed derived purely from the UTC date `key` — so every
+ * device computes the same board for a given day with no server. The daily ignores campaign progress
+ * by design (it must be identical across devices), so it always carries every mechanic. Memoized per
+ * date key. The footprint and difficulty target vary by date for day-to-day variety.
+ */
+export function generateDailyLevel(key: string): PlayableLevel {
+  const cached = dailyCache.get(key);
+  if (cached) return cached;
+  const seed = dailySeed(key);
+  const shape = DAILY_SHAPES[seed % DAILY_SHAPES.length]!;
+  const target = DAILY_TARGET_MIN + seedFraction(seed, 1) * (DAILY_TARGET_MAX - DAILY_TARGET_MIN);
+  const plan: LevelPlan = {
+    level: 0, // sentinel — the daily is not a campaign level
+    chapter: chapterForLevel(CAMPAIGN_LENGTH),
+    phase: phaseForTarget(target),
+    colors: shape.colors,
+    bottles: shape.bottles,
+    capacity: shape.capacity,
+    seed,
+    minPar: 0,
+    parMode: 'proxy',
+    mechanics: mechanicsForLevel(CAMPAIGN_LENGTH), // full set — a daily showcases every mechanic
+    density: balancedDensity(),
+  };
+  const result = pickBest(0, plan, target);
+  dailyCache.set(key, result);
+  return result;
 }
 
 /** Whether a level has a committed pre-baked board (vs. being generated live). */

@@ -5,6 +5,7 @@ import { canonical, isSolvable, solve, usefulMoves } from '../game/solver';
 import { pour } from '../game/engine';
 import { optimalCappedMoves } from '../game/search';
 import { board, color } from '../test/board';
+import { todayKey } from '../game/daily';
 
 const store = () => useGameStore.getState();
 
@@ -173,6 +174,59 @@ describe('post-campaign "Play Random" mode', () => {
     expect(store().mode).toBe('endless');
     store().loadLevel(1); // baked — synchronous
     expect(store().mode).toBe('campaign');
+  });
+});
+
+describe('daily challenge mode', () => {
+  it('enters daily mode (deferred, spinner) and generates today\'s board', async () => {
+    store().playDaily();
+    expect(store().mode).toBe('daily');
+    expect(store().loading).toBe(true);
+    expect(store().dailyKey).toBe(todayKey());
+    await flushLoad();
+    expect(store().loading).toBe(false);
+    expect(store().current.bottles.length).toBeGreaterThan(0);
+  });
+
+  it('records a daily win (result + streak) and does not touch campaign records', () => {
+    const key = todayKey();
+    useGameStore.setState({
+      mode: 'daily',
+      dailyKey: key,
+      dailyResult: null,
+      dailyStreak: 0,
+      current: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      initial: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      hidden: [[false, false, false], [false], []],
+      initialHidden: [[false, false, false], [false], []],
+      funnels: [null, null, null],
+      initialFunnels: [null, null, null],
+      ice: [[null, null, null], [null], []],
+      initialIce: [[null, null, null], [null], []],
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      undos: 0,
+      selected: null,
+      status: 'playing',
+      hintUsed: false,
+      optimal: 1,
+      twoStarMax: 3,
+    });
+    store().tapBottle(1); // pour the lone ruby onto the stack → completes the board in 1 move
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().dailyResult).toEqual({ stars: 3, moves: 1 });
+    expect(store().dailyStreak).toBe(1);
+  });
+
+  it('nextLevel is a no-op in daily mode (the win overlay offers Share/Home instead)', () => {
+    store().loadLevel(1); // back to a known baked board
+    useGameStore.setState({ mode: 'daily', dailyKey: todayKey() });
+    const before = store().current;
+    store().nextLevel();
+    expect(store().current).toBe(before);
+    expect(store().mode).toBe('daily');
   });
 
   it('flows into the random mode (not a campaign level 61) after the last baked level', async () => {

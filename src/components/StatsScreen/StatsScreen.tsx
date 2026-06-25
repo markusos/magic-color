@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChevronLeft, Star, Trophy, Flag, Flame, Lightbulb } from 'lucide-react';
+import { CalendarDays, ChevronLeft, Star, Trophy, Flag, Flame, Lightbulb } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
 import styles from './StatsScreen.module.css';
@@ -14,6 +14,8 @@ import styles from './StatsScreen.module.css';
 export function StatsScreen() {
   const stats = useMemo(() => useGameStore.getState().campaignStats(), []);
   const { levelsCompleted, campaignLength, totalStars, maxStars, threeStarCount, current } = stats;
+  // The daily streak lives on the store (date-derived), not in the campaign roll-up.
+  const dailyStreak = useMemo(() => useGameStore.getState().dailyStreak, []);
 
   return (
     <div className={styles.screen}>
@@ -37,6 +39,14 @@ export function StatsScreen() {
           <span>Hints used</span>
           <strong>{stats.hintsUsed}</strong>
         </div>
+
+        {dailyStreak > 0 && (
+          <div className={styles.row}>
+            <CalendarDays size={18} aria-hidden />
+            <span>Daily streak</span>
+            <strong>{dailyStreak}</strong>
+          </div>
+        )}
 
         {stats.randomHardBestStreak > 0 && (
           <div className={styles.row}>

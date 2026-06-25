@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { RotateCcw } from 'lucide-react';
+import { Check, Home, RotateCcw, Share } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { starsFor } from '../../game/stars';
+import { dailyShareText } from '../../game/daily';
+import { navigate } from '../../useHashRoute';
 import { Stars } from '../Stars/Stars';
 import styles from './Overlay.module.css';
 
@@ -23,19 +26,40 @@ export function Overlay() {
   const restart = useGameStore((s) => s.restart);
   const mode = useGameStore((s) => s.mode);
   const endlessStreak = useGameStore((s) => s.endlessStreak);
+  const dailyKey = useGameStore((s) => s.dailyKey);
+  const dailyStreak = useGameStore((s) => s.dailyStreak);
+  const [copied, setCopied] = useState(false);
 
   const endless = mode === 'endless';
+  const daily = mode === 'daily';
   const visible = status === 'won' || status === 'deadlocked' || status === 'stuck';
   // The score (and thus the rating) counts undos used; a hinted solve is capped to 1 star — both
   // mirror the live Stats preview and the recorded result.
-  const stars = hintUsed ? 1 : starsFor(moves.length + undos, optimal, twoStarMax);
-  const praise = endless
-    ? `Streak ${endlessStreak}!`
-    : stars === 3
-      ? 'Perfect!'
-      : stars === 2
-        ? 'Nicely done!'
-        : 'Level Complete!';
+  const score = moves.length + undos;
+  const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
+  const praise = daily
+    ? 'Daily Complete!'
+    : endless
+      ? `Streak ${endlessStreak}!`
+      : stars === 3
+        ? 'Perfect!'
+        : stars === 2
+          ? 'Nicely done!'
+          : 'Level Complete!';
+
+  // Copy the shareable daily result to the clipboard (backendless sharing — see PLAN.md B2). The
+  // "Copied" confirmation reverts after a moment so a second share reads clearly.
+  const onShare = async () => {
+    if (!dailyKey) return;
+    const text = dailyShareText(dailyKey, { stars, moves: score });
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable (insecure context / denied) — leave the button in its default state.
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -64,9 +88,36 @@ export function Overlay() {
                   <Stars value={stars} size={48} />
                 </motion.div>
                 <h2 className={styles.win}>{praise}</h2>
-                <button className={styles.primary} onClick={nextLevel}>
-                  {endless ? 'Next Board' : 'Next Level'}
-                </button>
+                {daily ? (
+                  <div className={styles.actions}>
+                    {dailyStreak > 0 && (
+                      <p className={styles.sub}>
+                        {dailyStreak} day{dailyStreak === 1 ? '' : 's'} in a row
+                      </p>
+                    )}
+                    <button className={styles.primary} onClick={() => void onShare()}>
+                      {copied ? (
+                        <>
+                          <Check size={18} strokeWidth={2} aria-hidden />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Share size={18} strokeWidth={2} aria-hidden />
+                          Share Result
+                        </>
+                      )}
+                    </button>
+                    <button className={styles.secondary} onClick={() => navigate('home')}>
+                      <Home size={18} strokeWidth={2} aria-hidden />
+                      Home
+                    </button>
+                  </div>
+                ) : (
+                  <button className={styles.primary} onClick={nextLevel}>
+                    {endless ? 'Next Board' : 'Next Level'}
+                  </button>
+                )}
               </>
             ) : (
               <>

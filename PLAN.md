@@ -11,9 +11,9 @@ design, and registry are healthy. The work below is **growth and polish**, not d
 
 # Next steps
 
-Tracks chosen 2026-06-23. **A (polish) and C (accessibility) have SHIPPED** (see [DONE.md](DONE.md)).
-Track **B (engagement)** is in progress: **B1 (stats screen) and B3 (endless framing) SHIPPED
-2026-06-24**; **B2 (daily challenge) is the remaining piece**, medium effort.
+Tracks chosen 2026-06-23. **Tracks A (polish), B (engagement), and C (accessibility) have all SHIPPED**
+(see [DONE.md](DONE.md)) — B's last piece, **B2 (daily challenge), SHIPPED 2026-06-24**. The only
+open work below is **Track D (deferred)** and the never-"done" standing/iterative items.
 
 **Track D (chapter 5 / new mechanic) is DEFERRED** (decided 2026-06-23) — design kept on file below, not
 scheduled. Revisit once A/B/C have shipped and (per track B) there's playtest signal to justify a
@@ -26,38 +26,14 @@ it.
 
 ---
 
-## B. Engagement — stats screen + daily challenge  (re-bake-free)
+## B. Engagement — SHIPPED 2026-06-24
 
-Surfaces data that already exists and adds one new seeded mode. Also the **prerequisite for data-driven
-tuning** (see "Standing work" — the curve/funnel re-tune is currently blocked on having no playtest
-signal).
-
-**Backendless, confirmed (2026-06-23).** Everything here is **local-only** `localStorage` — no server,
-the GH Pages static deploy is unchanged. Consequences to honor: the daily seed is derived client-side
-(every device computes the *same* board from the date, so it's "shared" without a server); sharing is a
-**copyable text result**, not a posted score; there are **no global leaderboards or cross-device sync**.
-If those are ever wanted they're a separate backend project, explicitly out of scope here.
-
-**B1 (stats screen, incl. lifetime hints-used) and B3 (endless framing) SHIPPED 2026-06-24** — see
-[DONE.md](DONE.md). **B2 (daily challenge) is the remaining piece.**
-
-### B2. Daily challenge
-- Generation is already **seeded and deterministic**. Derive a seed from the UTC date (`YYYY-MM-DD`),
-  generate one board via the existing live generator (pick a mid/hard shape + the balanced mechanic
-  density), and serve it as a once-a-day board. **Mechanic gating (defaulted): the daily uses the FULL
-  mechanic set** (all of hidden/funnel/ice/…), independent of the player's campaign progress — a daily is
-  a showcase, and a date-seed must be identical across devices, so it can't depend on per-player state.
-  (If we'd rather not spoil un-reached mechanics, the alternative is to gate by the local frontier — but
-  that makes the "same board everywhere" property false; flagged, not chosen.)
-- Persist per-day result (solved / stars / move count) keyed by date string; show a small streak
-  counter. A shareable text result ("Magic Color · 2026-06-23 · ⭐⭐ · 14 moves") is the share mechanism
-  (copy to clipboard) — backendless by design.
-- Reuse the loading spinner + live budget; the daily board is just another live-generated level with a
-  fixed seed.
-
-### Tests / verification (B2)
-Daily: same date → same board (determinism), different dates → different boards; result persistence
-round-trips. Reuse the loading spinner + live budget; preview-verify in a small viewport.
+All three pieces shipped (B1 stats screen, B3 endless framing, **B2 daily challenge**) — see
+[DONE.md](DONE.md). Everything stayed backendless/local-only as confirmed 2026-06-23: the daily seed is
+derived client-side from the UTC date (every device computes the *same* board, "shared" without a
+server), sharing is a copyable text result, and there are no leaderboards/cross-device sync (those would
+be a separate backend project, out of scope). B was the **prerequisite for data-driven tuning** — the
+curve/funnel re-tune under "Standing work" is now unblocked once there's playtest signal.
 
 ---
 
