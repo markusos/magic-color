@@ -43,6 +43,8 @@ export interface CampaignStats {
   chapters: ChapterStats[];
   /** Longest win streak in the post-campaign endless "Random Hard" mode (B3). */
   randomHardBestStreak: number;
+  /** Lifetime count of hints taken, across all play. */
+  hintsUsed: number;
 }
 
 /**
@@ -87,5 +89,6 @@ export function aggregateProgress(progress: Progress): CampaignStats {
     current: Math.min(Math.max(1, Math.floor(progress.current)), CAMPAIGN_LENGTH),
     chapters,
     randomHardBestStreak: progress.randomHardBestStreak,
+    hintsUsed: progress.hintsUsed,
   };
 }

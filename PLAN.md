@@ -4,7 +4,7 @@ This file carries **open work only**. Shipped work is condensed to one-line poin
 [DONE.md](DONE.md); the full design rationale and as-built notes live in the memory notes, the README
 "Architecture" section, and git history.
 
-Baseline today: lint / tsc / 234 tests green; the engine/solver/generator split, derived-overlay
+Baseline today: lint / tsc / 244 tests green; the engine/solver/generator split, derived-overlay
 design, and registry are healthy. The work below is **growth and polish**, not debt.
 
 ---
@@ -38,14 +38,8 @@ the GH Pages static deploy is unchanged. Consequences to honor: the daily seed i
 **copyable text result**, not a posted score; there are **no global leaderboards or cross-device sync**.
 If those are ever wanted they're a separate backend project, explicitly out of scope here.
 
-### B1. Real stats screen — SHIPPED (2026-06-24)
-New `StatsScreen` at route `stats` (linked from Home, shown once past level 1). Aggregation is a pure
-fold `aggregateProgress(progress)` in `store/progressStats.ts` (tested against hand-built fixtures);
-exposed via `campaign.stats()` → `gameStore.campaignStats()` so the component never touches
-localStorage directly. Shows levels cleared / total, stars earned / max, 3-star clears, current
-campaign position, and a per-chapter breakdown (completed/total + stars + progress bar). "Completed"
-counts only star-recorded levels, so the admin-unlock sentinel is excluded. Pure read; no new
-persistence, no engine touch.
+**B1 (stats screen, incl. lifetime hints-used) and B3 (endless framing) SHIPPED 2026-06-24** — see
+[DONE.md](DONE.md). **B2 (daily challenge) is the remaining piece.**
 
 ### B2. Daily challenge
 - Generation is already **seeded and deterministic**. Derive a seed from the UTC date (`YYYY-MM-DD`),
@@ -61,15 +55,9 @@ persistence, no engine touch.
 - Reuse the loading spinner + live budget; the daily board is just another live-generated level with a
   fixed seed.
 
-### B3. Endless-mode framing (small) — SHIPPED (2026-06-24)
-The random-hard best streak (already persisted as `randomHardBestStreak`) is now surfaced on the new
-Stats screen ("Best random streak" row, shown when > 0), alongside the existing Home "Best streak N"
-line. Bundled with B1 as planned; no new persistence.
-
-### Tests / verification
+### Tests / verification (B2)
 Daily: same date → same board (determinism), different dates → different boards; result persistence
-round-trips. Stats: aggregates match a hand-built progress fixture. Preview-verify the new screen in
-light/dark and a small viewport.
+round-trips. Reuse the loading spinner + live budget; preview-verify in a small viewport.
 
 ---
 

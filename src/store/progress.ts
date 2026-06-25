@@ -19,10 +19,12 @@ export interface Progress {
   stars: Record<number, Stars>;
   /** Longest win streak in the post-campaign endless "Random Hard" mode. */
   randomHardBestStreak: number;
+  /** Lifetime count of hints taken (every hint tap that surfaced a move), across all play. */
+  hintsUsed: number;
 }
 
 function defaults(): Progress {
-  return { version: VERSION, current: 1, best: {}, stars: {}, randomHardBestStreak: 0 };
+  return { version: VERSION, current: 1, best: {}, stars: {}, randomHardBestStreak: 0, hintsUsed: 0 };
 }
 
 function asRecord<T>(value: unknown): Record<number, T> {
@@ -44,6 +46,8 @@ export function loadProgress(): Progress {
       // Additive field — older saves (which lack it) just default to 0, no version bump needed.
       randomHardBestStreak:
         typeof parsed.randomHardBestStreak === 'number' ? Math.max(0, Math.floor(parsed.randomHardBestStreak)) : 0,
+      // Additive field — older saves default to 0, no version bump needed.
+      hintsUsed: typeof parsed.hintsUsed === 'number' ? Math.max(0, Math.floor(parsed.hintsUsed)) : 0,
     };
   } catch {
     return defaults();
@@ -81,6 +85,11 @@ export function recordResult(
 export function recordRandomHardStreak(progress: Progress, streak: number): Progress {
   if (streak <= progress.randomHardBestStreak) return progress;
   return { ...progress, randomHardBestStreak: streak };
+}
+
+/** Tally one more hint taken. Returns the updated progress (immutably). */
+export function recordHint(progress: Progress): Progress {
+  return { ...progress, hintsUsed: progress.hintsUsed + 1 };
 }
 
 /** Clear all saved progress (the Home screen's "Start Over"). */

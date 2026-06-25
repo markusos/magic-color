@@ -11,6 +11,7 @@ const base = (over: Partial<Progress> = {}): Progress => ({
   best: {},
   stars: {},
   randomHardBestStreak: 0,
+  hintsUsed: 0,
   ...over,
 });
 
@@ -68,9 +69,10 @@ describe('aggregateProgress', () => {
     expect(agg.totalStars).toBe(2);
   });
 
-  it('clamps the current position into the campaign and carries the endless streak', () => {
+  it('clamps the current position into the campaign and carries the endless streak and hint count', () => {
     expect(aggregateProgress(base({ current: 0 })).current).toBe(1);
     expect(aggregateProgress(base({ current: CAMPAIGN_LENGTH + 50 })).current).toBe(CAMPAIGN_LENGTH);
     expect(aggregateProgress(base({ randomHardBestStreak: 7 })).randomHardBestStreak).toBe(7);
+    expect(aggregateProgress(base({ hintsUsed: 12 })).hintsUsed).toBe(12);
   });
 });

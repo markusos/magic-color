@@ -89,11 +89,11 @@
   color: var(--text-dim);
 }
 
-.streak {
+.row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   padding: var(--space-3);
   border-radius: var(--radius-md);
   border: 0.5px solid rgba(255, 255, 255, 0.14);
@@ -103,7 +103,11 @@
   font-size: 0.9rem;
 }
 
-.streak strong {
+.row:first-of-type {
+  margin-top: var(--space-3);
+}
+
+.row strong {
   margin-left: auto;
   font-size: 1.2rem;
   color: var(--text);

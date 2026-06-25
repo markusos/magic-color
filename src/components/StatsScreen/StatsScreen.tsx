@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ChevronLeft, Star, Trophy, Flag, Flame } from 'lucide-react';
+import { ChevronLeft, Star, Trophy, Flag, Flame, Lightbulb } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
 import styles from './StatsScreen.module.css';
@@ -32,8 +32,14 @@ export function StatsScreen() {
           <Card icon={<Flag size={18} aria-hidden />} label="Current level" value={`${current}`} sub="campaign" />
         </div>
 
+        <div className={styles.row}>
+          <Lightbulb size={18} aria-hidden />
+          <span>Hints used</span>
+          <strong>{stats.hintsUsed}</strong>
+        </div>
+
         {stats.randomHardBestStreak > 0 && (
-          <div className={styles.streak}>
+          <div className={styles.row}>
             <Flame size={18} aria-hidden />
             <span>Best random streak</span>
             <strong>{stats.randomHardBestStreak}</strong>

@@ -500,7 +500,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       // not necessarily the baked solution's next move. Honors exactly what the player can see/pour.
       const move = hintMove(current, hidden, { funnels, ice }, HINT_NODE_BUDGET);
       if (move) {
-        // Taking a hint caps this attempt's rating to 1 star (see `hintUsed`).
+        // Taking a hint caps this attempt's rating to 1 star (see `hintUsed`) and adds to the
+        // persisted lifetime hint tally surfaced on the stats screen.
+        campaign.recordHint();
         set({ hint: move, selected: null, hintUsed: true });
         feedback('select');
       } else {

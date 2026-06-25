@@ -11,6 +11,7 @@
 import {
   clearProgress,
   loadProgress,
+  recordHint,
   recordRandomHardStreak,
   recordResult,
   saveProgress,
@@ -51,6 +52,8 @@ export interface Campaign {
   complete: (level: number, moves: number, stars: Stars) => LevelRecord;
   /** Record a random-hard win streak (keeps the longest seen) and persist; returns the best. */
   recordRandomHard: (streak: number) => number;
+  /** Tally one hint taken and persist. */
+  recordHint: () => void;
   /**
    * Raise the frontier toward `level` (clamped to 1..`max`) for the admin unlock; persist.
    * Unlocking to `max` also flips `campaignComplete`, opening "Play Random".
@@ -104,6 +107,10 @@ export function createCampaign(): Campaign {
       progress = recordRandomHardStreak(progress, streak);
       saveProgress(progress);
       return progress.randomHardBestStreak;
+    },
+    recordHint() {
+      progress = recordHint(progress);
+      saveProgress(progress);
     },
     unlockTo(level, max) {
       const target = Math.max(1, Math.min(max, Math.floor(level)));
