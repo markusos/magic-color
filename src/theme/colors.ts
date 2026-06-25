@@ -30,22 +30,23 @@ export function cssColor(id: string): string {
 /**
  * A distinct texture per palette id, for the colorblind "Color Patterns" aid (off by default). Each id
  * maps to one stable pattern key (see the `.cb-pattern[data-cb=…]` rules in `theme/tokens.css`), so a
- * color is identifiable by texture without relying on hue. The assignment gives the perceptually-closest
- * pairs the most-different patterns: the blue–purple band (sapphire/cobalt/violet/amethyst) and the
- * red–pink band (ruby/magenta/rose) each get a spread of orientation + dot/grid styles.
+ * color is identifiable by texture without relying on hue. Patterns are kept deliberately sparse (a few
+ * marks over mostly-solid color). The assignment gives the perceptually-closest pairs the most-different
+ * pattern *families*: the blue–purple band (sapphire=stripe, cobalt=rings, violet=stripe, amethyst=checker)
+ * and the red–pink band (ruby=stripe, magenta=grid, rose=stripe) each mix orientation, dot and grid styles.
  */
 export const PATTERN_FOR: Record<string, string> = {
   ruby: 'diag-fwd',
-  magenta: 'grid',
-  rose: 'horiz',
-  tangerine: 'thick-diag',
-  amber: 'thick-horiz',
-  lime: 'dots-dense',
-  emerald: 'cross',
-  teal: 'thick-vert',
-  sapphire: 'vert',
-  cobalt: 'dots',
   violet: 'diag-back',
+  sapphire: 'vert',
+  rose: 'horiz',
+  teal: 'band-vert',
+  amber: 'band-horiz',
+  tangerine: 'band-diag',
+  lime: 'dots',
+  cobalt: 'rings',
+  magenta: 'grid',
+  emerald: 'cross',
   amethyst: 'checker',
 };
 

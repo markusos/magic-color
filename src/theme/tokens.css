@@ -96,119 +96,135 @@ button:disabled {
    (keyed by data-cb — see PATTERN_FOR in theme/colors.ts), so a color is identifiable WITHOUT hue.
    Defined globally (not in a CSS module) so the segment, funnel and ice overlays all share one set.
 
-   Each pattern mixes a light and a dark ink so it reads on every liquid — light streaks show on dark
-   colors, dark streaks on light ones — kept subtle so it aids identification without fighting the
-   liquid aesthetic. The overlay is absolutely positioned and clipped by its parent's wave mask. */
+   Kept deliberately calm: each motif is a SINGLE light+dark rule (the dark edge gives contrast on
+   light liquids, the light core on dark ones) repeated on a wide ~16px pitch, so a band reads as a
+   few sparse marks over mostly-solid color rather than dense hatching. The overlay is absolutely
+   positioned and clipped by its parent's wave mask. */
 .cb-pattern {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  --pl: rgba(255, 255, 255, 0.55);
-  --pd: rgba(0, 0, 0, 0.34);
+  --pl: rgba(255, 255, 255, 0.5);
+  --pd: rgba(0, 0, 0, 0.3);
   background-repeat: repeat;
 }
 
-/* Diagonal stripes (forward /). */
+/* One light rule with a thin dark edge, repeated on a wide pitch (sparse stripes). */
 .cb-pattern[data-cb='diag-fwd'] {
   background-image: repeating-linear-gradient(
     45deg,
-    var(--pl) 0 1.6px,
-    transparent 1.6px 4.5px,
-    var(--pd) 4.5px 6.1px,
-    transparent 6.1px 9px
+    var(--pl) 0 2px,
+    var(--pd) 2px 3px,
+    transparent 3px 16px
   );
 }
-/* Diagonal stripes (back \). */
 .cb-pattern[data-cb='diag-back'] {
   background-image: repeating-linear-gradient(
     -45deg,
-    var(--pl) 0 1.6px,
-    transparent 1.6px 4.5px,
-    var(--pd) 4.5px 6.1px,
-    transparent 6.1px 9px
+    var(--pl) 0 2px,
+    var(--pd) 2px 3px,
+    transparent 3px 16px
   );
 }
-/* Thick diagonal stripes (forward, wider). */
-.cb-pattern[data-cb='thick-diag'] {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--pl) 0 3px,
-    transparent 3px 7px,
-    var(--pd) 7px 10px,
-    transparent 10px 14px
-  );
-}
-/* Vertical stripes. */
 .cb-pattern[data-cb='vert'] {
   background-image: repeating-linear-gradient(
     90deg,
-    var(--pl) 0 1.6px,
-    transparent 1.6px 4.5px,
-    var(--pd) 4.5px 6.1px,
-    transparent 6.1px 9px
+    var(--pl) 0 2px,
+    var(--pd) 2px 3px,
+    transparent 3px 16px
   );
 }
-/* Thick vertical stripes. */
-.cb-pattern[data-cb='thick-vert'] {
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--pl) 0 3px,
-    transparent 3px 7px,
-    var(--pd) 7px 10px,
-    transparent 10px 14px
-  );
-}
-/* Horizontal stripes. */
 .cb-pattern[data-cb='horiz'] {
   background-image: repeating-linear-gradient(
     0deg,
-    var(--pl) 0 1.6px,
-    transparent 1.6px 4.5px,
-    var(--pd) 4.5px 6.1px,
-    transparent 6.1px 9px
+    var(--pl) 0 2px,
+    var(--pd) 2px 3px,
+    transparent 3px 16px
   );
 }
-/* Thick horizontal stripes. */
-.cb-pattern[data-cb='thick-horiz'] {
+
+/* Bold band: one fat soft stripe edged in dark, with lots of solid color between (~22px pitch). */
+.cb-pattern[data-cb='band-vert'] {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--pd) 0 1px,
+    var(--pl) 1px 6px,
+    var(--pd) 6px 7px,
+    transparent 7px 22px
+  );
+}
+.cb-pattern[data-cb='band-horiz'] {
   background-image: repeating-linear-gradient(
     0deg,
-    var(--pl) 0 3px,
-    transparent 3px 7px,
-    var(--pd) 7px 10px,
-    transparent 10px 14px
+    var(--pd) 0 1px,
+    var(--pl) 1px 6px,
+    var(--pd) 6px 7px,
+    transparent 7px 22px
   );
 }
-/* Square grid (+) — light verticals over dark horizontals. */
-.cb-pattern[data-cb='grid'] {
-  background-image: repeating-linear-gradient(90deg, var(--pl) 0 1.6px, transparent 1.6px 9px),
-    repeating-linear-gradient(0deg, var(--pd) 0 1.6px, transparent 1.6px 9px);
+.cb-pattern[data-cb='band-diag'] {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--pd) 0 1px,
+    var(--pl) 1px 6px,
+    var(--pd) 6px 7px,
+    transparent 7px 22px
+  );
 }
-/* Diagonal cross-hatch (X). */
-.cb-pattern[data-cb='cross'] {
-  background-image: repeating-linear-gradient(45deg, var(--pl) 0 1.6px, transparent 1.6px 9px),
-    repeating-linear-gradient(-45deg, var(--pd) 0 1.6px, transparent 1.6px 9px);
-}
-/* Dots (light + offset dark) on a 10px grid. */
+
+/* Sparse filled dots (light core, dark ring) on a wide 15px grid. */
 .cb-pattern[data-cb='dots'] {
-  background-image: radial-gradient(var(--pl) 1.5px, transparent 1.7px),
-    radial-gradient(var(--pd) 1.5px, transparent 1.7px);
-  background-size: 10px 10px, 10px 10px;
-  background-position: 0 0, 5px 5px;
+  background-image: radial-gradient(
+    circle,
+    var(--pl) 0 2px,
+    var(--pd) 2px 2.9px,
+    transparent 2.9px
+  );
+  background-size: 15px 15px;
 }
-/* Dense small dots on a 6px grid. */
-.cb-pattern[data-cb='dots-dense'] {
-  background-image: radial-gradient(var(--pl) 1.1px, transparent 1.3px),
-    radial-gradient(var(--pd) 1.1px, transparent 1.3px);
-  background-size: 6px 6px, 6px 6px;
-  background-position: 0 0, 3px 3px;
+/* Sparse hollow rings on a wide 16px grid. */
+.cb-pattern[data-cb='rings'] {
+  background-image: radial-gradient(
+    circle,
+    transparent 0 2.4px,
+    var(--pl) 2.4px 3.3px,
+    var(--pd) 3.3px 4.1px,
+    transparent 4.1px
+  );
+  background-size: 16px 16px;
 }
-/* Checkerboard. */
+/* Sparse square grid (+) on a wide 16px pitch. */
+.cb-pattern[data-cb='grid'] {
+  background-image: repeating-linear-gradient(
+      90deg,
+      var(--pl) 0 1.4px,
+      var(--pd) 1.4px 2.2px,
+      transparent 2.2px 16px
+    ),
+    repeating-linear-gradient(0deg, var(--pl) 0 1.4px, var(--pd) 1.4px 2.2px, transparent 2.2px 16px);
+}
+/* Sparse diagonal cross (X) on a wide 16px pitch. */
+.cb-pattern[data-cb='cross'] {
+  background-image: repeating-linear-gradient(
+      45deg,
+      var(--pl) 0 1.4px,
+      var(--pd) 1.4px 2.2px,
+      transparent 2.2px 16px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      var(--pl) 0 1.4px,
+      var(--pd) 1.4px 2.2px,
+      transparent 2.2px 16px
+    );
+}
+/* Large, low-density checker: two opposite quadrants inked (one light, one dark), two left clear. */
 .cb-pattern[data-cb='checker'] {
   background-image: conic-gradient(
-    var(--pd) 0 25%,
+    var(--pl) 0 25%,
     transparent 0 50%,
     var(--pd) 0 75%,
     transparent 0
   );
-  background-size: 9px 9px;
+  background-size: 16px 16px;
 }
