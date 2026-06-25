@@ -248,7 +248,12 @@
 @media (hover: none) and (pointer: coarse) {
   .segment,
   .segment::before,
-  .segment::after {
+  .segment::after,
+  /* The wave-scroll rules carry higher specificity (e.g. .waveBottom:not(.waveTop)),
+     so they must be matched at equal specificity here or the scroll keeps running. */
+  .waveBottom:not(.waveTop),
+  .waveTop:not(.waveBottom),
+  .waveTop.waveBottom {
     animation: none;
   }
 }
