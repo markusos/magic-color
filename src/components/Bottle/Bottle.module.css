@@ -225,6 +225,15 @@
   filter: drop-shadow(
     0 calc(var(--segment-height) * 0.05) calc(var(--segment-height) * 0.06) rgba(20, 50, 90, 0.4)
   );
+  /* Pin the frost to its own stable GPU layer and isolate its blending. Without this the filtered
+     surface (and the screen-blended rainbow) share the board's paint layer, so an unrelated tube's
+     tilt/lift animation re-rasterizes this overlay every frame — on iOS WebKit that re-raster isn't
+     subpixel-stable and the ice visibly "vibrates", even on tubes far from the one being tapped.
+     `translateZ(0)` gives it a dedicated texture that's just composited (not repainted) when
+     neighbours move; `isolation` confines the rainbow's screen blend to this subtree. */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  isolation: isolate;
 }
 
 /* One translucent ice chunk per frozen segment, stacked by the frost holder's flex column. Fixed
@@ -270,6 +279,18 @@
     rgba(150, 200, 245, 0.32) 53%,
     transparent 57%
   );
+}
+
+/* Phones drop the screen blend on the caustic. A blend mode samples its backdrop, and iOS WebKit is
+   unreliable about keeping that sampling confined to the isolated layer above — a tube tap elsewhere
+   can still force the rainbow to re-blend and the ice to "vibrate". The plain gradient reads almost
+   the same. The frost's drop-shadow filter stays: it's now painted once into the promoted GPU layer,
+   so it no longer re-rasterizes when neighbours animate. Desktop keeps the full screened caustic. */
+@media (hover: none) and (pointer: coarse) {
+  .iceRainbow {
+    mix-blend-mode: normal;
+    opacity: 0.5;
+  }
 }
 
 /* Unlock-color chip: a solid swatch of the exact liquid color that melts the ice, with a white ring
