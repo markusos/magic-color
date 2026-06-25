@@ -254,65 +254,70 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, pat
                 </defs>
               </svg>
 
-              {/* One faceted ice chunk per frozen segment, stacked (top-first) to exactly fill the frozen
-                  block. Alternate chunks mirror so the cracks meeting each seam land at different x —
-                  reads as a fractured crystal, not banded layers. */}
-              {Array.from({ length: frozenCount }, (_, k) => {
-                // k=0 is the topmost chunk; mirror by stack position (counted from the floor) for variety.
-                const flip = (frozenCount - 1 - k) % 2 === 1;
-                return (
-                  <div className={styles.iceTile} key={k}>
-                    {/* No `preserveAspectRatio="none"` and no `non-scaling-stroke`: both force iOS
-                        WebKit to recompute geometry in device space on every rasterization, so when a
-                        neighbouring tube's animation triggers a repaint the ice re-rasters at a slightly
-                        different sub-pixel offset and visibly jitters (the box itself never moves — only
-                        the painted pixels). The viewBox aspect (128:72) already equals the tile box
-                        (1.28w : 0.72w), so the default `meet` fits identically; strokes are given plain
-                        viewBox-unit widths that scale with the tube so any repaint is pixel-deterministic. */}
-                    <svg viewBox="0 0 128 72" aria-hidden>
-                      <g transform={flip ? 'translate(128,0) scale(-1,1)' : undefined}>
-                        {ICE_FACETS.map(([pts, g], fi) => (
-                          <polygon key={fi} points={pts} fill={`url(#ice${g}-${gid})`} />
+              {/* ONE continuous SVG for the whole frozen block — NOT one <svg> per segment. Stacking N
+                  separate tiles meant each had a fractional (var(--segment-height)) height that iOS
+                  WebKit snapped to the device-pixel grid independently; on any recomposite the rounded
+                  edges drifted apart and visible GAPS opened between segments. A single element has no
+                  internal element seams to gap: each chunk is just a <g> translated into its vertical
+                  slot, and the cracks are authored to flow across the chunk boundaries as one crystal.
+                  No `preserveAspectRatio="none"` / `non-scaling-stroke` either — both force per-raster
+                  geometry recompute in device space (more sub-pixel jitter); the viewBox aspect equals
+                  the block box so the default `meet` fits without distortion, and plain viewBox-unit
+                  strokes scale with the tube so every repaint is pixel-deterministic. */}
+              <svg
+                className={styles.iceSheet}
+                viewBox={`0 0 128 ${72 * frozenCount}`}
+                aria-hidden
+              >
+                {Array.from({ length: frozenCount }, (_, k) => {
+                  // k=0 is the topmost chunk. Slot it at y=72*k; mirror alternate chunks (by stack
+                  // position from the floor) so the cracks meeting each seam land at different x.
+                  const flip = (frozenCount - 1 - k) % 2 === 1;
+                  const slot = flip
+                    ? `translate(128,${72 * k}) scale(-1,1)`
+                    : `translate(0,${72 * k})`;
+                  return (
+                    <g key={k} transform={slot}>
+                      {ICE_FACETS.map(([pts, g], fi) => (
+                        <polygon key={fi} points={pts} fill={`url(#ice${g}-${gid})`} />
+                      ))}
+                      <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" fill="none">
+                        {ICE_CRACKS.map((pts, ci) => (
+                          <polyline key={ci} points={pts} />
                         ))}
-                        <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" fill="none">
-                          {ICE_CRACKS.map((pts, ci) => (
-                            <polyline key={ci} points={pts} />
-                          ))}
-                        </g>
-                        <g fill="rgba(255,255,255,0.4)">
-                          {ICE_BUBBLES.map(([cx, cy, r], bi) => (
-                            <circle key={bi} cx={cx} cy={cy} r={r} />
-                          ))}
-                        </g>
-                        {/* A delicate snowflake etched on the face. */}
-                        <g
-                          stroke="rgba(255,255,255,0.6)"
-                          strokeWidth="1.2"
-                          fill="none"
-                          transform="translate(94,34)"
-                        >
-                          <path d="M0,-8 V8 M-7,-4 L7,4 M-7,4 L7,-4" />
-                        </g>
-                        {/* The topmost chunk grows an irregular crown above its top edge — drawn in this
-                            same group so it's ONE fill with the chunk (no overlapping translucent layer
-                            that would darken into a broad horizontal band). Pokes above via overflow. */}
-                        {k === 0 && (
-                          <>
-                            {ICE_CROWN.map(([pts, g], ci) => (
-                              <polygon key={`cf${ci}`} points={pts} fill={`url(#ice${g}-${gid})`} />
-                            ))}
-                            <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" fill="none">
-                              {ICE_CROWN_CRACKS.map((pts, ci) => (
-                                <polyline key={`cc${ci}`} points={pts} />
-                              ))}
-                            </g>
-                          </>
-                        )}
                       </g>
-                    </svg>
-                  </div>
-                );
-              })}
+                      <g fill="rgba(255,255,255,0.4)">
+                        {ICE_BUBBLES.map(([cx, cy, r], bi) => (
+                          <circle key={bi} cx={cx} cy={cy} r={r} />
+                        ))}
+                      </g>
+                      {/* A delicate snowflake etched on the face. */}
+                      <g
+                        stroke="rgba(255,255,255,0.6)"
+                        strokeWidth="1.2"
+                        fill="none"
+                        transform="translate(94,34)"
+                      >
+                        <path d="M0,-8 V8 M-7,-4 L7,4 M-7,4 L7,-4" />
+                      </g>
+                      {/* The topmost chunk grows an irregular crown above its top edge (negative y) —
+                          pokes above the viewBox via the sheet's `overflow: visible`. */}
+                      {k === 0 && (
+                        <>
+                          {ICE_CROWN.map(([pts, g], ci) => (
+                            <polygon key={`cf${ci}`} points={pts} fill={`url(#ice${g}-${gid})`} />
+                          ))}
+                          <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" fill="none">
+                            {ICE_CROWN_CRACKS.map((pts, ci) => (
+                              <polyline key={`cc${ci}`} points={pts} />
+                            ))}
+                          </g>
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
 
               {/* A single rainbow refraction streak across the whole block, tying the chunks into one
                   crystal. */}
