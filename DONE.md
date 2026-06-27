@@ -72,3 +72,12 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
   *approximate* metrics too: `pickBest` already measures every finalist, so the chosen board's metrics are
   retained as `LiveProvenance` on the (non-hashed) `LoadedLevel` → store `liveProvenance` → inspector,
   marked "live · approx" (proxy optimal, pool-relative score). All metric display is behind `import.meta.env.DEV`.
+- **Track E2 — bake report / diff CLI** (2026-06-26) — `npm run levels:report` over the bake provenance
+  sidecar. **Report** (no/one path arg): an ASCII score-distribution histogram plus, per chapter,
+  score/optimal stats, exact-optimal rate, family mix, the five metric means, and within-chapter
+  monotonicity slips — the condensed read the bake's console dump buries. **Diff** (two path args): joins
+  two bakes by level and prints added/removed plus changed levels (Δscore / score / Δoptimal / family),
+  sorted by |Δscore| — so a `SCORE_WEIGHTS`/`SHAPES` change yields a precise per-level delta instead of
+  eyeballing. All analysis is pure + unit-tested in `src/game/levelReport.ts` (`numStats`, `histogram`,
+  `monotonicityViolations`, `buildReport`, `diffProvenance`); the script is a thin IO/format shell, kept
+  out of the bake hash so it never forces a re-bake. Unblocks the standing "re-tune the curve" item.

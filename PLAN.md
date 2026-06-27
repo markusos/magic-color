@@ -159,8 +159,8 @@ The remaining sub-tracks (E2 report/diff, E6 curve viz, E8 snapshot) read the sa
 
 ### Priority order
 1. ~~**E1 — Level Inspector overlay + importable provenance**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
-2. **E2 — Bake report / diff CLI** (the lead; makes curve-tuning tractable; unblocks the standing "re-tune" item).
-3. **E3 — Admin navigation, mode & seed controls** (cheap; makes any reported board reproducible).
+2. ~~**E2 — Bake report / diff CLI**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
+3. **E3 — Admin navigation, mode & seed controls** (the lead; cheap; makes any reported board reproducible).
 4. **E4 — Solver / mechanic introspection** (reveal-hidden, auto-solve, free-pour, force-terminal).
 5. **E5 — Single-level / single-chapter bake fast path** (tighten the offline iteration loop).
 6. **E6 — Curve visualization** (spot cliffs/plateaus at a glance).
@@ -179,22 +179,17 @@ action, and (E4) a "reveal hidden" toggle that the panel can surface inline.
 
 ---
 
-### E2 — Bake report / diff CLI  (LEAD — do next)
+### E2 — Bake report / diff CLI  — SHIPPED 2026-06-26
 
-`scripts/level-report.ts` (new), reading `levels.provenance.json`. Two modes:
-- **Report** (`npm run levels:report`): per-chapter histograms — score distribution, family mix,
-  exact-vs-proxy `optimal` rate, monotonicity violations (a level whose `score` dips below its
-  predecessor's), and per-metric min/max/mean. The condensed read of a bake the console dump buries.
-- **Diff** (`-- a.json b.json`): the killer feature for tuning — show exactly which levels moved and by
-  how much between two provenance files, so "I raised `deadEnd` to 1.8" yields a precise per-level delta
-  table instead of eyeballing. Sort by largest |Δscore|.
-
-**Tests.** Histogram/diff are pure functions over the `Provenance[]` array — unit-test bucketing,
-monotonicity detection, and the diff join (added/removed/changed levels) against small fixtures.
+Done — see [DONE.md](DONE.md). `scripts/level-report.ts` over the typed/tested `src/game/levelReport.ts`;
+report + diff modes via `npm run levels:report`. Confirmed in the live bake: the per-chapter metric means
+show each signature mechanic lighting up (digDepth ch1, funnelLoad ch2, iceLoad ch3) and the monotonicity
+slips cluster at the chapter plateaus — exactly the read it was built to give. E6 (richer curve viz) can
+extend the ASCII score histogram already in the report.
 
 ---
 
-### E3 — Admin navigation, mode & seed controls  (extends the existing hatch)
+### E3 — Admin navigation, mode & seed controls  (LEAD — extends the existing hatch)
 
 The hatch today only raises the unlock frontier (`unlockUpTo`). Add, in the same admin section:
 - **Jump to level N** → `loadLevel(N)` (not just unlock) — including past `BAKED_LEVEL_COUNT` into the
@@ -283,9 +278,9 @@ every board's score." The snapshot surfaces that in review. Regenerate intention
 ## Standing / iterative work (never "done")
 
 - **Re-tune the curve.** Adjust `SCORE_WEIGHTS` / `CURVE` in `difficulty.ts` + `progression.ts` from
-  real playtests, then re-bake. Track B's stats shipped (signal exists); the remaining blocker is a
-  tight feedback loop — **Track E2's report/diff CLI is the tool for this**, so do it before the next
-  weight pass so tuning is diff-able rather than by-feel.
+  real playtests, then re-bake. Track B's stats shipped (signal exists) and the feedback loop is now in
+  place — use **`npm run levels:report`** (Track E2): snapshot the current `levels.provenance.json`, change
+  weights, re-bake, then diff the two so each weight pass is measured per-level rather than by-feel.
 - **Settle the funnel knobs.** The `funnelLoad` formula and per-board lock cap were left to settle by
   feel; revisit alongside playtest re-bakes.
 - **Mechanic-density tuning.** The signature/inherited/balanced density literals (`progression.ts`) are
