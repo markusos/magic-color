@@ -28,10 +28,12 @@ interface Persisted {
   haptics: boolean;
   /** Colorblind aid: fill each color with a distinct texture/pattern. Off by default. */
   patterns: boolean;
+  /** Debug (Track E1): overlay the active board's difficulty metrics. Hidden behind the admin hatch, off by default. */
+  inspector: boolean;
 }
 
 function defaults(): Persisted {
-  return { soundVolume: DEFAULT_SOUND, musicVolume: 0, haptics: true, patterns: false };
+  return { soundVolume: DEFAULT_SOUND, musicVolume: 0, haptics: true, patterns: false, inspector: false };
 }
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
@@ -57,6 +59,7 @@ function load(): Persisted {
       musicVolume: readVolume(p.musicVolume, p.music, 0.6, 0),
       haptics: typeof p.haptics === 'boolean' ? p.haptics : true,
       patterns: typeof p.patterns === 'boolean' ? p.patterns : false,
+      inspector: typeof p.inspector === 'boolean' ? p.inspector : false,
     };
   } catch {
     return defaults();
@@ -72,10 +75,19 @@ function save(p: Persisted): void {
 }
 
 interface SettingsStore extends Persisted {
+  /**
+   * Ephemeral (NOT persisted) view state for the debug inspector popover: whether it's currently open.
+   * Distinct from `inspector` (the persisted enable flag) — the popover behaves like the how-to-play
+   * one: the ⓘ button opens it, a tap on the backdrop (or ⓘ again) closes it. Starts closed.
+   */
+  inspectorOpen: boolean;
   setSoundVolume: (v: number) => void;
   setMusicVolume: (v: number) => void;
   toggleHaptics: () => void;
   togglePatterns: () => void;
+  toggleInspector: () => void;
+  /** Expand/collapse the inspector overlay without disabling it (the ⓘ button + the panel's ✕). */
+  toggleInspectorOpen: () => void;
 }
 
 /** The persisted subset of the store (drops the action functions). */
@@ -84,6 +96,7 @@ const persistedOf = (s: SettingsStore): Persisted => ({
   musicVolume: s.musicVolume,
   haptics: s.haptics,
   patterns: s.patterns,
+  inspector: s.inspector,
 });
 
 export const useSettings = create<SettingsStore>((set, get) => {
@@ -95,6 +108,8 @@ export const useSettings = create<SettingsStore>((set, get) => {
 
   return {
     ...initial,
+    // The inspector popover starts closed (opened on demand via the ⓘ button); ephemeral, not saved.
+    inspectorOpen: false,
     setSoundVolume: (v) => {
       const soundVolume = clamp01(v);
       setSoundVolume(soundVolume);
@@ -120,6 +135,14 @@ export const useSettings = create<SettingsStore>((set, get) => {
       set({ patterns });
       save(persistedOf(get()));
     },
+    toggleInspector: () => {
+      // Debug inspector enable flag (read by the ⓘ button). Toggling it always leaves the popover
+      // closed — it's opened on demand from the header, like how-to-play.
+      const inspector = !get().inspector;
+      set({ inspector, inspectorOpen: false });
+      save(persistedOf(get())); // inspectorOpen is ephemeral and excluded from persistedOf
+    },
+    toggleInspectorOpen: () => set({ inspectorOpen: !get().inspectorOpen }),
   };
 });
 

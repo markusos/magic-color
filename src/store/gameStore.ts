@@ -24,9 +24,11 @@ import {
   generateRandomLevel,
   getLevel,
   hasBakedLevel,
+  type LoadedLevel,
 } from '../game/levelLoader';
+import type { LiveProvenance } from '../game/provenance';
 import { type DailyRecord, todayKey } from '../game/daily';
-import { mechanicsForLevel, phaseForLevel, type PlayableLevel } from '../game/progression';
+import { mechanicsForLevel, phaseForLevel } from '../game/progression';
 import { type HiddenGrid } from '../game/hidden';
 import { type FunnelGrid } from '../game/funnels';
 import { type IceGrid } from '../game/ice';
@@ -142,6 +144,13 @@ interface GameStore {
   optimal: number;
   /** 2★ ceiling for the current level (adjusted near-optimal band; always `> optimal`). */
   twoStarMax: number;
+  /**
+   * For a LIVE board (random/endless, daily, un-baked tail) the difficulty metrics the generator
+   * measured while choosing it; null for baked boards (their committed provenance is looked up
+   * separately, DEV-only). Powers the inspector's metrics readout on generated boards. See
+   * {@link LiveProvenance}.
+   */
+  liveProvenance: LiveProvenance | null;
   /** The player's best (fewest) moves for the current level, or null if never solved. */
   best: number | null;
   /** The player's best star rating for the current level, or null if never solved. */
@@ -288,7 +297,7 @@ export const useGameStore = create<GameStore>((set, get) => {
    * reset) are spread on top by each caller.
    */
   const freshBoardState = (
-    generated: PlayableLevel,
+    generated: LoadedLevel,
     board: GameState,
     display: OverlaySet,
   ): Partial<GameStore> => ({
@@ -315,6 +324,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     mechanics: generated.mechanics,
     optimal: generated.optimal,
     twoStarMax: generated.twoStarMax,
+    liveProvenance: generated.liveProvenance ?? null,
   });
 
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
@@ -476,6 +486,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     mechanics: first?.mechanics ?? mechanicsForLevel(startLevel),
     optimal: first?.optimal ?? 0,
     twoStarMax: first?.twoStarMax ?? 2,
+    liveProvenance: first?.liveProvenance ?? null,
     ...campaign.recordFor(startLevel),
     furthest: campaign.furthest,
     campaignComplete: campaign.campaignComplete,

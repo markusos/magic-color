@@ -13,9 +13,19 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 export default tseslint.config(
   // `scripts/` holds standalone dev tools run via tsx; they're outside the app's tsconfig, so the
   // type-aware linter can't resolve them. They aren't part of the build, so skip them.
-  // `src/game/levels.data.ts` is generated (`npm run build:levels`); tsc still typechecks it, but
-  // there's nothing to lint in a committed data blob.
-  { ignores: ['dist', 'dev-dist', 'coverage', 'scripts', 'src/game/levels.data.ts'] },
+  // `src/game/levels.data.ts` and `src/game/levels.provenance.ts` are generated
+  // (`npm run build:levels`); tsc still typechecks them, but there's nothing to lint in a committed
+  // data blob.
+  {
+    ignores: [
+      'dist',
+      'dev-dist',
+      'coverage',
+      'scripts',
+      'src/game/levels.data.ts',
+      'src/game/levels.provenance.ts',
+    ],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],

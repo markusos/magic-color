@@ -58,3 +58,17 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
     elsewhere, and respects a user-cancelled share (AbortError → no silent copy). A share button in
     Home's top-left corner (mirroring the Settings cog) shares the game itself; it flips to a check
     ("Link copied") for 2s on the copy fallback.
+- **Track E1 — Level Inspector + importable provenance** (2026-06-26) — a floating debug overlay
+  (`components/Debug/InspectorPanel.tsx`) toggled from the Settings admin hatch (new `inspector` flag in
+  `store/settings.ts`) that surfaces the active board's live `PlayableLevel` metadata (source baked/live,
+  phase/chapter, footprint, mechanics, optimal/2★) plus the baked level's bake-time provenance (score vs.
+  curve target, family, the six difficulty metrics). Provenance is mirrored from the committed
+  `scripts/levels.provenance.json` into a generated, tree-shakeable `src/game/levels.provenance.ts` by a
+  standalone `scripts/emit-provenance.ts` (kept out of the hash-tracked `build-levels.ts` to avoid forcing
+  a re-bake; wired after the bake in `build:levels`), and loaded only behind `import.meta.env.DEV` via
+  `game/provenance.ts` — verified dead-code-eliminated from the production bundle. The spine (importable
+  provenance) is reused by the rest of Track E. The readout renders as the ⓘ popover (same shell +
+  backdrop-dismiss as how-to-play). **Live boards** (random/endless, daily, un-baked tail) show their own
+  *approximate* metrics too: `pickBest` already measures every finalist, so the chosen board's metrics are
+  retained as `LiveProvenance` on the (non-hashed) `LoadedLevel` → store `liveProvenance` → inspector,
+  marked "live · approx" (proxy optimal, pool-relative score). All metric display is behind `import.meta.env.DEV`.

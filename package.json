@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "bench": "tsx scripts/benchmark-generation.ts",
-    "build:levels": "tsx scripts/build-levels.ts"
+    "build:levels": "tsx scripts/build-levels.ts && tsx scripts/emit-provenance.ts",
+    "levels:provenance": "tsx scripts/emit-provenance.ts"
   },
   "dependencies": {
     "framer-motion": "^11.11.0",

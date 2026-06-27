@@ -1,5 +1,10 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { generateDailyLevel, resetLiveGenerator } from './levelLoader';
+import {
+  generateDailyLevel,
+  generateRandomLevel,
+  getLevel,
+  resetLiveGenerator,
+} from './levelLoader';
 
 /** A board's identity for comparison — the tube contents (palette is recolored later, in the store). */
 const fingerprint = (level: ReturnType<typeof generateDailyLevel>) =>
@@ -31,5 +36,28 @@ describe('generateDailyLevel', () => {
     const a = generateDailyLevel('2026-07-01');
     const b = generateDailyLevel('2026-07-01');
     expect(a).toBe(b);
+  });
+});
+
+describe('live provenance', () => {
+  afterEach(() => resetLiveGenerator());
+
+  it('attaches the chosen board metrics to a random board', () => {
+    const lp = generateRandomLevel(12345).liveProvenance;
+    expect(lp).toBeDefined();
+    expect(typeof lp!.score).toBe('number');
+    expect(typeof lp!.targetPercentile).toBe('number');
+    expect(typeof lp!.family).toBe('string');
+    // Live boards use the proxy optimal, never the exact A*.
+    expect(lp!.metrics.optimalExact).toBe(false);
+    expect(lp!.metrics.colors).toBeGreaterThan(0);
+  });
+
+  it('attaches metrics to the daily board too', () => {
+    expect(generateDailyLevel('2026-06-24').liveProvenance).toBeDefined();
+  });
+
+  it('leaves it undefined for a baked level (its provenance is committed separately)', () => {
+    expect(getLevel(1).liveProvenance).toBeUndefined();
   });
 });

@@ -100,10 +100,12 @@ export function Settings() {
   const musicVolume = useSettings((s) => s.musicVolume);
   const haptics = useSettings((s) => s.haptics);
   const patterns = useSettings((s) => s.patterns);
+  const inspector = useSettings((s) => s.inspector);
   const setSoundVolume = useSettings((s) => s.setSoundVolume);
   const setMusicVolume = useSettings((s) => s.setMusicVolume);
   const toggleHaptics = useSettings((s) => s.toggleHaptics);
   const togglePatterns = useSettings((s) => s.togglePatterns);
+  const toggleInspector = useSettings((s) => s.toggleInspector);
   // Surface the same install affordance as the home banner, but always (no dismissal) when the app
   // isn't already installed and the platform can offer it.
   const { platform, install } = useInstall();
@@ -218,6 +220,10 @@ export function Settings() {
                   unlockedTo >= MAX_LEVEL ? ' Play Random is unlocked.' : ''
                 }`
               : `Unlock every level up to and including this number (frontier is currently ${furthest}). Unlock to ${MAX_LEVEL} to open Play Random.`}
+          </p>
+          <ToggleRow label="Level Inspector" checked={inspector} onToggle={toggleInspector} />
+          <p className={styles.hint}>
+            Overlay the active board's difficulty metrics while playing (plus baked provenance in dev builds).
           </p>
         </section>
       )}

@@ -18,6 +18,15 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* Inspector enabled: tint the button so it reads as the inspector toggle rather than help. */
+.active {
+  color: var(--accent);
+}
+
+.active:hover:not(:disabled) {
+  background: rgba(255, 209, 102, 0.16);
+}
+
 .backdrop {
   position: fixed;
   inset: 0;
@@ -38,6 +47,15 @@
   backdrop-filter: blur(20px) saturate(160%);
   border: 0.5px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* The inspector readout needs a touch more width for its label/value rows, and a scroll cap so a long
+   metric list stays on-screen on a short phone. Otherwise identical to the how-to popover shell. */
+.inspectorPopover {
+  width: min(86vw, 320px);
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .title {

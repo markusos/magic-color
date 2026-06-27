@@ -35,7 +35,16 @@ import {
   targetPercentile,
 } from './progression';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
+import type { LiveProvenance } from './provenance';
 import { type Difficulty, type GameState, type GeneratedLevel, toColors } from './types';
+
+/**
+ * A loaded board. For LIVE boards (random/endless, daily, un-baked tail) it carries the difficulty
+ * metrics the generator measured while choosing it (`liveProvenance`); baked boards leave it undefined
+ * (their committed provenance is looked up separately, DEV-only). The store mirrors this onto a reactive
+ * field for the inspector. Defined here (not in the bake-hashed `progression.ts`) so this stays re-bake-free.
+ */
+export type LoadedLevel = PlayableLevel & { liveProvenance?: LiveProvenance };
 
 /**
  * The pre-baked boards, loaded LAZILY via dynamic import so the ~200 kB data blob lands in its own
@@ -104,13 +113,14 @@ function overlaysFor(plan: LevelPlan, generated: GeneratedLevel): OverlaySet {
   });
 }
 
-/** Wrap a generated board + its overlay set as a campaign-annotated `PlayableLevel`. */
+/** Wrap a generated board + its overlay set as a campaign-annotated `LoadedLevel`. */
 function toPlayable(
   level: number,
   plan: LevelPlan,
   generated: GeneratedLevel,
   overlays: OverlaySet,
-): PlayableLevel {
+  liveProvenance?: LiveProvenance,
+): LoadedLevel {
   const { optimal, twoStarMax } = cutoffsFor(generated, overlays);
   return {
     ...generated,
@@ -123,6 +133,7 @@ function toPlayable(
     ice: overlays.ice,
     optimal,
     twoStarMax,
+    liveProvenance,
   };
 }
 
@@ -131,7 +142,7 @@ function toPlayable(
  * floor. Robust to the (rare) seed that fails to yield a solvable board — it bumps the salt and
  * retries. Backs `generateForLevel` and is the fallback for the pooled quality path.
  */
-function generateFromPlan(level: number, plan: LevelPlan): PlayableLevel {
+function generateFromPlan(level: number, plan: LevelPlan): LoadedLevel {
   for (let salt = 0; salt < 8; salt++) {
     try {
       const generated = generateLevel({
@@ -152,7 +163,7 @@ function generateFromPlan(level: number, plan: LevelPlan): PlayableLevel {
 }
 
 /** The light single-board generator for a campaign level. Used by tests and the bake fallback. */
-export function generateForLevel(level: number): PlayableLevel {
+export function generateForLevel(level: number): LoadedLevel {
   return generateFromPlan(level, planForLevel(level));
 }
 
@@ -188,7 +199,7 @@ export const TEST_LIVE_CONFIG: LiveGenConfig = { poolSize: 24, finalists: 6, fin
 let liveConfig: LiveGenConfig = DEFAULT_LIVE_CONFIG;
 
 /** Memoized live levels (deterministic by level), so re-loads and replays don't regenerate. */
-const liveCache = new Map<number, PlayableLevel>();
+const liveCache = new Map<number, LoadedLevel>();
 
 /** Install a live-generation budget and clear the caches (the test setup shrinks the pool this way). */
 export function configureLiveGenerator(config: LiveGenConfig): void {
@@ -234,7 +245,19 @@ function percentileScore(scores: number[], p: number): number {
  * proxy — too slow/explosive for a per-load budget). Falls back to the light generator if the pool
  * ever comes up empty.
  */
-function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel {
+/**
+ * The shape family for a plan's footprint. Live boards carry no committed family, but every live plan's
+ * footprint comes from a {@link SHAPES} entry, so we recover it by matching colors/bottles/capacity
+ * (each footprint is unique across SHAPES). Falls back to `'live'` if no shape matches.
+ */
+function familyForPlan(plan: LevelPlan): string {
+  const shape = SHAPES.find(
+    (s) => s.colors === plan.colors && s.bottles === plan.bottles && s.capacity === plan.capacity,
+  );
+  return shape?.family ?? 'live';
+}
+
+function pickBest(level: number, plan: LevelPlan, target: number): LoadedLevel {
   for (let salt = 0; salt < 8; salt++) {
     const candidates = generateCandidates(
       {
@@ -266,14 +289,21 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
     // Fine pass: re-score the finalists with dead-end sampling (the strongest signal, absent above)
     // and pick the best fit on the curve.
     const fineOpts = fineMetrics();
-    const fine = compositeScores(
-      finalists.map(({ g, overlays }) =>
-        measureMetrics(g.state, overlays.hidden, g.solution, fineOpts, staticOverlays(overlays)),
-      ),
+    const fineMeasured = finalists.map(({ g, overlays }) =>
+      measureMetrics(g.state, overlays.hidden, g.solution, fineOpts, staticOverlays(overlays)),
     );
+    const fine = compositeScores(fineMeasured);
     const idx = assignSlots(fine.map((score) => ({ score, family: 'live' })), [target])[0]!;
     const chosen = finalists[idx]!;
-    return toPlayable(level, plan, chosen.g, chosen.overlays);
+    // Retain the chosen board's measurements for the inspector (we computed them anyway). Approximate:
+    // proxy optimal + pool-relative score — see {@link LiveProvenance}.
+    const liveProvenance: LiveProvenance = {
+      score: fine[idx]!,
+      targetPercentile: target,
+      family: familyForPlan(plan),
+      metrics: fineMeasured[idx]!,
+    };
+    return toPlayable(level, plan, chosen.g, chosen.overlays, liveProvenance);
   }
 
   return generateFromPlan(level, plan); // pool kept failing — fall back to the light generator
@@ -283,7 +313,7 @@ function pickBest(level: number, plan: LevelPlan, target: number): PlayableLevel
  * The higher-quality live board for a campaign tail level: best-of-N at the level's curve target,
  * memoized so re-loads and replays don't regenerate.
  */
-function generateBestLevel(level: number): PlayableLevel {
+function generateBestLevel(level: number): LoadedLevel {
   const cached = liveCache.get(level);
   if (cached) return cached;
   const result = pickBest(level, planForLevel(level), targetPercentile(level));
@@ -326,7 +356,7 @@ function seedFraction(seed: number, stream: number): number {
  * per board so the run isn't a relentless wall of the same max-difficulty board. NOT memoized — each
  * call is a fresh random board, picked best-of-N at its sampled target.
  */
-export function generateRandomLevel(seed: number): PlayableLevel {
+export function generateRandomLevel(seed: number): LoadedLevel {
   const shape = RANDOM_SHAPES[Math.abs(seed) % RANDOM_SHAPES.length]!;
   // Spread difficulty across the normal→hard band instead of pinning every board to the top.
   const target = RANDOM_TARGET_MIN + seedFraction(seed, 1) * (RANDOM_TARGET_MAX - RANDOM_TARGET_MIN);
@@ -372,7 +402,7 @@ const DAILY_TARGET_MIN = 0.5;
 const DAILY_TARGET_MAX = 0.85;
 
 /** Memoized daily boards keyed by UTC date string, so re-opening today's daily doesn't regenerate. */
-const dailyCache = new Map<string, PlayableLevel>();
+const dailyCache = new Map<string, LoadedLevel>();
 
 /**
  * The date-seeded daily challenge board (Track B2): a mid/hard showcase using the FULL mechanic set
@@ -381,7 +411,7 @@ const dailyCache = new Map<string, PlayableLevel>();
  * by design (it must be identical across devices), so it always carries every mechanic. Memoized per
  * date key. The footprint and difficulty target vary by date for day-to-day variety.
  */
-export function generateDailyLevel(key: string): PlayableLevel {
+export function generateDailyLevel(key: string): LoadedLevel {
   const cached = dailyCache.get(key);
   if (cached) return cached;
   const seed = dailySeed(key);
@@ -453,7 +483,7 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
  * any un-baked level. The live path can take up to ~1–2s, so callers should show a spinner (the
  * store defers it behind a loading flag). Prefer this over `generateForLevel` in app code.
  */
-export function getLevel(level: number): PlayableLevel {
+export function getLevel(level: number): LoadedLevel {
   const baked = BAKED_BY_LEVEL.get(level);
   return baked ? bakedToPlayable(baked) : generateBestLevel(level);
 }

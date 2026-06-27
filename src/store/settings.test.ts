@@ -33,6 +33,7 @@ describe('settings store', () => {
     expect(persisted()?.musicVolume).toBeCloseTo(0.4);
     expect(Object.keys(persisted() ?? {}).sort()).toEqual([
       'haptics',
+      'inspector',
       'musicVolume',
       'patterns',
       'soundVolume',

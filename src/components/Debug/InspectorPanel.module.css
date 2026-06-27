@@ -1,0 +1,40 @@
+/* Body of the ⓘ inspector popover (Track E1). The popover shell + backdrop are the shared how-to-play
+   styles in InfoButton.module.css; this is just the readout: a title plus dense label/value metric rows.
+   Monospace + tabular figures so the numbers line up and stay glanceable. */
+.readout {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.title {
+  margin: 0 0 var(--space-2);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.label {
+  color: var(--text-dim);
+}
+
+.value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.divider {
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--panel-border);
+}
