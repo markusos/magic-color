@@ -159,11 +159,11 @@ The remaining sub-tracks (E2 report/diff, E6 curve viz, E8 snapshot) read the sa
 
 ### Priority order
 1. ~~**E1 — Level Inspector overlay + importable provenance**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
-2. ~~**E2 — Bake report / diff CLI**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
+2. ~~**E2 — Bake report / diff CLI**~~ — **SHIPPED 2026-06-26**, plus an **interactive React+Vite report app** (`report/`, also delivers E6) (see [DONE.md](DONE.md)).
 3. **E3 — Admin navigation, mode & seed controls** (the lead; cheap; makes any reported board reproducible).
 4. **E4 — Solver / mechanic introspection** (reveal-hidden, auto-solve, free-pour, force-terminal).
 5. **E5 — Single-level / single-chapter bake fast path** (tighten the offline iteration loop).
-6. **E6 — Curve visualization** (spot cliffs/plateaus at a glance).
+6. ~~**E6 — Curve visualization**~~ — **SHIPPED 2026-06-26** as the React report app's metric curves (see [DONE.md](DONE.md)).
 7. **E7 — On-device solvability & quality assertion pass** (pre-commit gate for a re-bake).
 8. **E8 — Golden curve snapshot regression test** (catch silent bake drift in review).
 9. **E9 — Diagnostics readout + live-config toggle + DEV gating of the hatch.**
@@ -235,12 +235,12 @@ boards for those levels as the full bake (determinism).
 
 ---
 
-### E6 — Curve visualization
+### E6 — Curve visualization  — SHIPPED 2026-06-26
 
-A `score`-vs-`level` plot against `targetPercentile` (the clearest way to spot a difficulty cliff, a
-plateau, or a chapter where the signature mechanic isn't actually raising difficulty). Cheapest form: an
-ASCII/sparkline in the E2 report CLI. Richer form: a `show_widget` chart when reviewing interactively.
-Data is entirely in provenance — no new compute.
+Done — delivered as the interactive React+Vite report app (`report/`, see [DONE.md](DONE.md)): every
+metric (incl. `score` vs `targetPercentile`) as a curve across the campaign with chapter bands, a shared
+hover crosshair, and a comparison overlay. Goes well past the originally-scoped ASCII sparkline. Future
+extensions (the app makes them cheap): per-family filtering, brushing/zoom, a second-bake diff curve view.
 
 ---
 

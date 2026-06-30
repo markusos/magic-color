@@ -81,3 +81,14 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
   eyeballing. All analysis is pure + unit-tested in `src/game/levelReport.ts` (`numStats`, `histogram`,
   `monotonicityViolations`, `buildReport`, `diffProvenance`); the script is a thin IO/format shell, kept
   out of the bake hash so it never forces a re-bake. Unblocks the standing "re-tune the curve" item.
+- **Track E2/E6 — interactive React+Vite bake report** (2026-06-26) — a standalone report app under
+  `report/` with its own `vite.report.config.ts` (separate root/port 5174/`dist-report` output), fully
+  decoupled from the shipped game so the dev-only provenance never enters the app bundle. `npm run
+  report:dev` for HMR while building reports, `npm run report:build` for a self-contained static artifact
+  (~224 KB) to open or share. Renders every difficulty metric as a curve across the campaign with chapter
+  bands and a **shared hover crosshair** that drives a per-level detail panel; plus the per-chapter summary
+  table (monotonicity slips flagged), a score-distribution histogram, and a **Compare file…** loader
+  (drag-drop a provenance JSON) that overlays the comparison curve on every chart and renders the diff
+  table. Reuses the game's typed/tested analysis (`src/game/levelReport.ts`) and the committed provenance
+  module; report code is linted + typechecked (added `report/` to tsconfig + the gate). This is also the
+  substantive delivery of E6 (curve visualization).

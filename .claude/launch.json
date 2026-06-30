@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--", "--port", "4173"],
       "port": 4173
+    },
+    {
+      "name": "report",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "report:dev"],
+      "port": 5174
     }
   ]
 }

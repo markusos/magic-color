@@ -13,7 +13,9 @@
     "bench": "tsx scripts/benchmark-generation.ts",
     "build:levels": "tsx scripts/build-levels.ts && tsx scripts/emit-provenance.ts",
     "levels:provenance": "tsx scripts/emit-provenance.ts",
-    "levels:report": "tsx scripts/level-report.ts"
+    "levels:report": "tsx scripts/level-report.ts",
+    "report:dev": "vite --config vite.report.config.ts",
+    "report:build": "tsc --noEmit && vite build --config vite.report.config.ts"
   },
   "dependencies": {
     "framer-motion": "^11.11.0",
