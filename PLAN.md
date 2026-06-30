@@ -160,8 +160,8 @@ The remaining sub-tracks (E2 report/diff, E6 curve viz, E8 snapshot) read the sa
 ### Priority order
 1. ~~**E1 — Level Inspector overlay + importable provenance**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
 2. ~~**E2 — Bake report / diff CLI**~~ — **SHIPPED 2026-06-26**, plus an **interactive React+Vite report app** (`report/`, also delivers E6) (see [DONE.md](DONE.md)).
-3. **E3 — Admin navigation, mode & seed controls** (the lead; cheap; makes any reported board reproducible).
-4. **E4 — Solver / mechanic introspection** (reveal-hidden, auto-solve, free-pour, force-terminal).
+3. ~~**E3 — Admin navigation, mode & seed controls**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
+4. **E4 — Solver / mechanic introspection** (the lead; reveal-hidden, auto-solve, free-pour, force-terminal).
 5. **E5 — Single-level / single-chapter bake fast path** (tighten the offline iteration loop).
 6. ~~**E6 — Curve visualization**~~ — **SHIPPED 2026-06-26** as the React report app's metric curves (see [DONE.md](DONE.md)).
 7. **E7 — On-device solvability & quality assertion pass** (pre-commit gate for a re-bake).
@@ -189,20 +189,12 @@ extend the ASCII score histogram already in the report.
 
 ---
 
-### E3 — Admin navigation, mode & seed controls  (LEAD — extends the existing hatch)
+### E3 — Admin navigation, mode & seed controls  — SHIPPED 2026-06-26
 
-The hatch today only raises the unlock frontier (`unlockUpTo`). Add, in the same admin section:
-- **Jump to level N** → `loadLevel(N)` (not just unlock) — including past `BAKED_LEVEL_COUNT` into the
-  live tail.
-- **Enter mode directly** → buttons for `playRandom` (endless) / `playDaily`, and a **seed box** for
-  "Play Random with seed X" so a reported bad board reproduces exactly (`generateRandomLevel(seed)` /
-  `generateDailyLevel(key)` are pure). Needs a small store seam: a `loadRandom(seed)` that bypasses the
-  RNG-derived seed.
-- **Reload / re-roll current board** → re-run `getLevel` (clear that entry from `liveCache` first for a
-  live level) to inspect generator variance.
-
-**Tests.** Store: `loadLevel` past the baked count loads a live board; `loadRandom(seed)` is
-deterministic (same seed ⇒ same board); reload clears the right cache entry.
+Done — see [DONE.md](DONE.md). "Admin · Navigate" subsection in the Settings hatch: jump-to-level (live
+tail included), Play-seed (deterministic random repro via new `loadRandom(seed)` store seam), Endless /
+Daily buttons, and Reload (`reloadBoard` — re-rolls in endless, deterministic reload otherwise; drops the
+live caches first). Store seams unit-tested (determinism, reload modes, live-tail load).
 
 ---
 

@@ -770,3 +770,58 @@ describe('color-locked funnels (chapter 2)', () => {
     }
   });
 });
+
+describe('admin navigation seams', () => {
+  it('loadRandom is deterministic for a given seed (same board up to recolor)', async () => {
+    store().loadRandom(4242);
+    expect(store().mode).toBe('endless');
+    await flushLoad();
+    const a = store().current.bottles.map((b) => [...b]);
+
+    store().loadRandom(4242);
+    await flushLoad();
+    const b = store().current.bottles.map((b) => [...b]);
+
+    expect(sameLayout(a, b)).toBe(true);
+  });
+
+  it('loadRandom yields a different board for a different seed', async () => {
+    store().loadRandom(1);
+    await flushLoad();
+    const a = store().current.bottles.map((b) => [...b]);
+
+    store().loadRandom(999);
+    await flushLoad();
+    const b = store().current.bottles.map((b) => [...b]);
+
+    expect(sameLayout(a, b)).toBe(false);
+  });
+
+  it('reloadBoard reloads a baked campaign level synchronously (deterministic, no spinner)', () => {
+    store().loadLevel(1); // baked
+    store().reloadBoard();
+    expect(store().mode).toBe('campaign');
+    expect(store().level).toBe(1);
+    expect(store().loading).toBe(false);
+  });
+
+  it('reloadBoard re-rolls a fresh board behind the spinner in endless mode', async () => {
+    store().loadRandom(7);
+    await flushLoad();
+    store().reloadBoard();
+    expect(store().mode).toBe('endless');
+    expect(store().loading).toBe(true);
+    await flushLoad();
+    expect(store().loading).toBe(false);
+  });
+
+  it('loadLevel past the baked range loads a live board into campaign mode', async () => {
+    store().loadLevel(LIVE_HIDDEN);
+    expect(store().loading).toBe(true);
+    await flushLoad();
+    expect(store().mode).toBe('campaign');
+    expect(store().level).toBe(LIVE_HIDDEN);
+    expect(store().loading).toBe(false);
+    expect(store().current.bottles.length).toBeGreaterThan(0);
+  });
+});

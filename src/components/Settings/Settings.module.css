@@ -1,8 +1,24 @@
 .settings {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Scrollable content region — keeps the back-button header fixed while a long page (e.g. the admin
+   panel on a small screen) scrolls instead of being clipped by the app shell's `overflow: hidden`.
+   Mirrors the LevelSelect / StatsScreen pattern. */
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  /* The footer (margin-top:auto) sits at the bottom when short, and carries its own safe-area bottom
+     padding, so no extra padding-bottom is needed here. */
 }
 
 .header {
@@ -203,7 +219,13 @@
 
 .adminRow {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* A button that shares the row evenly with its siblings (the mode/reload button group). */
+.adminBtnFlex {
+  flex: 1;
 }
 
 .adminInput {

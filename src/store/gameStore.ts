@@ -25,6 +25,7 @@ import {
   getLevel,
   hasBakedLevel,
   type LoadedLevel,
+  resetLiveGenerator,
 } from '../game/levelLoader';
 import type { LiveProvenance } from '../game/provenance';
 import { type DailyRecord, todayKey } from '../game/daily';
@@ -180,8 +181,12 @@ interface GameStore {
   nextLevel: () => void;
   /** Start the post-campaign "Play Random" mode (resets the current streak). */
   playRandom: () => void;
+  /** Admin/testing: enter "Play Random" at a SPECIFIC seed, to reproduce a reported random board. */
+  loadRandom: (seed: number) => void;
   /** Start today's daily challenge (the date-seeded showcase board). */
   playDaily: () => void;
+  /** Admin/testing: re-generate the current board (re-rolls in endless; deterministic reload otherwise). */
+  reloadBoard: () => void;
   /** Wipe saved progress and return to level 1. */
   startOver: () => void;
   /** Read-only aggregate of all saved progress, for the stats screen. Computed on demand. */
@@ -408,12 +413,12 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 
   /**
-   * Enter the post-campaign "Play Random" mode: reset the session streak and generate a fresh random
-   * board behind the spinner (always live, so always deferred — same pattern as a tail `loadLevel`).
-   * `phase` is a provisional label for the spinner header; `applyRandom` sets the board's real phase.
+   * Enter the post-campaign "Play Random" mode at a SPECIFIC seed: reset the session streak and generate
+   * that exact random board behind the spinner (always live, so always deferred — same pattern as a tail
+   * `loadLevel`). `phase` is a provisional spinner-header label; `applyRandom` sets the board's real phase.
+   * `playRandom` rolls a fresh seed; the admin hatch uses this directly to reproduce a reported board.
    */
-  const playRandom = () => {
-    const seed = randomSeed();
+  const loadRandom = (seed: number) => {
     set({
       loading: true,
       selected: null,
@@ -422,7 +427,38 @@ export const useGameStore = create<GameStore>((set, get) => {
       phase: 'hard',
       mechanics: mechanicsForLevel(MAX_UNLOCK_LEVEL),
     });
-    deferAfterPaint(() => applyRandom(seed));
+    deferAfterPaint(() => applyRandom(seed >>> 0));
+  };
+
+  /** Enter "Play Random" with a fresh seed. */
+  const playRandom = () => loadRandom(randomSeed());
+
+  /**
+   * Re-generate and re-commit the CURRENT board (admin/debug). Drops the memoized live boards first so a
+   * tail/daily reload truly regenerates (e.g. to re-time generation or pick up a dev code change);
+   * endless re-rolls a fresh random board. Baked campaign levels reload instantly (deterministic, no
+   * spinner); live ones go behind the spinner like a normal load.
+   */
+  const reloadBoard = () => {
+    resetLiveGenerator();
+    const { mode, level, dailyKey } = get();
+    if (mode === 'endless') {
+      set({ loading: true, selected: null });
+      deferAfterPaint(() => applyRandom(randomSeed()));
+      return;
+    }
+    if (mode === 'daily') {
+      const key = dailyKey ?? todayKey();
+      set({ loading: true, selected: null });
+      deferAfterPaint(() => applyDaily(key));
+      return;
+    }
+    if (hasBakedLevel(level)) {
+      applyLevel(level); // deterministic + synchronous — no spinner needed
+      return;
+    }
+    set({ loading: true, selected: null });
+    deferAfterPaint(() => applyLevel(level));
   };
 
   /**
@@ -517,7 +553,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       loadLevel(get().level + 1);
     },
     playRandom,
+    loadRandom,
     playDaily,
+    reloadBoard,
     startOver: () => {
       campaign.reset();
       loadLevel(1);

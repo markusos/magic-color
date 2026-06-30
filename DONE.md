@@ -92,3 +92,15 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
   table. Reuses the game's typed/tested analysis (`src/game/levelReport.ts`) and the committed provenance
   module; report code is linted + typechecked (added `report/` to tsconfig + the gate). This is also the
   substantive delivery of E6 (curve visualization).
+- **Track E3 — admin navigation / mode / seed controls** (2026-06-26) — an "Admin · Navigate" subsection
+  in the Settings hatch (alongside unlock + the inspector toggle): **jump to level N** (`loadLevel`,
+  including past `BAKED_LEVEL_COUNT` into the live tail), **Play seed** (reproduce a random board exactly),
+  **Endless** / **Daily** buttons, and **Reload** the current board. New store seams (`gameStore.ts`):
+  `loadRandom(seed)` enters endless at a specific seed (`playRandom` now delegates to it with a fresh
+  seed), and `reloadBoard()` re-generates the current board (re-rolls in endless; deterministic reload
+  otherwise; drops the live caches via `resetLiveGenerator` first). Inputs validate (empty seed no longer
+  enables the button — `Number('')` is 0). Tested: `loadRandom` determinism (same seed ⇒ same layout, up
+  to recolor) and divergence on different seeds, `reloadBoard` baked-vs-endless behaviour, live-tail load.
+  Also made the **Settings page scroll** (fixed back-button header + a `min-height:0; overflow-y:auto`
+  `.body` region, mirroring LevelSelect/StatsScreen) so the now-longer admin panel isn't clipped by the
+  app shell's `overflow:hidden` on a small screen.

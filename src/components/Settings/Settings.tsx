@@ -96,6 +96,11 @@ export function Settings() {
   const furthest = useGameStore((s) => s.furthest);
   const startOver = useGameStore((s) => s.startOver);
   const unlockUpTo = useGameStore((s) => s.unlockUpTo);
+  const loadLevel = useGameStore((s) => s.loadLevel);
+  const playRandom = useGameStore((s) => s.playRandom);
+  const loadRandom = useGameStore((s) => s.loadRandom);
+  const playDaily = useGameStore((s) => s.playDaily);
+  const reloadBoard = useGameStore((s) => s.reloadBoard);
   const soundVolume = useSettings((s) => s.soundVolume);
   const musicVolume = useSettings((s) => s.musicVolume);
   const haptics = useSettings((s) => s.haptics);
@@ -116,6 +121,8 @@ export function Settings() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [target, setTarget] = useState('');
   const [unlockedTo, setUnlockedTo] = useState<number | null>(null);
+  const [jump, setJump] = useState('');
+  const [seed, setSeed] = useState('');
   const tapCount = useRef(0);
   const lastTap = useRef(0);
 
@@ -146,6 +153,24 @@ export function Settings() {
     setUnlockedTo(parsed);
   };
 
+  // Admin navigation: load a board and jump straight to play. Level may exceed the baked range (the tail
+  // generates live); the seed reproduces an exact random board.
+  // `Number('')` is 0, so guard against the empty string explicitly (else "Play seed" enables on a blank field).
+  const jumpN = Number(jump);
+  const jumpValid = jump.trim() !== '' && Number.isInteger(jumpN) && jumpN >= 1;
+  const seedN = Number(seed);
+  const seedValid = seed.trim() !== '' && Number.isInteger(seedN) && seedN >= 0;
+  const enter = (action: () => void) => {
+    action();
+    navigate('play');
+  };
+  const onJump = () => {
+    if (jumpValid) enter(() => loadLevel(jumpN));
+  };
+  const onSeed = () => {
+    if (seedValid) enter(() => loadRandom(seedN));
+  };
+
   return (
     <div className={styles.settings}>
       <header className={styles.header}>
@@ -158,80 +183,138 @@ export function Settings() {
         </h1>
       </header>
 
-      {platform && (
-        <section className={styles.group}>
-          <div className={styles.install}>
-            <InstallInstructions platform={platform} install={install} />
-          </div>
-        </section>
-      )}
-
-      <section className={styles.group}>
-        <SliderRow
-          label="Sound Effects"
-          value={soundVolume}
-          onChange={setSoundVolume}
-          onCommit={previewSound}
-        />
-        <SliderRow label="Music" value={musicVolume} onChange={setMusicVolume} />
-        {hapticsSupported() && (
-          <ToggleRow label="Haptics" checked={haptics} onToggle={toggleHaptics} />
+      <div className={styles.body}>
+        {platform && (
+          <section className={styles.group}>
+            <div className={styles.install}>
+              <InstallInstructions platform={platform} install={install} />
+            </div>
+          </section>
         )}
-      </section>
 
-      <section className={styles.group}>
-        <ToggleRow label="Color Patterns" checked={patterns} onToggle={togglePatterns} />
-        <p className={styles.hint}>Adds a distinct texture to each color, for easier telling apart.</p>
-      </section>
+        <section className={styles.group}>
+          <SliderRow
+            label="Sound Effects"
+            value={soundVolume}
+            onChange={setSoundVolume}
+            onCommit={previewSound}
+          />
+          <SliderRow label="Music" value={musicVolume} onChange={setMusicVolume} />
+          {hapticsSupported() && (
+            <ToggleRow label="Haptics" checked={haptics} onToggle={toggleHaptics} />
+          )}
+        </section>
 
-      <section className={styles.group}>
-        <button className={styles.danger} onClick={onStartOver} disabled={fresh}>
-          Start Over
-        </button>
-        <p className={styles.hint}>
-          {fresh
-            ? 'You are on level 1 — nothing to reset yet.'
-            : `Erase your progress (reached level ${furthest}) and begin again from level 1.`}
-        </p>
-      </section>
+        <section className={styles.group}>
+          <ToggleRow label="Color Patterns" checked={patterns} onToggle={togglePatterns} />
+          <p className={styles.hint}>Adds a distinct texture to each color, for easier telling apart.</p>
+        </section>
 
-      {adminOpen && (
-        <section className={styles.admin}>
-          <h2 className={styles.adminTitle}>Admin · Unlock levels</h2>
-          <div className={styles.adminRow}>
-            <input
-              className={styles.adminInput}
-              type="number"
-              min={1}
-              max={MAX_LEVEL}
-              inputMode="numeric"
-              placeholder={`1–${MAX_LEVEL}`}
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              aria-label="Level to unlock up to"
-            />
-            <button className={styles.adminBtn} onClick={onUnlock} disabled={!valid}>
-              Unlock
-            </button>
-          </div>
+        <section className={styles.group}>
+          <button className={styles.danger} onClick={onStartOver} disabled={fresh}>
+            Start Over
+          </button>
           <p className={styles.hint}>
-            {unlockedTo !== null
-              ? `Unlocked levels 1–${unlockedTo}. Frontier is now ${furthest}.${
-                  unlockedTo >= MAX_LEVEL ? ' Play Random is unlocked.' : ''
-                }`
-              : `Unlock every level up to and including this number (frontier is currently ${furthest}). Unlock to ${MAX_LEVEL} to open Play Random.`}
-          </p>
-          <ToggleRow label="Level Inspector" checked={inspector} onToggle={toggleInspector} />
-          <p className={styles.hint}>
-            Overlay the active board's difficulty metrics while playing (plus baked provenance in dev builds).
+            {fresh
+              ? 'You are on level 1 — nothing to reset yet.'
+              : `Erase your progress (reached level ${furthest}) and begin again from level 1.`}
           </p>
         </section>
-      )}
 
-      <footer className={styles.footer}>
-        <span>Level build {GENERATOR_VERSION}</span>
-        <span>{BAKED_LEVEL_COUNT} levels</span>
-      </footer>
+        {adminOpen && (
+          <section className={styles.admin}>
+            <h2 className={styles.adminTitle}>Admin · Unlock levels</h2>
+            <div className={styles.adminRow}>
+              <input
+                className={styles.adminInput}
+                type="number"
+                min={1}
+                max={MAX_LEVEL}
+                inputMode="numeric"
+                placeholder={`1–${MAX_LEVEL}`}
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                aria-label="Level to unlock up to"
+              />
+              <button className={styles.adminBtn} onClick={onUnlock} disabled={!valid}>
+                Unlock
+              </button>
+            </div>
+            <p className={styles.hint}>
+              {unlockedTo !== null
+                ? `Unlocked levels 1–${unlockedTo}. Frontier is now ${furthest}.${
+                    unlockedTo >= MAX_LEVEL ? ' Play Random is unlocked.' : ''
+                  }`
+                : `Unlock every level up to and including this number (frontier is currently ${furthest}). Unlock to ${MAX_LEVEL} to open Play Random.`}
+            </p>
+            <ToggleRow label="Level Inspector" checked={inspector} onToggle={toggleInspector} />
+            <p className={styles.hint}>
+              Overlay the active board's difficulty metrics while playing (plus baked provenance in dev builds).
+            </p>
+
+            <h2 className={styles.adminTitle}>Admin · Navigate</h2>
+            <div className={styles.adminRow}>
+              <input
+                className={styles.adminInput}
+                type="number"
+                min={1}
+                inputMode="numeric"
+                placeholder="Level #"
+                value={jump}
+                onChange={(e) => setJump(e.target.value)}
+                aria-label="Level to jump to"
+              />
+              <button className={styles.adminBtn} onClick={onJump} disabled={!jumpValid}>
+                Go
+              </button>
+            </div>
+            <div className={styles.adminRow}>
+              <input
+                className={styles.adminInput}
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="Random seed"
+                value={seed}
+                onChange={(e) => setSeed(e.target.value)}
+                aria-label="Random board seed"
+              />
+              <button className={styles.adminBtn} onClick={onSeed} disabled={!seedValid}>
+                Play seed
+              </button>
+            </div>
+            <div className={styles.adminRow}>
+              <button
+                className={`${styles.adminBtn} ${styles.adminBtnFlex}`}
+                onClick={() => enter(playRandom)}
+              >
+                Endless
+              </button>
+              <button
+                className={`${styles.adminBtn} ${styles.adminBtnFlex}`}
+                onClick={() => enter(playDaily)}
+              >
+                Daily
+              </button>
+              <button
+                className={`${styles.adminBtn} ${styles.adminBtnFlex}`}
+                onClick={() => enter(reloadBoard)}
+              >
+                Reload
+              </button>
+            </div>
+            <p className={styles.hint}>
+              Jump to any level (past {BAKED_LEVEL_COUNT} generates live), reproduce a random board by seed,
+              enter Endless/Daily directly, or reload the current board.
+            </p>
+          </section>
+        )}
+
+        <footer className={styles.footer}>
+          <span>Level build {GENERATOR_VERSION}</span>
+          <span>{BAKED_LEVEL_COUNT} levels</span>
+        </footer>
+      </div>
     </div>
   );
 }
