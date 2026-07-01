@@ -112,3 +112,21 @@
 .autoSolveStop:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Auto-solve stop notice (E4): reuses the chip position/shell (.autoSolve) with a warning tint and a
+   brief fade-in, shown when a run times out or can't find a move. */
+.autoSolveNotice {
+  color: var(--danger);
+  animation: auto-solve-notice-in 0.2s ease-out;
+}
+
+@keyframes auto-solve-notice-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

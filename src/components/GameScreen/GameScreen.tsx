@@ -21,8 +21,10 @@ export function GameScreen() {
   const mode = useGameStore((s) => s.mode);
   const endlessStreak = useGameStore((s) => s.endlessStreak);
   const dailyKey = useGameStore((s) => s.dailyKey);
-  // Debug auto-solve (E4): a floating "solving…" chip while the run steps through the board.
+  // Debug auto-solve (E4): a floating "solving…" chip while the run steps through the board, and a
+  // transient notice if it stops without winning (timed out / no move).
   const autoSolving = useGameStore((s) => s.autoSolving);
+  const autoSolveNotice = useGameStore((s) => s.autoSolveNotice);
   const cancelAutoSolve = useGameStore((s) => s.cancelAutoSolve);
 
   return (
@@ -68,6 +70,12 @@ export function GameScreen() {
           <button className={styles.autoSolveStop} onClick={cancelAutoSolve}>
             Stop
           </button>
+        </div>
+      )}
+
+      {!autoSolving && autoSolveNotice && (
+        <div className={`${styles.autoSolve} ${styles.autoSolveNotice}`} role="status">
+          <span>{autoSolveNotice}</span>
         </div>
       )}
 

@@ -115,12 +115,15 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
   - **Auto-solve — stepped, off-thread, spinner + Stop** (revised per user 2026-06-26): applies the
     optimal next move every 0.5s so the solution plays out **visibly** (was an instant jump). Each move is
     solved in the **hint worker off the main thread** so a slow board no longer **freezes the page**, with
-    a per-move wall-clock timeout (20s) and a large node budget (20M — the hardest hidden 15-tube boards
-    need well over a million nodes for a first move) backstopping it; overflow stops the run cleanly with
-    the "no move" notice. A floating **"Solving…" spinner chip with a Stop button** (GameScreen, driven by
-    a new `autoSolving` store flag) shows while it runs; any manual tap / undo / restart / board change /
-    Stop cancels it (generation-guarded so a stale solve can't apply a move). The win is recorded
-    **normally — NOT counted as a hint** (earns its real 3★; no 1★ cap). `cancelAutoSolve` exposed for Stop.
+    a large node budget (20M — the hardest hidden 15-tube boards need well over a million nodes for a first
+    move) and a **60s per-move wall-clock timeout** backstop. A floating **"Solving…" spinner chip with a
+    Stop button** (GameScreen, driven by a new `autoSolving` store flag) shows while it runs; any manual
+    tap / undo / restart / board change / Stop cancels it (generation-guarded so a stale solve can't apply
+    a move). If a move times out or no continuation is found, the run stops and flashes a transient
+    on-screen notice (`autoSolveNotice` → "Solver timed out" / "No further moves", auto-fades in 5s). The
+    win is recorded **normally — NOT counted as a hint** (earns its real 3★; no 1★ cap). `cancelAutoSolve`
+    exposed for Stop. Minimal debug logging: `[auto-solve]` start/summary/stop at `info`/`warn` (visible)
+    and per-move `from→to (ms)` at `debug` (hidden by default).
   - **Removed all `import.meta.env.DEV` gating** (per user) — the hidden admin hatch is now the sole gate
     for every debug tool. Provenance loads via an on-demand dynamic import (its own ~67 kB lazy chunk,
     fetched only when an admin opens the inspector) rather than being DCE'd from production; the inspector

@@ -206,10 +206,11 @@ Done — see [DONE.md](DONE.md). Three cheats live in the inspector popover (so 
 (`autoSolve` store action). The cheat flags are ephemeral and clear when the inspector is disabled.
 
 Auto-solve **steps** the optimal line every 0.5s (visible), solving each move **in the hint worker
-off-thread** (so a slow board never freezes the page) with a per-move timeout + large node budget, a
-floating **"Solving…" spinner chip + Stop** (the `autoSolving` flag; `cancelAutoSolve`), and the win is
-recorded **normally — not counted as a hint** (no 1★ cap). Any manual interaction / board change cancels
-it (generation-guarded).
+off-thread** (so a slow board never freezes the page) with a 20M node budget + 60s per-move timeout, a
+floating **"Solving…" spinner chip + Stop** (the `autoSolving` flag; `cancelAutoSolve`), and a transient
+**stop notice** ("Solver timed out" / "No further moves", `autoSolveNotice`) if it can't finish. The win
+is recorded **normally — not counted as a hint** (no 1★ cap). Any manual interaction / board change
+cancels it (generation-guarded). Minimal `[auto-solve]` debug logging (info/warn summary; debug per-move).
 
 > **Design change (per user, 2026-06-26): dropped `import.meta.env.DEV` gating entirely** — the hidden
 > admin hatch is the *sole* gate for all debug tooling. Provenance now loads via an on-demand dynamic

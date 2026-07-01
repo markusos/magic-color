@@ -128,6 +128,11 @@ interface GameStore {
    */
   autoSolving: boolean;
   /**
+   * Transient message shown (then auto-faded) when an auto-solve run stops WITHOUT winning — the solver
+   * timed out or found no continuation. Null while idle or during a successful run. See {@link autoSolve}.
+   */
+  autoSolveNotice: string | null;
+  /**
    * Bumped whenever a whole new board is installed (level load or restart) — never on a pour or
    * undo. The UI folds it into the bottles' React keys so a fresh board remounts rather than
    * diffing into the old one, which keeps the liquid fill animation to actual pours: a remounted
@@ -250,8 +255,14 @@ const HINT_SPINNER_DELAY_MS = 500;
 const AUTO_SOLVE_NODE_BUDGET = 20_000_000;
 /** Delay between auto-solve moves so the solution plays out visibly, move by move. */
 const AUTO_SOLVE_DELAY_MS = 500;
-/** Wall-clock backstop per move: if the off-thread solve doesn't answer in time, stop the run. */
-const AUTO_SOLVE_MOVE_TIMEOUT_MS = 20_000;
+/**
+ * Wall-clock backstop per move: if the off-thread solve hasn't answered in time, stop the run and show a
+ * "timed out" notice. Generous — it runs off-thread with a Stop button, and the hardest concealed boards
+ * legitimately need this long to search {@link AUTO_SOLVE_NODE_BUDGET} nodes for a first move.
+ */
+const AUTO_SOLVE_MOVE_TIMEOUT_MS = 60_000;
+/** How long the auto-solve stop notice ("timed out" / "no further moves") stays up before fading. */
+const AUTO_SOLVE_NOTICE_MS = 5_000;
 
 /**
  * A DEBUG "free pour" (E4): move the top run of `from` onto `to` ignoring colour / funnel / ice rules —
@@ -302,6 +313,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   // stale solve from a cancelled run can never apply a move to the current board).
   let autoSolveGen = 0;
   let autoSolveTimer: ReturnType<typeof setTimeout> | null = null;
+  let autoSolveNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   const stopAutoSolve = () => {
     autoSolveGen++;
     if (autoSolveTimer !== null) {
@@ -309,6 +321,15 @@ export const useGameStore = create<GameStore>((set, get) => {
       autoSolveTimer = null;
     }
     if (get().autoSolving) set({ autoSolving: false });
+  };
+  /** Flash a transient auto-solve stop message, auto-clearing it after {@link AUTO_SOLVE_NOTICE_MS}. */
+  const showAutoSolveNotice = (message: string) => {
+    if (autoSolveNoticeTimer !== null) clearTimeout(autoSolveNoticeTimer);
+    set({ autoSolveNotice: message });
+    autoSolveNoticeTimer = setTimeout(() => {
+      autoSolveNoticeTimer = null;
+      set({ autoSolveNotice: null });
+    }, AUTO_SOLVE_NOTICE_MS);
   };
 
   /**
@@ -385,6 +406,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     hintLoading: false,
     hintUnavailable: false,
     autoSolving: false,
+    autoSolveNotice: null,
     boardNonce: get().boardNonce + 1,
     loading: false,
     phase: generated.phase,
@@ -580,6 +602,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     hintLoading: false,
     hintUnavailable: false,
     autoSolving: false,
+    autoSolveNotice: null,
     boardNonce: 0,
     status: first ? deriveStatus(firstBoard, firstDisplay, firstVisited) : 'playing',
     loading: !startBaked,
@@ -823,7 +846,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (get().status !== 'playing') return;
       const gen = autoSolveGen;
       const nonce = get().boardNonce;
-      set({ autoSolving: true, selected: null, hint: null, hintUnavailable: false });
+      const startedAt = performance.now();
+      let applied = 0; // moves applied so far this run (for the summary / logs)
+      set({ autoSolving: true, autoSolveNotice: null, selected: null, hint: null });
+      console.info(`[auto-solve] start — ${get().mode} L${get().level}`);
 
       // Whether this run is still the active one AND the same board is in play.
       const live = () => gen === autoSolveGen && get().boardNonce === nonce && get().status === 'playing';
@@ -835,13 +861,20 @@ export const useGameStore = create<GameStore>((set, get) => {
         }
         set({ autoSolving: false });
       };
+      // Stop the run early (timed out / no move) with a transient on-screen notice.
+      const stop = (message: string) => {
+        finishRun();
+        showAutoSolveNotice(message);
+        feedback('invalid');
+        console.warn(`[auto-solve] stopped after ${applied} move(s): ${message}`);
+      };
 
       // Apply one solved move (planTap keeps it legal under the overlays), then schedule the next.
       const apply = (from: number, to: number) => {
         const { current, hidden, ice } = get();
         const plan = planTap(current, { hidden, funnels: get().funnels, ice }, from, to);
         if (plan.kind !== 'pour') {
-          finishRun();
+          stop('No further moves');
           return;
         }
         commit(plan.next, {
@@ -853,11 +886,18 @@ export const useGameStore = create<GameStore>((set, get) => {
           selected: null,
           hint: null,
         });
+        applied++;
         // Play the move's natural cue — including the win chime on the final move.
         const cue = cueForTap(plan, current, hidden, ice, get().status, from, to);
         if (cue) feedback(cue, plan.next.bottles[plan.move.to]!.length / plan.next.capacity);
-        if (get().status === 'playing') autoSolveTimer = setTimeout(step, AUTO_SOLVE_DELAY_MS);
-        else finishRun();
+        if (get().status === 'won') {
+          finishRun();
+          console.info(`[auto-solve] solved in ${applied} moves (${Math.round(performance.now() - startedAt)}ms)`);
+        } else if (get().status === 'playing') {
+          autoSolveTimer = setTimeout(step, AUTO_SOLVE_DELAY_MS);
+        } else {
+          stop(`Board ${get().status}`); // stuck/deadlocked — shouldn't happen on an optimal line
+        }
       };
 
       // Solve the next move OFF-THREAD (like a hint) so a slow board never janks the page; a wall-clock
@@ -870,8 +910,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         }
         const { current, hidden, funnels, ice } = get();
         const overlays = { funnels, ice };
+        const t0 = performance.now();
         let settled = false;
-        const done = (move: HintMove | null) => {
+        const done = (move: HintMove | null, timedOut = false) => {
           if (settled) return;
           settled = true;
           clearTimeout(timeout);
@@ -880,15 +921,14 @@ export const useGameStore = create<GameStore>((set, get) => {
             return;
           }
           if (!move) {
-            // No continuation (or timed out) — stop and surface the transient "no move" notice.
-            finishRun();
-            set({ hintUnavailable: true });
-            feedback('invalid');
+            stop(timedOut ? 'Solver timed out' : 'No further moves');
             return;
           }
+          // Per-move timing at debug level, so the default console stays minimal (start/end only).
+          console.debug(`[auto-solve] #${applied + 1} ${move.from}→${move.to} (${Math.round(performance.now() - t0)}ms)`);
           apply(move.from, move.to);
         };
-        const timeout = setTimeout(() => done(null), AUTO_SOLVE_MOVE_TIMEOUT_MS);
+        const timeout = setTimeout(() => done(null, true), AUTO_SOLVE_MOVE_TIMEOUT_MS);
 
         const worker = getHintWorker();
         if (worker) {
