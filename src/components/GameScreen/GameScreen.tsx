@@ -21,6 +21,9 @@ export function GameScreen() {
   const mode = useGameStore((s) => s.mode);
   const endlessStreak = useGameStore((s) => s.endlessStreak);
   const dailyKey = useGameStore((s) => s.dailyKey);
+  // Debug auto-solve (E4): a floating "solving…" chip while the run steps through the board.
+  const autoSolving = useGameStore((s) => s.autoSolving);
+  const cancelAutoSolve = useGameStore((s) => s.cancelAutoSolve);
 
   return (
     <>
@@ -57,6 +60,16 @@ export function GameScreen() {
       </header>
 
       {loading ? <Loader /> : <GameBoard />}
+
+      {autoSolving && (
+        <div className={styles.autoSolve} role="status">
+          <span className={styles.autoSolveSpinner} aria-hidden />
+          <span>Solving…</span>
+          <button className={styles.autoSolveStop} onClick={cancelAutoSolve}>
+            Stop
+          </button>
+        </div>
+      )}
 
       <footer className={appStyles.footer}>
         <Toolbar />

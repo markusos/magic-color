@@ -104,3 +104,24 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
   Also made the **Settings page scroll** (fixed back-button header + a `min-height:0; overflow-y:auto`
   `.body` region, mirroring LevelSelect/StatsScreen) so the now-longer admin panel isn't clipped by the
   app shell's `overflow:hidden` on a small screen.
+- **Track E4 — solver / mechanic introspection (debug cheats)** (2026-06-26) — three debug tools in the
+  inspector popover: **reveal hidden** (render-only override — GameBoard stops passing the per-cell mask,
+  so `?` cells show their true colour; gameplay unchanged), **free pour** (a `tapBottle` branch +
+  `forcePour` that moves a top run onto any tube with room, ignoring colour/funnel/ice — kept in the store
+  since `engine.ts` is bake-hashed; still records history/visited/reveal so undo + win-detection work), and
+  **auto-solve** (`autoSolve` store action). Cheat flags (`revealHidden`/`freePour`) are ephemeral in
+  `store/settings.ts`, toggled from the popover, and cleared when the inspector is disabled. Tested:
+  free-pour mismatched pour + undo, auto-solve, cheats clear on inspector disable.
+  - **Auto-solve — stepped, off-thread, spinner + Stop** (revised per user 2026-06-26): applies the
+    optimal next move every 0.5s so the solution plays out **visibly** (was an instant jump). Each move is
+    solved in the **hint worker off the main thread** so a slow board no longer **freezes the page**, with
+    a per-move wall-clock timeout (20s) and a large node budget (20M — the hardest hidden 15-tube boards
+    need well over a million nodes for a first move) backstopping it; overflow stops the run cleanly with
+    the "no move" notice. A floating **"Solving…" spinner chip with a Stop button** (GameScreen, driven by
+    a new `autoSolving` store flag) shows while it runs; any manual tap / undo / restart / board change /
+    Stop cancels it (generation-guarded so a stale solve can't apply a move). The win is recorded
+    **normally — NOT counted as a hint** (earns its real 3★; no 1★ cap). `cancelAutoSolve` exposed for Stop.
+  - **Removed all `import.meta.env.DEV` gating** (per user) — the hidden admin hatch is now the sole gate
+    for every debug tool. Provenance loads via an on-demand dynamic import (its own ~67 kB lazy chunk,
+    fetched only when an admin opens the inspector) rather than being DCE'd from production; the inspector
+    shows full metrics whenever the admin inspector is enabled, in any build.

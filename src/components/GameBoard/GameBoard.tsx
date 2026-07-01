@@ -17,6 +17,9 @@ export function GameBoard() {
   const ice = useGameStore((s) => s.ice);
   const hint = useGameStore((s) => s.hint);
   const patterns = useSettings((s) => s.patterns);
+  // Debug cheat (E4): draw concealed cells face-up. Render-only — the store still enforces concealment,
+  // so gameplay is unchanged; this just stops passing the per-cell `hidden` mask to the bottles.
+  const revealHidden = useSettings((s) => s.revealHidden);
   const tapBottle = useGameStore((s) => s.tapBottle);
   // Bumped on every level load / restart (never on a pour or undo). Folding it into the bottle
   // keys remounts the board on a fresh load, so the liquid fill animation is reserved for pours.
@@ -47,7 +50,7 @@ export function GameBoard() {
             key={`${boardNonce}-${i}`}
             bottle={bottle}
             capacity={current.capacity}
-            hidden={hidden[i]}
+            hidden={revealHidden ? undefined : hidden[i]}
             funnel={funnels[i] ?? null}
             frozen={bottle.map((_, j) => (frozenGrid[i]?.[j] ? (ice[i]?.[j] ?? null) : null))}
             selected={selected === i}

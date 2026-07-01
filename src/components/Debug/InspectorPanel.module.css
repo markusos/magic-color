@@ -38,3 +38,56 @@
   margin: var(--space-2) 0;
   background: var(--panel-border);
 }
+
+/* Debug actions (Track E4): cheat toggles + auto-solve, stacked full-width. */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.toggleBtn,
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.toggleBtn:hover,
+.actionBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toggleState {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An enabled cheat reads in accent so it's obvious one is active. */
+.toggleOn {
+  color: var(--accent);
+  border-color: rgba(255, 209, 102, 0.5);
+  background: rgba(255, 209, 102, 0.12);
+}
+
+.toggleOn .toggleState {
+  color: var(--accent);
+}
+
+.actionBtn {
+  justify-content: center;
+  font-weight: 700;
+}
+
+.actionBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

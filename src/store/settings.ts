@@ -81,6 +81,14 @@ interface SettingsStore extends Persisted {
    * one: the ⓘ button opens it, a tap on the backdrop (or ⓘ again) closes it. Starts closed.
    */
   inspectorOpen: boolean;
+  /**
+   * Ephemeral debug cheats, toggled from the inspector popover and gated by it (so they require the admin
+   * hatch). Not persisted — they reset each session and are cleared when the inspector is disabled, so a
+   * cheat never lingers. `revealHidden` draws concealed cells face-up (render-only); `freePour` lets any
+   * top run pour onto any tube with room, ignoring colour/funnel/ice rules (read by the store's tap path).
+   */
+  revealHidden: boolean;
+  freePour: boolean;
   setSoundVolume: (v: number) => void;
   setMusicVolume: (v: number) => void;
   toggleHaptics: () => void;
@@ -88,6 +96,8 @@ interface SettingsStore extends Persisted {
   toggleInspector: () => void;
   /** Expand/collapse the inspector overlay without disabling it (the ⓘ button + the panel's ✕). */
   toggleInspectorOpen: () => void;
+  toggleRevealHidden: () => void;
+  toggleFreePour: () => void;
 }
 
 /** The persisted subset of the store (drops the action functions). */
@@ -110,6 +120,9 @@ export const useSettings = create<SettingsStore>((set, get) => {
     ...initial,
     // The inspector popover starts closed (opened on demand via the ⓘ button); ephemeral, not saved.
     inspectorOpen: false,
+    // Debug cheats start off and never persist.
+    revealHidden: false,
+    freePour: false,
     setSoundVolume: (v) => {
       const soundVolume = clamp01(v);
       setSoundVolume(soundVolume);
@@ -137,12 +150,15 @@ export const useSettings = create<SettingsStore>((set, get) => {
     },
     toggleInspector: () => {
       // Debug inspector enable flag (read by the ⓘ button). Toggling it always leaves the popover
-      // closed — it's opened on demand from the header, like how-to-play.
+      // closed — it's opened on demand from the header, like how-to-play. Disabling it also clears the
+      // debug cheats so neither lingers without a way (the popover) to turn it back off.
       const inspector = !get().inspector;
-      set({ inspector, inspectorOpen: false });
-      save(persistedOf(get())); // inspectorOpen is ephemeral and excluded from persistedOf
+      set(inspector ? { inspector, inspectorOpen: false } : { inspector, inspectorOpen: false, revealHidden: false, freePour: false });
+      save(persistedOf(get())); // inspectorOpen + the cheats are ephemeral, excluded from persistedOf
     },
     toggleInspectorOpen: () => set({ inspectorOpen: !get().inspectorOpen }),
+    toggleRevealHidden: () => set({ revealHidden: !get().revealHidden }),
+    toggleFreePour: () => set({ freePour: !get().freePour }),
   };
 });
 

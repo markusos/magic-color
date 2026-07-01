@@ -5,10 +5,10 @@
  * committed as a human/diff artifact (`scripts/levels.provenance.json`) and mirrored into a generated,
  * tree-shakeable module (`levels.provenance.ts`, produced by `scripts/emit-provenance.ts`).
  *
- * This module is the app's typed door to that data. The generated board blob is loaded by the runtime;
- * provenance is purely a debugging aid, so it's gated behind `import.meta.env.DEV` and pulled in via a
- * dynamic import that the production build dead-code-eliminates (the early `return` makes the import
- * unreachable once `import.meta.env.DEV` folds to `false`), so it never ships to players.
+ * This module is the app's typed door to that data. It's purely a debugging aid surfaced only through the
+ * hidden admin inspector, and it's pulled in via a DYNAMIC import so the metrics blob lands in its own
+ * lazily-fetched chunk — never in the main bundle, and only downloaded once an admin opens the inspector.
+ * (Access control is the admin hatch, not the build mode — see `store/settings.ts` `inspector`.)
  */
 import type { Metrics } from './difficulty';
 import type { Difficulty } from './types';
@@ -54,12 +54,12 @@ export interface LiveProvenance {
 let cache: Map<number, LevelProvenance> | null | undefined;
 
 /**
- * Load the whole provenance map (DEV only; `null` in production or if the module hasn't been generated
- * yet). Memoized after the first call. The dynamic import is unreachable in a production bundle — the
- * `import.meta.env.DEV` guard folds to `false` and the rest is dead code, so Rollup drops the chunk.
+ * Load the whole provenance map (`null` only if the module hasn't been generated yet). Memoized after
+ * the first call, and pulled in via a DYNAMIC import so the ~per-level metrics blob lands in its own
+ * lazily-fetched chunk — it's only downloaded when an admin actually opens the inspector, never in the
+ * main bundle. Access is gated by the hidden admin hatch (the `inspector` setting), not the build mode.
  */
 export async function loadProvenance(): Promise<Map<number, LevelProvenance> | null> {
-  if (!import.meta.env.DEV) return null;
   if (cache !== undefined) return cache;
   try {
     const { LEVEL_PROVENANCE } = await import('./levels.provenance');

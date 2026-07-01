@@ -41,7 +41,7 @@ import { type Difficulty, type GameState, type GeneratedLevel, toColors } from '
 /**
  * A loaded board. For LIVE boards (random/endless, daily, un-baked tail) it carries the difficulty
  * metrics the generator measured while choosing it (`liveProvenance`); baked boards leave it undefined
- * (their committed provenance is looked up separately, DEV-only). The store mirrors this onto a reactive
+ * (their committed provenance is looked up separately, on demand). The store mirrors this onto a reactive
  * field for the inspector. Defined here (not in the bake-hashed `progression.ts`) so this stays re-bake-free.
  */
 export type LoadedLevel = PlayableLevel & { liveProvenance?: LiveProvenance };

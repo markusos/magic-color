@@ -3,7 +3,6 @@ import { getProvenance, loadProvenance } from './provenance';
 import { LEVEL_PROVENANCE } from './levels.provenance';
 import { BAKED_LEVEL_COUNT } from './levelLoader';
 
-// Vitest runs with `import.meta.env.DEV === true`, so the dev-only provenance loader is active here.
 describe('provenance', () => {
   it('emits one row per baked level, keyed by level', () => {
     expect(Object.keys(LEVEL_PROVENANCE)).toHaveLength(BAKED_LEVEL_COUNT);

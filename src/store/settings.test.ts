@@ -58,4 +58,21 @@ describe('settings store', () => {
     expect(useSettings.getState().soundVolume).toBe(soundVolume); // unchanged
     useSettings.getState().toggleHaptics();
   });
+
+  it('debug cheats are ephemeral and cleared when the inspector is disabled', () => {
+    useSettings.setState({ inspector: true, revealHidden: false, freePour: false });
+    useSettings.getState().toggleRevealHidden();
+    useSettings.getState().toggleFreePour();
+    expect(useSettings.getState().revealHidden).toBe(true);
+    expect(useSettings.getState().freePour).toBe(true);
+    // Cheats are NOT persisted.
+    expect(persisted()).not.toHaveProperty('revealHidden');
+    expect(persisted()).not.toHaveProperty('freePour');
+
+    // Turning the inspector off clears both cheats (no lingering cheat with no way to disable it).
+    useSettings.getState().toggleInspector();
+    expect(useSettings.getState().inspector).toBe(false);
+    expect(useSettings.getState().revealHidden).toBe(false);
+    expect(useSettings.getState().freePour).toBe(false);
+  });
 });

@@ -161,12 +161,12 @@ The remaining sub-tracks (E2 report/diff, E6 curve viz, E8 snapshot) read the sa
 1. ~~**E1 — Level Inspector overlay + importable provenance**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
 2. ~~**E2 — Bake report / diff CLI**~~ — **SHIPPED 2026-06-26**, plus an **interactive React+Vite report app** (`report/`, also delivers E6) (see [DONE.md](DONE.md)).
 3. ~~**E3 — Admin navigation, mode & seed controls**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
-4. **E4 — Solver / mechanic introspection** (the lead; reveal-hidden, auto-solve, free-pour, force-terminal).
-5. **E5 — Single-level / single-chapter bake fast path** (tighten the offline iteration loop).
+4. ~~**E4 — Solver / mechanic introspection**~~ — **SHIPPED 2026-06-26** (reveal-hidden, free-pour, auto-solve; force-terminal deferred) (see [DONE.md](DONE.md)).
+5. **E5 — Single-level / single-chapter bake fast path** (the lead; tighten the offline iteration loop).
 6. ~~**E6 — Curve visualization**~~ — **SHIPPED 2026-06-26** as the React report app's metric curves (see [DONE.md](DONE.md)).
 7. **E7 — On-device solvability & quality assertion pass** (pre-commit gate for a re-bake).
 8. **E8 — Golden curve snapshot regression test** (catch silent bake drift in review).
-9. **E9 — Diagnostics readout + live-config toggle + DEV gating of the hatch.**
+9. **E9 — Diagnostics readout + live-config toggle.** (DEV gating removed — the admin hatch is the sole gate now.)
 
 ---
 
@@ -198,20 +198,26 @@ live caches first). Store seams unit-tested (determinism, reload modes, live-tai
 
 ---
 
-### E4 — Solver / mechanic introspection  (DEV-build only — these are "cheats")
+### E4 — Solver / mechanic introspection  — SHIPPED 2026-06-26
 
-Gate **all of these** behind `import.meta.env.DEV` (never in the production tap-gesture menu):
-- **Reveal hidden cells** — a render flag that draws `?` cells face-up (debug the hidden chapter without
-  solving blind). Display-only; doesn't mutate `hidden`.
-- **Show optimal line / auto-solve** — reuse the existing A* (`optimalCappedMoves` / `hintMove`, already
-  off-thread via the hint worker): "step through the optimal line" and "auto-play to win". Fastest way to
-  confirm a baked board is solvable on-device and to exercise win/star/feedback paths.
-- **Free pour** — bypass `usefulMoves` legality (ignore funnel/ice rules) to probe edge cases.
-- **Force terminal state** — jump the board to win / `stuck` / `deadlocked` to test overlays, star math,
-  and audio cues without playing it out.
+Done — see [DONE.md](DONE.md). Three cheats live in the inspector popover (so they're gated by the admin
+`inspector` flag, not the build): **reveal hidden** (render-only override in GameBoard), **free pour**
+(`forcePour` + a `tapBottle` branch — kept in the store since `engine.ts` is bake-hashed), **auto-solve**
+(`autoSolve` store action). The cheat flags are ephemeral and clear when the inspector is disabled.
 
-**Tests.** Auto-solve drives a known board to `isWon`; reveal flag doesn't alter `hidden`/history;
-free-pour path is unreachable unless the dev flag is set.
+Auto-solve **steps** the optimal line every 0.5s (visible), solving each move **in the hint worker
+off-thread** (so a slow board never freezes the page) with a per-move timeout + large node budget, a
+floating **"Solving…" spinner chip + Stop** (the `autoSolving` flag; `cancelAutoSolve`), and the win is
+recorded **normally — not counted as a hint** (no 1★ cap). Any manual interaction / board change cancels
+it (generation-guarded).
+
+> **Design change (per user, 2026-06-26): dropped `import.meta.env.DEV` gating entirely** — the hidden
+> admin hatch is the *sole* gate for all debug tooling. Provenance now loads via an on-demand dynamic
+> import (its own ~67 kB lazy chunk, fetched only when an admin opens the inspector) instead of being
+> DCE'd from prod; the inspector's metrics show whenever the admin inspector is on, in any build.
+
+**Force-terminal (win/stuck/deadlock) deferred:** auto-solve already exercises the win path, and
+constructing a meaningful `stuck`/`deadlocked` board is high-effort / low-value. Revisit if needed.
 
 ---
 

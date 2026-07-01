@@ -17,6 +17,7 @@
  */
 import { create } from 'zustand';
 import { canonical } from '../game/solver';
+import { topRunLength } from '../game/engine';
 import { DEFAULT_CAPACITY } from '../game/generator';
 import {
   BAKED_LEVEL_COUNT,
@@ -30,7 +31,7 @@ import {
 import type { LiveProvenance } from '../game/provenance';
 import { type DailyRecord, todayKey } from '../game/daily';
 import { mechanicsForLevel, phaseForLevel } from '../game/progression';
-import { type HiddenGrid } from '../game/hidden';
+import { revealExposed, type HiddenGrid } from '../game/hidden';
 import { type FunnelGrid } from '../game/funnels';
 import { type IceGrid } from '../game/ice';
 import { type OverlaySet } from '../game/mechanics';
@@ -39,8 +40,9 @@ import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
 import { hintMove, type HintMove } from '../game/search';
 import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
-import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
+import type { Color, Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
+import { useSettings } from './settings';
 import type { CampaignStats } from './progressStats';
 import { deferAfterPaint } from './deferAfterPaint';
 import { feedback } from '../audio/feedback';
@@ -120,6 +122,12 @@ interface GameStore {
    */
   hintUnavailable: boolean;
   /**
+   * True while an auto-solve run is in progress (admin/E4) — drives a "solving…" spinner on the game
+   * screen. The per-move solve runs off-thread in the hint worker (so it never freezes the page), and
+   * the run is cancelled by any manual interaction, a board change, or the Stop control.
+   */
+  autoSolving: boolean;
+  /**
    * Bumped whenever a whole new board is installed (level load or restart) — never on a pour or
    * undo. The UI folds it into the bottles' React keys so a fresh board remounts rather than
    * diffing into the old one, which keeps the liquid fill animation to actual pours: a remounted
@@ -148,7 +156,7 @@ interface GameStore {
   /**
    * For a LIVE board (random/endless, daily, un-baked tail) the difficulty metrics the generator
    * measured while choosing it; null for baked boards (their committed provenance is looked up
-   * separately, DEV-only). Powers the inspector's metrics readout on generated boards. See
+   * separately, on demand). Powers the inspector's metrics readout on generated boards. See
    * {@link LiveProvenance}.
    */
   liveProvenance: LiveProvenance | null;
@@ -211,6 +219,15 @@ interface GameStore {
   requestHint: () => void;
   /** Dismiss the transient "No hint available" popover early (the UI also auto-fades it after 2s). */
   dismissHintUnavailable: () => void;
+  /**
+   * Admin/testing (E4): play the board to completion, applying the optimal next move every
+   * {@link AUTO_SOLVE_DELAY_MS} so the solution is visible move by move. Each move is solved off-thread
+   * in the hint worker (with a per-move timeout) so a slow board never freezes the page. The win is
+   * recorded normally — NOT counted as a hint (no 1★ cap). A no-op unless the board is in play.
+   */
+  autoSolve: () => void;
+  /** Stop an in-progress auto-solve run (the "solving…" spinner's Stop control). */
+  cancelAutoSolve: () => void;
 }
 
 /**
@@ -224,6 +241,36 @@ const HINT_NODE_BUDGET = 1_000_000;
 
 /** Wait this long before showing the hint spinner — a fast solve resolves first and never flashes it. */
 const HINT_SPINNER_DELAY_MS = 500;
+
+/**
+ * Per-step A* budget for `autoSolve` (admin-only). Much larger than the hint's — it runs off-thread and
+ * is wall-clock-bounded below, and the hardest hidden 15-tube boards need well over a million nodes to
+ * surface even a first move. A move that still overflows this stops the run (with the "no move" notice).
+ */
+const AUTO_SOLVE_NODE_BUDGET = 20_000_000;
+/** Delay between auto-solve moves so the solution plays out visibly, move by move. */
+const AUTO_SOLVE_DELAY_MS = 500;
+/** Wall-clock backstop per move: if the off-thread solve doesn't answer in time, stop the run. */
+const AUTO_SOLVE_MOVE_TIMEOUT_MS = 20_000;
+
+/**
+ * A DEBUG "free pour" (E4): move the top run of `from` onto `to` ignoring colour / funnel / ice rules —
+ * only room is required. Returns the post-pour state + move, or null if it can't (same tube, empty
+ * source, or no room). Lives here, NOT in the bake-hashed `engine.ts`, since it's an admin-only cheat.
+ */
+function forcePour(state: GameState, from: number, to: number): { state: GameState; move: Move } | null {
+  if (from === to) return null;
+  const src = state.bottles[from];
+  const dst = state.bottles[to];
+  if (!src || !dst || src.length === 0) return null;
+  const count = Math.min(topRunLength(src), state.capacity - dst.length);
+  if (count <= 0) return null;
+  const color = src[src.length - 1]!;
+  const bottles = state.bottles.map((b, k) =>
+    k === from ? b.slice(0, b.length - count) : k === to ? [...b, ...Array<Color>(count).fill(color)] : b,
+  );
+  return { state: { ...state, bottles }, move: { from, to, count, color } };
+}
 
 /**
  * Lazily-created, reused worker that runs the hint A* off the main thread. Created on first hint so
@@ -249,6 +296,20 @@ export const useGameStore = create<GameStore>((set, get) => {
   // True while a hint solve is in flight — guards against a double-tap kicking off a second worker
   // round-trip (and a duplicate `recordHint`) before the first answers.
   let hintPending = false;
+
+  // Auto-solve run state. `autoSolveGen` is bumped on every start/stop; in-flight worker callbacks and
+  // the between-move timer capture the generation they belong to and no-op if it has moved on (so a
+  // stale solve from a cancelled run can never apply a move to the current board).
+  let autoSolveGen = 0;
+  let autoSolveTimer: ReturnType<typeof setTimeout> | null = null;
+  const stopAutoSolve = () => {
+    autoSolveGen++;
+    if (autoSolveTimer !== null) {
+      clearTimeout(autoSolveTimer);
+      autoSolveTimer = null;
+    }
+    if (get().autoSolving) set({ autoSolving: false });
+  };
 
   /**
    * Commit a new board: set the synchronously-known status. On a win, record the best result for
@@ -323,6 +384,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     hintUsed: false,
     hintLoading: false,
     hintUnavailable: false,
+    autoSolving: false,
     boardNonce: get().boardNonce + 1,
     loading: false,
     phase: generated.phase,
@@ -334,6 +396,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
   const applyLevel = (level: number) => {
+    stopAutoSolve(); // a board change ends any auto-solve run
     const generated = getLevel(level);
     // Replaying an earlier level must not lower the unlock frontier.
     campaign.reach(level);
@@ -357,6 +420,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
   /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
   const applyRandom = (seed: number) => {
+    stopAutoSolve();
     const generated = generateRandomLevel(seed);
     const { board, overlays } = recolorBoard(generated.state, {
       hidden: generated.hidden,
@@ -373,6 +437,7 @@ export const useGameStore = create<GameStore>((set, get) => {
 
   /** Generate and commit the date-seeded daily board. Mirrors `applyRandom` (no per-level records). */
   const applyDaily = (key: string) => {
+    stopAutoSolve();
     const generated = generateDailyLevel(key);
     const { board, overlays } = recolorBoard(generated.state, {
       hidden: generated.hidden,
@@ -514,6 +579,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     hintUsed: false,
     hintLoading: false,
     hintUnavailable: false,
+    autoSolving: false,
     boardNonce: 0,
     status: first ? deriveStatus(firstBoard, firstDisplay, firstVisited) : 'playing',
     loading: !startBaked,
@@ -569,8 +635,39 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     tapBottle: (i) => {
+      stopAutoSolve(); // a manual tap takes over from any auto-solve run
       const { current, selected, status, hidden, funnels, ice } = get();
       if (status !== 'playing') return;
+
+      // Free-pour cheat (E4): bypass the session rules entirely — select any non-empty tube, then force
+      // its top run onto any tube with room (ignoring colour / funnel / ice). Still records history,
+      // visited, reveals exposed "?"s, and derives the resulting status, so undo and win-detection work.
+      if (useSettings.getState().freePour) {
+        if (selected === null) {
+          if (current.bottles[i]!.length > 0) set({ selected: i, hint: null });
+          return;
+        }
+        if (selected === i) {
+          set({ selected: null, hint: null });
+          return;
+        }
+        const fp = forcePour(current, selected, i);
+        if (!fp) {
+          set({ selected: current.bottles[i]!.length > 0 ? i : null, hint: null });
+          return;
+        }
+        commit(fp.state, {
+          history: [...get().history, current],
+          hiddenHistory: [...get().hiddenHistory, hidden],
+          hidden: revealExposed(fp.state, hidden),
+          moves: [...get().moves, fp.move],
+          visited: new Set(get().visited).add(canonical(fp.state)),
+          selected: null,
+          hint: null,
+        });
+        feedback('pour', fp.state.bottles[i]!.length / fp.state.capacity);
+        return;
+      }
 
       // The pure session loop decides what the tap does; the store only applies the outcome. Any tap
       // also dismisses a showing hint (the pulse shouldn't outlive the move it suggested).
@@ -613,6 +710,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     undo: () => {
+      stopAutoSolve();
       const { history, hiddenHistory, moves } = get();
       if (history.length === 0) return;
       const previous = history[history.length - 1]!;
@@ -631,6 +729,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restart: () => {
+      stopAutoSolve();
       // Re-roll BOTH the palette and the tube order on every restart: the same puzzle, but with
       // new colors and a new left-to-right arrangement, so a solved level can't be replayed from
       // muscle memory. `initial`/`initialHidden` stay canonical, so each restart re-rolls afresh.
@@ -659,6 +758,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     requestHint: () => {
+      stopAutoSolve(); // don't let a hint and an auto-solve run fight over the shared worker
       const { current, hidden, funnels, ice, status } = get();
       // Ignore re-taps while a hint is already in flight, and only hint a live board.
       if (status !== 'playing' || hintPending) return;
@@ -717,5 +817,92 @@ export const useGameStore = create<GameStore>((set, get) => {
     dismissHintUnavailable: () => {
       if (get().hintUnavailable) set({ hintUnavailable: false });
     },
+
+    autoSolve: () => {
+      stopAutoSolve(); // cancel any prior run and take a fresh generation
+      if (get().status !== 'playing') return;
+      const gen = autoSolveGen;
+      const nonce = get().boardNonce;
+      set({ autoSolving: true, selected: null, hint: null, hintUnavailable: false });
+
+      // Whether this run is still the active one AND the same board is in play.
+      const live = () => gen === autoSolveGen && get().boardNonce === nonce && get().status === 'playing';
+      const finishRun = () => {
+        if (gen !== autoSolveGen) return; // a newer run/stop already owns the state
+        if (autoSolveTimer !== null) {
+          clearTimeout(autoSolveTimer);
+          autoSolveTimer = null;
+        }
+        set({ autoSolving: false });
+      };
+
+      // Apply one solved move (planTap keeps it legal under the overlays), then schedule the next.
+      const apply = (from: number, to: number) => {
+        const { current, hidden, ice } = get();
+        const plan = planTap(current, { hidden, funnels: get().funnels, ice }, from, to);
+        if (plan.kind !== 'pour') {
+          finishRun();
+          return;
+        }
+        commit(plan.next, {
+          history: [...get().history, current],
+          hiddenHistory: [...get().hiddenHistory, hidden],
+          hidden: plan.revealedHidden,
+          moves: [...get().moves, plan.move],
+          visited: new Set(get().visited).add(canonical(plan.next)),
+          selected: null,
+          hint: null,
+        });
+        // Play the move's natural cue — including the win chime on the final move.
+        const cue = cueForTap(plan, current, hidden, ice, get().status, from, to);
+        if (cue) feedback(cue, plan.next.bottles[plan.move.to]!.length / plan.next.capacity);
+        if (get().status === 'playing') autoSolveTimer = setTimeout(step, AUTO_SOLVE_DELAY_MS);
+        else finishRun();
+      };
+
+      // Solve the next move OFF-THREAD (like a hint) so a slow board never janks the page; a wall-clock
+      // timeout backstops a hung solve. Falls back to a synchronous solve when there's no worker (tests).
+      const step = () => {
+        autoSolveTimer = null;
+        if (!live()) {
+          finishRun();
+          return;
+        }
+        const { current, hidden, funnels, ice } = get();
+        const overlays = { funnels, ice };
+        let settled = false;
+        const done = (move: HintMove | null) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (!live()) {
+            finishRun();
+            return;
+          }
+          if (!move) {
+            // No continuation (or timed out) — stop and surface the transient "no move" notice.
+            finishRun();
+            set({ hintUnavailable: true });
+            feedback('invalid');
+            return;
+          }
+          apply(move.from, move.to);
+        };
+        const timeout = setTimeout(() => done(null), AUTO_SOLVE_MOVE_TIMEOUT_MS);
+
+        const worker = getHintWorker();
+        if (worker) {
+          worker.onmessage = (e: MessageEvent<HintMove | null>) => done(e.data);
+          worker.onerror = () => done(hintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
+          worker.postMessage({ state: current, hidden, overlays, maxNodes: AUTO_SOLVE_NODE_BUDGET });
+        } else {
+          done(hintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
+        }
+      };
+
+      step(); // first move computed immediately; the rest follow every AUTO_SOLVE_DELAY_MS
+    },
+
+    cancelAutoSolve: stopAutoSolve,
   };
 });

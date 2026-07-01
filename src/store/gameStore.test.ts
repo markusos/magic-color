@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from './gameStore';
+import { useSettings } from './settings';
 import { BAKED_LEVEL_COUNT, getLevel } from '../game/levelLoader';
 import { canonical, isSolvable, solve, usefulMoves } from '../game/solver';
 import { pour } from '../game/engine';
@@ -823,5 +824,85 @@ describe('admin navigation seams', () => {
     expect(store().level).toBe(LIVE_HIDDEN);
     expect(store().loading).toBe(false);
     expect(store().current.bottles.length).toBeGreaterThan(0);
+  });
+});
+
+describe('debug cheats (E4)', () => {
+  it('free pour moves a mismatched colour onto any tube with room', () => {
+    useSettings.setState({ freePour: true });
+    useGameStore.setState({
+      current: board([['r', 'r'], ['g']], 4),
+      initial: board([['r', 'r'], ['g']], 4),
+      hidden: [[], []],
+      funnels: [null, null],
+      ice: [[], []],
+      status: 'playing',
+      selected: null,
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      undos: 0,
+      visited: new Set<string>(),
+      mode: 'campaign',
+    });
+
+    store().tapBottle(0); // select the red tube
+    store().tapBottle(1); // normally illegal (red onto green), but free pour allows it
+
+    expect(store().moves.length).toBe(1);
+    expect(store().current.bottles[0]).toEqual([]);
+    expect(store().current.bottles[1]).toEqual(['g', 'r', 'r']);
+
+    // Undo still works (free pour records history).
+    store().undo();
+    expect(store().current.bottles[1]).toEqual(['g']);
+
+    useSettings.setState({ freePour: false });
+  });
+
+  it('auto-solve steps a solvable board to a win — visibly, and NOT counted as a hint', () => {
+    vi.useFakeTimers();
+    try {
+      store().loadLevel(1); // baked, solvable
+      expect(store().status).toBe('playing');
+      store().autoSolve();
+      // The run is active and has applied its first move (jsdom has no Worker → synchronous solve).
+      expect(store().autoSolving).toBe(true);
+      expect(store().moves.length).toBeGreaterThan(0);
+      // Drive the stepped solve (a setTimeout chain) to completion.
+      vi.runAllTimers();
+      expect(store().status).toBe('won');
+      expect(store().autoSolving).toBe(false);
+      // Watching the solve is NOT a hint — no 1★ cap.
+      expect(store().hintUsed).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a manual tap cancels an in-progress auto-solve', () => {
+    vi.useFakeTimers();
+    try {
+      store().loadLevel(1);
+      store().autoSolve();
+      expect(store().autoSolving).toBe(true);
+      store().tapBottle(0); // manual interaction takes over
+      expect(store().autoSolving).toBe(false);
+      // No further auto moves are applied after cancelling.
+      const moves = store().moves.length;
+      vi.runAllTimers();
+      expect(store().moves.length).toBe(moves);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('auto-solve is a no-op when the board is not in play', () => {
+    store().loadLevel(1);
+    useGameStore.setState({ status: 'won' });
+    const movesBefore = store().moves.length;
+    store().autoSolve();
+    expect(store().autoSolving).toBe(false);
+    expect(store().moves.length).toBe(movesBefore);
   });
 });

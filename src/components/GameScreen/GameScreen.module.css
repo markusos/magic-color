@@ -59,3 +59,56 @@
   background: rgba(255, 93, 115, 0.18);
   color: var(--danger);
 }
+
+/* Debug auto-solve (E4): a floating "solving…" chip pinned above the toolbar while the run steps
+   through the board. The spinner mirrors the Hint button's (compositor-animated rotate). */
+.autoSolve {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(10, 8, 24, 0.9);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--text);
+  font-size: 0.85rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.autoSolveSpinner {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--accent);
+  animation: auto-solve-spin 0.8s linear infinite;
+}
+
+@keyframes auto-solve-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.autoSolveStop {
+  padding: 3px 10px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.autoSolveStop:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
