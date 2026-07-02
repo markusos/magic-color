@@ -15,8 +15,10 @@ registry are healthy. The work below is **growth and polish**, not debt.
 touches neither the board invariant nor the bake output — surfacing the difficulty data we already
 compute (in-app inspector + a provenance report/diff CLI) and adding the admin/solver hatches that make a
 misbehaving level reproducible. It directly unblocks the **"re-tune the curve"** standing item, which is
-otherwise blind. **E1 (Level Inspector + importable provenance) SHIPPED 2026-06-26** (see
-[DONE.md](DONE.md)); **E2 is now the lead.**
+otherwise blind. **E1–E4 + E6 SHIPPED** (inspector, report/diff CLI + interactive report app, admin
+navigation, solver cheats, curve viz; see [DONE.md](DONE.md)). **What's left: E5 (single-level bake fast
+path — the lead), E7 (solvability/quality CLI gate), E8 (golden-curve snapshot test), and the trimmed E9
+(diagnostics readout + live-config toggle).**
 
 **Track D (chapter 5 / new mechanic) stays DEFERRED** (decided 2026-06-23) — design kept on file below,
 not scheduled. Picking it back up means resolving the D1-vs-D2 fork first, then following the steps.
@@ -153,9 +155,11 @@ lock reset (the `funnels-mechanic` memo gotcha — injected test boards must res
 
 **The shared spine — importable provenance — is built (E1, shipped).** `scripts/levels.provenance.json` is
 mirrored into a generated, tree-shakeable `src/game/levels.provenance.ts` (by `scripts/emit-provenance.ts`,
-run after the bake in `build:levels`), loaded only behind `import.meta.env.DEV` via `game/provenance.ts`
-(`getProvenance(level)` / `loadProvenance()`) — verified dead-code-eliminated from the production bundle.
-The remaining sub-tracks (E2 report/diff, E6 curve viz, E8 snapshot) read the same JSON / typed module.
+run after the bake in `build:levels`) and read via `game/provenance.ts` (`getProvenance(level)` /
+`loadProvenance()`). It loads via an **on-demand dynamic import** (its own ~67 kB lazy chunk, fetched only
+when an admin opens the inspector) — the earlier `import.meta.env.DEV` gate was **removed** (see the E4
+design change); the admin hatch is the sole gate. The report sub-tracks (E2 report/diff, E6 curve viz +
+build-history, E8 snapshot) read the same JSON / typed module.
 
 ### Priority order
 1. ~~**E1 — Level Inspector overlay + importable provenance**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
@@ -266,18 +270,24 @@ A committed compact summary (per-level `score` + footprint + `mechanics`) that a
 against. `levelVersion.ts`'s hash catches *config* drift, but not "an unrelated change silently perturbed
 every board's score." The snapshot surfaces that in review. Regenerate intentionally on a real re-bake.
 
+> **Partially covered by build-history (2026-07-01):** `scripts/build-history/<hash>.json` now retains
+> every bake's per-level data for after-the-fact comparison in the report app. What E8 still adds that
+> build-history does not: an **automated, in-CI vitest assertion** that fails the build on unexpected
+> drift (build-history is a manual, opt-in diff). Scope E8 down to that fail-fast test.
+
 ---
 
-### E9 — Diagnostics readout + live-config toggle + DEV gating of the hatch
+### E9 — Diagnostics readout + live-config toggle
 
 - **Readout** in the admin section / extend the existing build/version footer: live-gen `liveCache` size,
   last `getLevel` timing, whether the current board is **baked vs live**, and the active `LiveGenConfig`.
 - **Toggle `DEFAULT_LIVE_CONFIG` ⇄ `TEST_LIVE_CONFIG`** via `configureLiveGenerator` to feel the
   quality/latency tradeoff on a real device.
-- **Gating decision (do this as part of E1/E3):** today's 7-tap gesture ships to every player. Keep only
-  the harmless tools (jump-to-level, inspector readout) in the production gesture menu; gate the cheats
-  (E4: reveal-hidden, auto-solve, free-pour) behind `import.meta.env.DEV`. The cheat tools must be
-  unreachable in a production build, not merely undiscoverable.
+
+> **Gating resolved (per user, 2026-06-26) — no DEV gate.** The original plan here was to gate the cheats
+> behind `import.meta.env.DEV` so they're unreachable in production. That was **reversed**: all DEV gating
+> was removed and the hidden 7-tap admin hatch is now the *sole* gate for every debug tool (inspector,
+> cheats, provenance). So this sub-track is just the diagnostics readout + live-config toggle above.
 
 ---
 
