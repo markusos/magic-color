@@ -92,6 +92,19 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
   table. Reuses the game's typed/tested analysis (`src/game/levelReport.ts`) and the committed provenance
   module; report code is linted + typechecked (added `report/` to tsconfig + the gate). This is also the
   substantive delivery of E6 (curve visualization).
+- **Build-report history + multi-build comparison** (2026-07-01) — the bake no longer overwrites a single
+  report: each bake is archived under `scripts/build-history/<generator-hash>.json` (the same hash that
+  keys `levelVersion.ts`, so one committed report per meaningfully-different bake config), by a new
+  `scripts/archive-report.ts` wired after `emit-provenance` in `build:levels` (`npm run levels:archive`
+  standalone). Kept out of `build-levels.ts` for the usual reason (it's in the staleness hash — an output
+  write there would force a re-bake); it only reads the sidecar the bake already wrote. **Idempotent**: a
+  re-bake with unchanged sources is byte-identical, so an existing hash is left untouched (preserving its
+  first-seen `archivedAt`); `--force` overwrites. The report app now loads the whole history via
+  `import.meta.glob` (`report/data.ts`), and its header carries **baseline** + **compare** build pickers
+  (any archived build, HEAD, or a dropped file) that drive every chart/diff, plus a **Builds overview**
+  table ranking all builds by mean/min/max score, mean-optimal, exact-rate, and total monotonicity slips
+  (Δmean-score vs. the baseline inline) with per-row `base`/`vs` selectors — so "was this bake an
+  improvement?" is a glance. Aggregation is a pure `summarize()` over the existing `levelReport.ts`.
 - **Track E3 — admin navigation / mode / seed controls** (2026-06-26) — an "Admin · Navigate" subsection
   in the Settings hatch (alongside unlock + the inspector toggle): **jump to level N** (`loadLevel`,
   including past `BAKED_LEVEL_COUNT` into the live tail), **Play seed** (reproduce a random board exactly),

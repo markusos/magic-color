@@ -1,7 +1,14 @@
 import { useMemo, useRef, useState } from 'react';
 import type { LevelProvenance } from '../src/game/provenance';
 import { buildReport, diffProvenance, histogram, REPORT_METRICS } from '../src/game/levelReport';
-import { committedLevels, METRICS, parseProvenance, TARGET_ACCESSOR } from './data';
+import {
+  availableBuilds,
+  type Build,
+  buildFromFile,
+  METRICS,
+  summarize,
+  TARGET_ACCESSOR,
+} from './data';
 import { type Band, MetricChart } from './MetricChart';
 
 /** Round a count up to a tidy axis maximum. */
@@ -10,18 +17,38 @@ function niceMax(values: number[]): number {
   return Math.max(10, Math.ceil(max / 10) * 10);
 }
 
-interface Loaded {
-  name: string;
-  version?: string;
-  levels: LevelProvenance[];
+/** Short, sortable-looking build stamp for the pickers/table. */
+function fmtWhen(iso?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toISOString().slice(0, 16).replace('T', ' ');
 }
 
-/** The interactive bake report: every difficulty metric as a curve across the campaign, with shared
- *  hover, per-chapter summaries, a score histogram, and an optional comparison against a second bake. */
+function buildLabel(b: Build): string {
+  return `${b.committed ? '● ' : ''}${b.label}${b.archivedAt ? ` · ${fmtWhen(b.archivedAt)}` : ''}`;
+}
+
+/** The interactive bake report: pick any two archived builds (or committed / a dropped file) as
+ *  baseline vs. comparison, see every difficulty metric as a curve, per-chapter summaries, a score
+ *  histogram, a full diff, and an overview table ranking all builds so improvement is glanceable. */
 export function Report() {
-  const levels = useMemo(() => committedLevels(), []);
+  const archived = useMemo(() => availableBuilds(), []);
+  const [dropped, setDropped] = useState<Build[]>([]);
+  const builds = useMemo(() => [...archived, ...dropped], [archived, dropped]);
+
+  const committedId = archived.find((b) => b.committed)?.id ?? archived[0]?.id ?? '';
+  const [baselineId, setBaselineId] = useState(committedId);
+  const [compareId, setCompareId] = useState<string>('');
+
+  const baseline = builds.find((b) => b.id === baselineId) ?? builds[0]!;
+  const compare = compareId ? (builds.find((b) => b.id === compareId) ?? null) : null;
+
+  const levels = baseline.levels;
   const chapters = useMemo(() => buildReport(levels), [levels]);
-  const optimalMax = useMemo(() => niceMax(levels.map((p) => p.metrics.optimal)), [levels]);
+  const optimalMax = useMemo(
+    () => niceMax([...levels, ...(compare?.levels ?? [])].map((p) => p.metrics.optimal)),
+    [levels, compare],
+  );
 
   const bands = useMemo<Band[]>(() => {
     const idx = new Map(levels.map((p, i) => [p.level, i]));
@@ -35,7 +62,6 @@ export function Report() {
   const [hovered, setHovered] = useState<number | null>(null);
   const [showBands, setShowBands] = useState(true);
   const [showPoints, setShowPoints] = useState(false);
-  const [compare, setCompare] = useState<Loaded | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const compareByLevel = useMemo(
@@ -50,8 +76,9 @@ export function Report() {
   const onFile = (file: File): void => {
     void file.text().then((text) => {
       try {
-        const { version, levels: parsed } = parseProvenance(text);
-        setCompare({ name: file.name, version, levels: parsed });
+        const b = buildFromFile(file.name, text);
+        setDropped((prev) => [...prev.filter((p) => p.id !== b.id), b]);
+        setCompareId(b.id);
       } catch {
         alert(`Could not parse ${file.name} as provenance JSON.`);
       }
@@ -75,17 +102,41 @@ export function Report() {
         <div>
           <h1>Magic Color — Bake Report</h1>
           <p className="sub">
-            {levels.length} levels · {chapters.length} chapters
+            {levels.length} levels · {chapters.length} chapters · {builds.length} build
+            {builds.length === 1 ? '' : 's'} in history
             {compare && (
               <>
-                {' '}· comparing <b>{compare.name}</b> → committed
+                {' '}· diff <b>{compare.label}</b> → <b>{baseline.label}</b>
               </>
             )}
           </p>
         </div>
         <div className="controls">
+          <label className="pick">
+            baseline
+            <select value={baselineId} onChange={(e) => setBaselineId(e.target.value)}>
+              {builds.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {buildLabel(b)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="pick">
+            compare
+            <select value={compareId} onChange={(e) => setCompareId(e.target.value)}>
+              <option value="">none</option>
+              {builds
+                .filter((b) => b.id !== baselineId)
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {buildLabel(b)}
+                  </option>
+                ))}
+            </select>
+          </label>
           <label className="chk">
-            <input type="checkbox" checked={showBands} onChange={(e) => setShowBands(e.target.checked)} /> chapter bands
+            <input type="checkbox" checked={showBands} onChange={(e) => setShowBands(e.target.checked)} /> bands
           </label>
           <label className="chk">
             <input type="checkbox" checked={showPoints} onChange={(e) => setShowPoints(e.target.checked)} /> points
@@ -100,12 +151,22 @@ export function Report() {
               if (f) onFile(f);
             }}
           />
-          <button onClick={() => fileInput.current?.click()}>Compare file…</button>
-          {compare && <button onClick={() => setCompare(null)}>Clear</button>}
+          <button onClick={() => fileInput.current?.click()}>Load file…</button>
         </div>
       </header>
 
-      <p className="hint">Hover any chart to inspect a level across all metrics. Drop a provenance JSON anywhere to diff two bakes.</p>
+      <p className="hint">
+        Pick a baseline and a comparison build above (or drop a provenance JSON anywhere) to diff two
+        bakes. Hover any chart to inspect a level across all metrics.
+      </p>
+
+      <BuildsOverview
+        builds={builds}
+        baselineId={baselineId}
+        compareId={compareId}
+        onBaseline={setBaselineId}
+        onCompare={(id) => setCompareId((cur) => (cur === id ? '' : id))}
+      />
 
       <div className="layout">
         <main className="charts">
@@ -146,8 +207,84 @@ export function Report() {
 
       <ScoreHistogram levels={levels} compareLevels={compare?.levels} />
 
-      {diff && compare && <DiffTable name={compare.name} diff={diff} />}
+      {diff && compare && <DiffTable name={`${compare.label} → ${baseline.label}`} diff={diff} />}
     </div>
+  );
+}
+
+/** Side-by-side aggregates for every build in history, so a bake is judged an improvement at a glance. */
+function BuildsOverview({
+  builds,
+  baselineId,
+  compareId,
+  onBaseline,
+  onCompare,
+}: {
+  builds: Build[];
+  baselineId: string;
+  compareId: string;
+  onBaseline: (id: string) => void;
+  onCompare: (id: string) => void;
+}) {
+  const rows = useMemo(
+    () => builds.map((b) => ({ build: b, sum: summarize(b.levels) })),
+    [builds],
+  );
+  const baseSum = rows.find((r) => r.build.id === baselineId)?.sum;
+
+  return (
+    <section className="section">
+      <h2>Builds overview</h2>
+      <table className="builds">
+        <thead>
+          <tr>
+            <th />
+            <th>build</th>
+            <th>archived</th>
+            <th>levels</th>
+            <th>score min / mean / max</th>
+            <th>mean opt</th>
+            <th>exact</th>
+            <th>slips</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ build: b, sum }) => {
+            const isBase = b.id === baselineId;
+            const isCmp = b.id === compareId;
+            const dMean = baseSum && !isBase ? sum.score.mean - baseSum.score.mean : null;
+            return (
+              <tr key={b.id} className={isBase ? 'base' : isCmp ? 'cmp' : ''}>
+                <td className="rowsel">
+                  <button className={isBase ? 'on' : ''} title="Use as baseline" onClick={() => onBaseline(b.id)}>
+                    base
+                  </button>
+                  <button className={isCmp ? 'on' : ''} title="Compare against baseline" onClick={() => onCompare(b.id)}>
+                    vs
+                  </button>
+                </td>
+                <td>
+                  {b.committed && <span className="tag">HEAD</span>} {b.label}
+                </td>
+                <td className="muted">{fmtWhen(b.archivedAt)}</td>
+                <td>{sum.levels}</td>
+                <td>
+                  {sum.score.min.toFixed(2)} / <b>{sum.score.mean.toFixed(3)}</b> / {sum.score.max.toFixed(2)}
+                  {dMean !== null && (
+                    <span className={dMean >= 0 ? 'pos' : 'neg'}>
+                      {' '}({dMean >= 0 ? '+' : ''}{dMean.toFixed(3)})
+                    </span>
+                  )}
+                </td>
+                <td>{sum.meanOptimal.toFixed(1)}</td>
+                <td>{Math.round(sum.exactRate * 100)}%</td>
+                <td className={sum.slips ? 'warn' : ''}>{sum.slips || '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
   );
 }
 
@@ -259,7 +396,7 @@ function DiffTable({ name, diff }: { name: string; diff: ReturnType<typeof diffP
   return (
     <section className="section">
       <h2>
-        Diff <span className="muted">{name} → committed</span>
+        Diff <span className="muted">{name}</span>
       </h2>
       <p className="sub">
         added {diff.added.length ? diff.added.join(', ') : 'none'} · removed{' '}

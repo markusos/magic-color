@@ -199,6 +199,65 @@ td.neg {
   color: var(--dim);
 }
 
+.pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+}
+.pick select {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 8px;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Builds overview: compact per-build aggregate rows with base/vs selectors. */
+table.builds td,
+table.builds th {
+  border-bottom: 1px solid var(--border);
+}
+tr.base td {
+  background: rgba(255, 209, 102, 0.09);
+}
+tr.cmp td {
+  background: rgba(122, 162, 255, 0.1);
+}
+.rowsel {
+  display: flex;
+  gap: 4px;
+}
+.rowsel button {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.rowsel button.on {
+  color: var(--text);
+  border-color: var(--accent);
+  background: rgba(255, 209, 102, 0.16);
+}
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 0 5px;
+  vertical-align: middle;
+}
+.pos {
+  color: var(--pos);
+}
+.neg {
+  color: var(--warn);
+}
+
 .hist {
   display: flex;
   align-items: flex-end;

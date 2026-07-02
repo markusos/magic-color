@@ -241,6 +241,13 @@ metric (incl. `score` vs `targetPercentile`) as a curve across the campaign with
 hover crosshair, and a comparison overlay. Goes well past the originally-scoped ASCII sparkline. Future
 extensions (the app makes them cheap): per-family filtering, brushing/zoom, a second-bake diff curve view.
 
+**Build-report history + multi-build comparison — SHIPPED 2026-07-01** (see [DONE.md](DONE.md)). Each bake
+is archived under `scripts/build-history/<generator-hash>.json` (`scripts/archive-report.ts`, wired into
+`build:levels`; idempotent per hash), and the report app grew baseline/compare build pickers + a Builds
+overview table (mean/exact/slips, Δmean vs. baseline) so a bake is judged an improvement against prior
+committed builds at a glance. This is much of what E8 wanted (retained per-build data for regression), via
+committed data rather than a vitest snapshot.
+
 ---
 
 ### E7 — On-device solvability & quality assertion pass

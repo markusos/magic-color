@@ -11,8 +11,9 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "bench": "tsx scripts/benchmark-generation.ts",
-    "build:levels": "tsx scripts/build-levels.ts && tsx scripts/emit-provenance.ts",
+    "build:levels": "tsx scripts/build-levels.ts && tsx scripts/emit-provenance.ts && tsx scripts/archive-report.ts",
     "levels:provenance": "tsx scripts/emit-provenance.ts",
+    "levels:archive": "tsx scripts/archive-report.ts",
     "levels:report": "tsx scripts/level-report.ts",
     "report:dev": "vite --config vite.report.config.ts",
     "report:build": "tsc --noEmit && vite build --config vite.report.config.ts"
