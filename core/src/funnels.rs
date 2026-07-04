@@ -71,6 +71,16 @@ pub fn compute_funnels(state: &State, seed: u32, eligible: &[u8], prob: f64) -> 
     grid
 }
 
+/// Funnel difficulty load: fraction of tubes color-locked, normalized by color count
+/// (`funnelLoad`).
+pub fn funnel_load(funnels: &Funnels, colors: usize) -> f64 {
+    if colors == 0 {
+        return 0.0;
+    }
+    let locked = funnels.iter().filter(|&&t| t != NO_COLOR).count();
+    (locked as f64 / colors as f64).min(1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

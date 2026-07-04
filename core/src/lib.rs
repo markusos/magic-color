@@ -7,11 +7,15 @@
 //! The JS core (`src/game/*.ts`) stays authoritative until cutover (PLAN.md F4); everything
 //! here is validated against it via the `exe/test` gate (shared vectors + conformance traces).
 
+pub mod difficulty;
 pub mod engine;
 pub mod funnels;
 pub mod generator;
 pub mod hidden;
 pub mod ice;
+pub mod jsnum;
+pub mod mechanics;
+pub mod progression;
 pub mod rng;
 pub mod search;
 pub mod solver;

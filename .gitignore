@@ -9,3 +9,6 @@ dist-report
 # Rust (Track F core)
 target
 core/pkg
+
+# Rust bake scratch output (never committed; see PLAN.md F2)
+bake-out

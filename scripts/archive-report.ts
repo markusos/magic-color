@@ -19,9 +19,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = join(ROOT, 'scripts/levels.provenance.json');
 const DIR = join(ROOT, 'scripts/build-history');
 const force = process.argv.includes('--force');
+// `--from <path>` archives an external provenance file — e.g. a Rust bake's scratch output
+// (Track F2), whose `version` is the crate-source hash — instead of the JS bake sidecar.
+const fromIdx = process.argv.indexOf('--from');
+const SRC =
+  fromIdx !== -1 && process.argv[fromIdx + 1]
+    ? process.argv[fromIdx + 1]!
+    : join(ROOT, 'scripts/levels.provenance.json');
 
 const json = JSON.parse(readFileSync(SRC, 'utf8')) as { version?: string; levels: unknown[] };
 const version = json.version;

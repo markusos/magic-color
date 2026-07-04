@@ -15,7 +15,7 @@ const HIDDEN_SEED_XOR: u32 = 0x9e3779b9;
 
 /// Concealable bottom layers for a capacity: `min(cap - 1, max(3, round(cap * 0.6)))`.
 fn concealable_layers(capacity: u8) -> usize {
-    let scaled = (capacity as f64 * 0.6).round() as usize;
+    let scaled = crate::jsnum::js_round(capacity as f64 * 0.6) as usize;
     (capacity as usize - 1).min(scaled.max(3))
 }
 

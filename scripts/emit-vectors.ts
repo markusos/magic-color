@@ -13,12 +13,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assignSlots, compositeScores, measureMetrics, type Metrics } from '../src/game/difficulty';
 import { pour } from '../src/game/engine';
 import { computeFunnels, funnelEligibleTubes } from '../src/game/funnels';
 import { generateLevel } from '../src/game/generator';
 import { PALETTE } from '../src/game/generator';
 import { cappedSolveMoves, computeHidden, exposableCells } from '../src/game/hidden';
 import { buildIce } from '../src/game/ice';
+import { seedForLevel, targetPercentile } from '../src/game/progression';
 import { mulberry32 } from '../src/game/rng';
 import { hintMove, nearOptimalCutoffs, optimalCappedMoves } from '../src/game/search';
 import { bfsOptimal, usefulMoves } from '../src/game/solver';
@@ -169,3 +171,91 @@ const solverVectors = {
 const solverOut = join(ROOT, 'vectors/solver.json');
 writeFileSync(solverOut, JSON.stringify(solverVectors, null, 2) + '\n');
 console.log(`wrote ${solverOut} (${solverCases.length} cases)`);
+
+// ---------------------------------------------------------------------------------------------
+// Difficulty/progression conformance vectors (`vectors/difficulty.json`). Metrics, composite
+// scores, and slot assignment are exact IEEE arithmetic replayed in identical operation order,
+// so floats are pinned BIT-EXACTLY — serialized as u64-bit decimal strings (never raw JSON
+// floats; see the rng vectors' 1-ulp lesson). `targetPercentile` goes through Math.pow, which
+// is not correctly rounded in either language, so the Rust side compares it with tolerance.
+// ---------------------------------------------------------------------------------------------
+
+const bitsOf = (x: number): string => {
+  const dv = new DataView(new ArrayBuffer(8));
+  dv.setFloat64(0, x);
+  return dv.getBigUint64(0).toString();
+};
+
+const METRIC_OPTS = {
+  optimalNodeBudget: 200_000,
+  tierNodeBudget: 200_000,
+  deadEndSamples: 24,
+  deadEndNodeBudget: 50_000,
+};
+
+const familyOf = (bottles: number, capacity: number): string =>
+  bottles === 15 ? 'large' : bottles === 10 ? 'medium' : capacity > 4 ? 'tall' : 'small';
+
+const metricsPool: Metrics[] = [];
+const difficultyCases = SOLVER_CASES.map((options) => {
+  const level = generateLevel({ ...options, parMode: options.parMode ?? 'proxy' });
+  const { state, solution, seed } = level;
+  const hidden = computeHidden(state, seed, exposableCells(state, solution));
+  const funnels = computeFunnels(state, seed, funnelEligibleTubes(state, solution));
+  const ice = buildIce(state, solution, hidden, seed);
+  const metrics = measureMetrics(
+    state,
+    hidden,
+    solution,
+    { ...METRIC_OPTS, deadEndSeed: seed },
+    { funnels, ice },
+  );
+  metricsPool.push(metrics);
+  return {
+    seed: options.seed,
+    metrics: {
+      optimal: metrics.optimal,
+      optimalExact: metrics.optimalExact,
+      twoStarMax: metrics.twoStarMax,
+      forcedMoveRatioBits: bitsOf(metrics.forcedMoveRatio),
+      deadEndDensityBits: bitsOf(metrics.deadEndDensity),
+      digDepthBits: bitsOf(metrics.digDepth),
+      funnelLoadBits: bitsOf(metrics.funnelLoad),
+      iceLoadBits: bitsOf(metrics.iceLoad),
+      colors: metrics.colors,
+      empties: metrics.empties,
+    },
+    family: familyOf(options.bottles, options.capacity),
+  };
+});
+
+const scores = compositeScores(metricsPool);
+const slotTargets = [0.05, 0.15, 0.3, 0.45, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0];
+const slotPicks = assignSlots(
+  difficultyCases.map((c, i) => ({ score: scores[i]!, family: c.family })),
+  slotTargets,
+);
+
+const difficultyVectors = {
+  description:
+    'Difficulty/progression conformance, generated from the JS core (the oracle) by ' +
+    'scripts/emit-vectors.ts. Float fields are f64 bit patterns as u64 decimal strings ' +
+    '(bit-exact); targetPercentile goes through Math.pow and is tolerance-compared. ' +
+    'Asserted by core/tests/difficulty_vectors.rs.',
+  metricOptions: METRIC_OPTS,
+  cases: difficultyCases,
+  compositeScoreBits: scores.map(bitsOf),
+  slotTargets: slotTargets.map(bitsOf),
+  slotPicks,
+  seedForLevel: [
+    ...[1, 2, 60, 61, 120, 240, 241, 999].map((level) => ({ level, salt: 0 })),
+    ...[1, 7].map((level) => ({ level, salt: 3 })),
+    // The bake's pool seeds (50_000 + chapter*100 + shapeIndex) and overlay tags.
+    ...[50_000, 50_105, 50_309, 1_000_000, 3_090_079].map((level) => ({ level, salt: 0 })),
+  ].map(({ level, salt }) => ({ level, salt, seed: seedForLevel(level, salt) })),
+  targetPercentileBits: Array.from({ length: 240 }, (_, i) => bitsOf(targetPercentile(i + 1))),
+};
+
+const difficultyOut = join(ROOT, 'vectors/difficulty.json');
+writeFileSync(difficultyOut, JSON.stringify(difficultyVectors, null, 2) + '\n');
+console.log(`wrote ${difficultyOut} (${difficultyCases.length} cases)`);

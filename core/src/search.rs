@@ -160,6 +160,26 @@ fn capped_successors(state: &State, hidden: &Hidden, overlays: Overlays) -> Vec<
     out
 }
 
+/// The capped-successor move set at a state, in canonical order — the G2 trace's payload:
+/// exactly the moves the player-rule searches consider.
+pub fn capped_move_set(state: &State, hidden: &Hidden, overlays: Overlays) -> Vec<(u8, u8)> {
+    capped_successors(state, hidden, overlays).iter().map(|s| s.mv).collect()
+}
+
+/// Apply one capped player move (as the searches would), or `None` if it isn't in the
+/// capped-successor set. Trace-tool convenience; O(successors) is fine off the hot path.
+pub fn apply_capped_move(
+    state: &State,
+    hidden: &Hidden,
+    overlays: Overlays,
+    mv: (u8, u8),
+) -> Option<(State, Hidden)> {
+    capped_successors(state, hidden, overlays)
+        .into_iter()
+        .find(|s| s.mv == mv)
+        .map(|s| (s.state, s.hidden))
+}
+
 /// Fully solved, revealed, and thawed — the search goal.
 fn is_solved(state: &State, hidden: &Hidden, overlays: Overlays) -> bool {
     is_won(state)
@@ -258,6 +278,71 @@ pub fn hint_move(
         return None;
     }
     astar(state0, hidden0, max_nodes, overlays).and_then(|(_, first)| first)
+}
+
+/// The full optimal line (every pour of an optimal capped solve), for the bake's golden
+/// winning-line artifact (gate G3: JS replays this and must win in exactly `optimal` pours).
+/// Same A* as `optimal_capped_moves` plus a parent map for path reconstruction — bake-only,
+/// so the extra memory never ships to the runtime paths.
+pub fn optimal_capped_line(
+    state0: &State,
+    hidden0: &Hidden,
+    max_nodes: usize,
+    overlays: Overlays,
+) -> Option<Vec<(u8, u8)>> {
+    let key0 = state_key(state0, Some(hidden0));
+    let mut best_g: HashMap<Key, u32> = HashMap::from([(key0.clone(), 0)]);
+    let mut came_from: HashMap<Key, (Key, (u8, u8))> = HashMap::new();
+    let mut heap: MinHeap<AStarNode> = MinHeap::new(astar_cmp);
+    heap.push(AStarNode {
+        state: state0.clone(),
+        hidden: hidden0.clone(),
+        g: 0,
+        f: runs_heuristic(state0),
+        key: key0,
+        first: None,
+    });
+
+    let mut nodes = 0usize;
+    while heap.len() > 0 {
+        let cur = heap.pop().unwrap();
+        if best_g.get(&cur.key).copied().unwrap_or(u32::MAX) < cur.g {
+            continue;
+        }
+        if is_solved(&cur.state, &cur.hidden, overlays) {
+            let mut line = Vec::with_capacity(cur.g as usize);
+            let mut key = cur.key;
+            while let Some((parent, mv)) = came_from.get(&key) {
+                line.push(*mv);
+                key = parent.clone();
+            }
+            line.reverse();
+            return Some(line);
+        }
+        nodes += 1;
+        if nodes > max_nodes {
+            return None;
+        }
+
+        for succ in capped_successors(&cur.state, &cur.hidden, overlays) {
+            let next_key = state_key(&succ.state, Some(&succ.hidden));
+            let ng = cur.g + 1;
+            if ng < best_g.get(&next_key).copied().unwrap_or(u32::MAX) {
+                best_g.insert(next_key.clone(), ng);
+                came_from.insert(next_key.clone(), (cur.key.clone(), succ.mv));
+                let f = ng as i64 + runs_heuristic(&succ.state);
+                heap.push(AStarNode {
+                    state: succ.state,
+                    hidden: succ.hidden,
+                    g: ng,
+                    f,
+                    key: next_key,
+                    first: None,
+                });
+            }
+        }
+    }
+    None
 }
 
 pub struct StarCutoffs {

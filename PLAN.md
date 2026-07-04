@@ -62,6 +62,10 @@ Track F port preserve it (the Rust core reimplements the same derived-overlay ru
   RNG consumption, float scoring, hash-iteration order). Cutover swaps in freshly-validated boards.
   Progress/stars are keyed by level *number*, so saves are unaffected (a player mid-board sees a new board
   next load; the daily changes for that date — acceptable).
+  **OVERTAKEN BY RESULTS 2026-07-04: the insurance wasn't needed.** The Rust bake reproduces the committed
+  JS bake **byte-identically** — all 240 boards, overlays, optimal/twoStarMax/par/phase (draw-for-draw rng
+  + exact-order float parity ran the table; the `pow` ulps in `targetPercentile` never flipped a pick). So
+  F4's cutover can ship the *identical* campaign: no board churn, no mid-level surprises, no daily change.
 - **Bake local, CI Rust-free.** Bake on the dev Mac (arm64), commit `levels.data.ts` + provenance. The
   `.wasm` is likewise a **committed build artifact** (web build/deploy needs no Rust), guarded by a
   source-hash test (like `levelVersion.ts`) that fails if the crate changed without a rebuild. CI runs
@@ -109,7 +113,28 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
   read path, so it lands alongside F2's serialize/deserialize work.
 - **F2 — Native bake, compared not committed.** Port difficulty (metrics + scoring + slot assignment) +
   progression + the parallel bake (rayon across all cores). The `bake` binary writes to a **scratch path**
-  + provenance JSON — never the committed data yet. **Emission path (decided):** the Rust binary emits
+  + provenance JSON — never the committed data yet.
+  **STATUS 2026-07-04 — core of F2 shipped.** `difficulty.rs`/`progression.rs`/`mechanics.rs` ported and
+  **bit-exactly conformant** (`vectors/difficulty.json`: metrics, composite scores, and slot picks pinned
+  as f64-bit strings; `seedForLevel` exact; `targetPercentile` tolerance-compared — it goes through `pow`,
+  handled deterministically cross-target via `libm`). The `bake` binary runs the full pipeline (rayon over
+  (chapter, shape) jobs, same seeding scheme as the JS worker) with `--chapter N`/`--level N` slice flags
+  (**E5 delivered**) and emits `levels.json` (BakedLevel-shaped) + `provenance.json` (report-app shape) +
+  `golden-lines.json` (per-level optimal winning line via `optimal_capped_line`). **Full 240-level bake at
+  identical quality settings: 108.7s** vs the JS bake's ~8–10 min (~5×). **First G3+G4 run is green**:
+  `scripts/verify-bake.ts` validates a bake dir under the JS runtime rules — all 240 levels pass the
+  static checks and all 203 exact-optimal golden lines replay in JS at *exactly* `optimal` (37 proxy
+  levels skipped by design).
+  **F2 COMPLETE 2026-07-04 (+ the F1-leftover G2):** `archive-report.ts --from` archives a Rust
+  provenance (version = crate-source FNV hash, e.g. `rust-37d2b49699957cf7`) into `scripts/build-history/`
+  and the report app's pickers/Builds table diff it against the committed bake with zero extra wiring
+  (verified in-browser: Δmean +0.000). **G2 shipped**: the `trace` binary emits a bounded conformance
+  trace (golden-line states + seeded offshoots + a 20-board random corpus — 260 traces, ~6.7k states) and
+  `scripts/verify-trace.ts` replays it under JS rules using ONLY the public primitives that survive F5
+  (no `search.ts`/`solver.ts` imports — G2 outlives the deletion): all states move-set-equal, all 6,461
+  transitions exact, in ~0.4s. **`exe/test` now exists and passes G1–G4 end-to-end** (G5 lands with F3's
+  committed-wasm hash guard). And the headline: **the Rust bake reproduces the committed JS bake
+  byte-identically** (all 240 boards + overlays + star data — see the fixed-decisions note). **Emission path (decided):** the Rust binary emits
   JSON only (boards + provenance); a small JS emitter turns that into `levels.data.ts`, reusing the
   existing `emit-provenance.ts`/`archive-report.ts` post-bake wiring — Rust never writes TS directly.
   (This JSON↔TS seam is also where G4's Rust-written ↔ JS-read round-trip test lives.) Archive that provenance and **diff it against the

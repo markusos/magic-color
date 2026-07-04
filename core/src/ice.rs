@@ -272,6 +272,17 @@ pub fn build_ice(state: &State, solution: &[Move], hidden: &Hidden, seed: u32, p
     grid
 }
 
+/// Ice difficulty load: fraction of (initial) segments that start frozen (`iceLoad` — the JS
+/// grid is shaped to the initial bottles, so `total` is the sum of initial fills).
+pub fn ice_load(ice: &Ice, state: &State) -> f64 {
+    let total: usize = state.tubes.iter().map(|t| t.len()).sum();
+    if total == 0 {
+        return 0.0;
+    }
+    let iced: usize = ice.iter().map(|t| if t.trigger != NO_COLOR { t.height as usize } else { 0 }).sum();
+    iced as f64 / total as f64
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

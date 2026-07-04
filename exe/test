@@ -1,0 +1,54 @@
+#!/bin/bash
+# The Track F release gate (PLAN.md "Drift defense"). One script, PASS/FAIL per check,
+# nonzero exit on any failure — run before every deploy (or as a pre-push hook).
+#
+#   G1  shared-vector conformance   cargo vector tests + the vitest pinning tests
+#   G2  Rust→JS conformance trace   `trace` emits, scripts/verify-trace.ts replays
+#   G3  golden winning-line replay  scripts/verify-bake.ts (exact-optimal wins in JS)
+#   G4  committed-level statics     scripts/verify-bake.ts (degenerate/presence/bounds)
+#   G5  artifact freshness          lands with F3 (committed .wasm hash guard)
+#
+# Usage: exe/test [bake-out-dir]
+#   bake-out-dir  a `bake --out` directory (default ./bake-out). If absent, the bake-artifact
+#   checks (G2–G4) are skipped with a warning — G1 always runs.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+export PATH="$HOME/.cargo/bin:$PATH"
+
+BAKE_DIR="${1:-bake-out}"
+FAILED=0
+
+check() { # check <name> <command...>
+  local name="$1"; shift
+  if "$@" >/tmp/exe-test-$$.log 2>&1; then
+    echo "PASS  $name"
+  else
+    echo "FAIL  $name"
+    tail -20 /tmp/exe-test-$$.log | sed 's/^/      /'
+    FAILED=1
+  fi
+}
+
+echo "== Track F release gate =="
+
+check "G1 rust vectors (rng + solver + difficulty)" \
+  cargo test --release --test rng_vectors --test conformance --test difficulty_vectors
+check "G1 js pinning (rng + solver vectors)" \
+  npx vitest run src/game/rng.vectors.test.ts src/game/solver.vectors.test.ts
+
+if [ -d "$BAKE_DIR" ] && [ -f "$BAKE_DIR/levels.json" ]; then
+  check "G2 trace emit ($BAKE_DIR)" \
+    ./target/release/trace --levels "$BAKE_DIR/levels.json" --golden "$BAKE_DIR/golden-lines.json" \
+      --out "$BAKE_DIR/trace.json"
+  check "G2 trace replay under JS rules" npx tsx scripts/verify-trace.ts "$BAKE_DIR/trace.json"
+  check "G3+G4 golden lines + statics under JS rules" npx tsx scripts/verify-bake.ts "$BAKE_DIR"
+else
+  echo "SKIP  G2-G4 (no bake artifacts at $BAKE_DIR — run: cargo build --release && ./target/release/bake --out $BAKE_DIR)"
+fi
+
+rm -f /tmp/exe-test-$$.log
+if [ "$FAILED" -ne 0 ]; then
+  echo "== GATE: FAIL =="
+  exit 1
+fi
+echo "== GATE: PASS =="
