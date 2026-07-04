@@ -11,22 +11,158 @@ registry are healthy. The work below is **growth and polish**, not debt.
 
 # Next steps
 
-**Track E (debug & authoring tools) is the current priority** (added 2026-06-26): pure tooling that
-touches neither the board invariant nor the bake output — surfacing the difficulty data we already
-compute (in-app inspector + a provenance report/diff CLI) and adding the admin/solver hatches that make a
-misbehaving level reproducible. It directly unblocks the **"re-tune the curve"** standing item, which is
-otherwise blind. **E1–E4 + E6 SHIPPED** (inspector, report/diff CLI + interactive report app, admin
-navigation, solver cheats, curve viz; see [DONE.md](DONE.md)). **What's left: E5 (single-level bake fast
-path — the lead), E7 (solvability/quality CLI gate), E8 (golden-curve snapshot test), and the trimmed E9
-(diagnostics readout + live-config toggle).**
+**Track F (native + WASM core port) is the current priority** (decided 2026-07-01): rewrite the pure
+level-generation/evaluation core in Rust, compiled to a **native arm64 CLI** for the offline bake and a
+**`.wasm`** worker for the deployed app (solving *and* live generation), so the generate→evaluate loop is
+fast enough for the many-more iterations, 1000+-level runs, and extra mechanics that JS can't reach (the
+solver's inner loop is string-keyed today — `Set<string>` + `stateKey` serialization — which dominates
+bake time). Full plan + phases in the **Track F** section below. The JS app stays fully live until parity;
+cutover is a one-time re-bake. **Track E's remaining items are absorbed into F**: E5 (slice-bake) becomes
+a flag on the Rust bake (F2), E7 (solvability gate) becomes the cross-language JS validation gate (F4),
+E8/E9 fold in or de-scope (F5).
+
+**Track E (debug & authoring tools) — E1–E4 + E6 SHIPPED** (inspector, report/diff CLI + interactive
+report app with build-history comparison, admin navigation, solver cheats, curve viz; see
+[DONE.md](DONE.md)). These directly support the port — the build-history report is how the Rust re-bake
+gets vetted against the JS bake.
 
 **Track D (chapter 5 / new mechanic) stays DEFERRED** (decided 2026-06-23) — design kept on file below,
 not scheduled. Picking it back up means resolving the D1-vs-D2 fork first, then following the steps.
+**Post-port, D2 (the turn-cadence "rhythm" mechanic) gets dramatically cheaper** — its phase-aware solver
++ rejection sampling is exactly the kind of heavy search the native core makes affordable.
 
 The non-negotiable invariant for anything touching boards: a mechanic is a **static, color-keyed,
 position-independent overlay derived from the stored solution** — never an engine change, always
-solvable by construction, always shuffle/recolor-safe. Track D lives or dies by this; Track E doesn't
-touch it.
+solvable by construction, always shuffle/recolor-safe. Track D lives or dies by this; Track E and the
+Track F port preserve it (the Rust core reimplements the same derived-overlay rules, validated against JS).
+
+---
+
+## F. Native + WASM core port  (ACTIVE — top priority; supersedes E5 and the JS hot-loop watch-list)
+
+> Decided 2026-07-01. Port the pure level-generation/evaluation core (engine rules, the three mechanics,
+> solver/search, generator, difficulty scoring) from TypeScript to **one Rust crate**, compiled to **two
+> targets**: a native arm64 CLI (offline bake) and a `.wasm` module (in-browser worker). The solver hot
+> loop is string-keyed today (`Set<string>` visited/frontier + `stateKey` board serialization); packed
+> integer state in compiled code removes that entirely — most of the win is JS→packed, native/threads add
+> more on top. This does **not** touch the static-overlay board invariant; the Rust core reimplements the
+> same rules and is validated against the JS core.
+
+### Fixed decisions (planning 2026-07-01)
+- **One crate, two targets.** `cargo build --release` → native bake CLI; `wasm-pack build` → the worker
+  `.wasm`. Shared core logic; only platform slivers differ (`#[cfg(target_arch = "wasm32")]`: threads, IO).
+- **Runtime uses the core for solving *and* live generation.** Hints, auto-solve, stuck-detection, and
+  endless/daily/tail generation call the WASM worker (off the main thread — same seam as today's
+  `hintWorker`). **JS keeps** the gameplay engine ops (`pour`/`isWon`/`legalMoves`), the mechanic
+  *interaction* reads (`blockedColumns`/`acceptsPour`/`blocksCompletion`), baked-level load/deserialize,
+  display shuffle/recolor, the store, and all UI.
+- **Cutover accepts new levels.** A Rust bake won't reproduce today's 240 boards byte-for-byte (different
+  RNG consumption, float scoring, hash-iteration order). Cutover swaps in freshly-validated boards.
+  Progress/stars are keyed by level *number*, so saves are unaffected (a player mid-board sees a new board
+  next load; the daily changes for that date — acceptable).
+- **Bake local, CI Rust-free.** Bake on the dev Mac (arm64), commit `levels.data.ts` + provenance. The
+  `.wasm` is likewise a **committed build artifact** (web build/deploy needs no Rust), guarded by a
+  source-hash test (like `levelVersion.ts`) that fails if the crate changed without a rebuild. CI runs
+  only the JS validation gate (F4).
+- **JS core stays as the oracle.** The TS solver/generator remains in-tree through migration for
+  differential testing and as a feature-flagged fallback; deleted only at final cleanup (F5).
+- **Parity target = today's 4 chapters / 240 levels.** Scaling to 1000+ levels and new mechanics is a
+  cheap follow-on once the core lands (not part of this plan).
+
+### Port surface (mapped from the current code)
+Hot logic to port (~2–2.5k lines of pure TS): `engine.ts` rules · `hidden.ts`/`funnels.ts`/`ice.ts` +
+the `mechanics.ts` registry (both the build-from-solution side and the solver-aware blocking/accepts/
+frozen-cells side) · `search.ts` (A* `optimalCappedMoves`, tier sweep `nearOptimalCutoffs`, `hintMove`,
+`stateKey`) · `solver.ts` (DFS `search`/`isUnsolvable`/`isStuckInLoop`, `bfsOptimal`) · `generator.ts`
+(rejection sampling) · `difficulty.ts` (`measureMetrics` + `compositeScores` + `assignSlots`) ·
+`progression.ts` shapes/curve/density/seeds · `rng.ts` (mulberry32, trivial to match). The confirmed
+runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-solve in `gameStore`),
+`isStuckInLoop` (`session.ts`), and `pickBest`/`generateDailyLevel` live gen (`levelLoader.ts`).
+
+### Phases (JS stays fully live until F4)
+- **F0 — Scaffolding.** Add the Rust crate (`core/`) + cargo workspace, `wasm-pack`/`wasm-bindgen` + Vite
+  wasm integration, npm wiring (`build:levels` shells the native binary). Define the byte-boundary types
+  (board as flat bytes; overlays as flat arrays) both targets share. No behavior change.
+- **F1 — Core rules + solver, differential-tested.** Port engine + mechanics + search + generator + rng.
+  Stand up the **`exe/test` gate's first checks** (G1 shared vectors + G2 Rust→JS conformance trace, see
+  below): the Rust core emits a trace of visited states + move-sets + transitions, JS validates it. Gate:
+  100% agreement. *No app change.*
+- **F2 — Native bake, compared not committed.** Port difficulty (metrics + scoring + slot assignment) +
+  progression + the parallel bake (rayon across all cores). The `bake` binary writes to a **scratch path**
+  + provenance JSON — never the committed data yet. Archive that provenance and **diff it against the
+  committed JS bake in the report app's build-history view** to vet the new curve. The bake also emits a
+  **golden optimal winning-line per level** (feeds gate G3). Absorbs **E5**: the `--level N`/`--chapter N`
+  slice fast-path is now trivial + near-instant. *Still no app change.*
+- **F3 — WASM + runtime adapters behind a flag.** `wasm-pack` build; commit the `.wasm` (+ hash-guard
+  test). Wire the runtime seams to the WASM worker **behind an admin/settings flag** (the hidden hatch),
+  default OFF: hint worker, auto-solve, stuck-detection, live gen. Both paths coexist → A/B on-device.
+  Differential-test live-gen (JS vs WASM) for solvability + metric agreement + daily determinism. **Design
+  point:** `isStuckInLoop`'s store-side visited `Set<string>` either stays a thin JS check or its keys
+  cross the boundary — decide here.
+- **F4 — Cutover.** Native bake → overwrite committed `levels.data.ts` with the accepted new levels;
+  archive its provenance as the new baseline. Flip the runtime flag default to WASM. The full **`exe/test`
+  gate (G1–G5) must pass** before deploying. Keep the JS core as a flagged fallback for one release.
+- **F5 — Cleanup / parity confirmed.** After a confident release, delete the dead JS solver/search/
+  generator/difficulty (keep gameplay engine + mechanic interaction; optionally keep a slim oracle in
+  tests). Point the staleness hash at the Rust crate. The JS hot-loop **watch-list items become WON'T-FIX**
+  (superseded). **E8** golden-snapshot is optional (build-history + the hash guards cover most drift).
+  **E9** diagnostics readout absorbs the F3 core-toggle (show core: wasm/js, last solve timing, baked vs
+  live). Update docs/memory.
+
+### Drift defense — the `exe/test` release gate
+> The one real hazard is **rule drift**: after cutover the same rules live in both the Rust core (solving +
+> generation) and the JS gameplay engine, and a later edit to one side could silently diverge — a
+> WASM-generated board unsolvable, or a committed `optimal` unreachable, under JS rules. **Initial** drift
+> (port bug) is easy; **regression** drift (a months-later edit) is the danger, so the defense is a
+> permanent local gate, not a one-time harness.
+
+**Strategy: Rust generates the evidence, JS validates it cheaply.** The Rust solver already explores a huge
+reachable graph per solve, so it emits bounded artifacts that JS checks in O(moves) with **no JS search and
+no wasm-in-loop** — which is what keeps the gate fast enough to run on the Mac before every deploy. No CI
+required (CI isn't set up and is *not* a hard requirement); one script is the go/no-go.
+
+**`exe/test` — the single release gate** (prints PASS/FAIL per check + overall verdict, nonzero exit on
+fail). Runs in seconds; can be a `pre-push` git hook or run by hand. Built incrementally across F1–F4 —
+**stand up each check as its inputs land, don't wait for the end** — and a *green `exe/test` is the
+definition of "the port is finished"* (F4/F5):
+- **G1 — Shared-vector conformance.** The engine/mechanic rules have ONE home: language-neutral JSON
+  vectors (`{board, move} → {nextState, legalMoves, won}` + overlay cases — funnel rejects a tint, frozen
+  cell blocks a run, hidden keeps a tube unfinished). Both the JS engine and the Rust core run the same
+  vectors. A rule change means editing the vectors, forcing both sides to move together. *(from F1)*
+- **G2 — Rust→JS conformance trace.** Rust emits a bounded trace (visited states + their legal/useful move
+  sets + each move's resulting state) from solves of all committed boards + a seeded random corpus. JS
+  replays every entry: each move legal under JS rules, move-set **set-equal** to Rust's, next-state
+  **exactly** equal. Move-set equality catches drift in *both* directions (a move Rust sees and JS doesn't
+  → its solution would be illegal in JS; a move Rust pruned that JS keeps → its optimal could be wrong).
+  This is what replaces slow independent JS re-solving. *(from F1)*
+- **G3 — Golden winning-line replay.** Per committed level, JS replays Rust's emitted optimal line and
+  asserts a win at exactly `optimal`. Proves 3★ is *achievable under JS rules* per level — kills the
+  catastrophic "committed optimal unreachable in JS" case instantly, no search. *(from F2)*
+- **G4 — Committed-level static checks.** No degenerate boards, required mechanics present, `par ≥ optimal`,
+  `twoStarMax > optimal`, and a serialize↔deserialize round-trip (Rust-written data ↔ JS-read). *(from F2/F4)*
+- **G5 — Artifact freshness.** Crate-source hash matches the committed `.wasm` and the `levels.data.ts`
+  stamp (can't ship a stale artifact against changed rules), and shared constants (palette, capacity,
+  SHAPES, curve, density, MECHANIC_ORDER, XOR seeds) match across languages. *(from F3/F4)*
+
+**Deliberately NOT in the gate** (keeps it fast; G2+G3 already pin the runtime-critical properties): a full
+independent JS re-solve of all committed boards for exact-optimal equality → an **optional manual**
+`exe/verify-optimal`, run only when you actually change a rule. Likewise an **optional manual** `exe/fuzz`
+(seeded divergence hunt) — no scheduled/nightly anything (one-person project, no CI budget).
+
+**Runtime belt-and-suspenders** (live-gen only, since baked boards are gate-covered): before handing a
+WASM-generated board to the player, a cheap JS check (not already won, not degenerate, WASM's first hint is
+JS-legal); on failure, fall back to the JS generator / re-roll. Near-free while the JS core is still in-tree.
+
+### Risks / open design points
+- **Rule drift JS↔Rust** — the one real hazard (a WASM board unsolvable/mis-rated under JS rules), addressed
+  by the `exe/test` gate above; the JS engine ops stay authoritative for gameplay and are asserted against
+  the core via G1/G2.
+- **Determinism** — integer state ⇒ native and wasm agree bit-for-bit; keep scoring in `f64` without
+  fast-math (Rust default) or fixed-point so cross-target / cross-arch bakes match. WASM float determinism
+  actually *improves* daily cross-device identity vs today.
+- **Bundle / instantiate** — commit the `.wasm` (tens–low-hundreds of KB, Brotli'd by Cloudflare, service-
+  worker cached, works offline); instantiate once per worker; keep the client node-budget bounded (iOS
+  memory) exactly as today. No `SharedArrayBuffer`/COOP-COEP needed (single-threaded on the client).
 
 ---
 
@@ -166,9 +302,9 @@ build-history, E8 snapshot) read the same JSON / typed module.
 2. ~~**E2 — Bake report / diff CLI**~~ — **SHIPPED 2026-06-26**, plus an **interactive React+Vite report app** (`report/`, also delivers E6) (see [DONE.md](DONE.md)).
 3. ~~**E3 — Admin navigation, mode & seed controls**~~ — **SHIPPED 2026-06-26** (see [DONE.md](DONE.md)).
 4. ~~**E4 — Solver / mechanic introspection**~~ — **SHIPPED 2026-06-26** (reveal-hidden, free-pour, auto-solve; force-terminal deferred) (see [DONE.md](DONE.md)).
-5. **E5 — Single-level / single-chapter bake fast path** (the lead; tighten the offline iteration loop).
+5. **E5 — Single-level / single-chapter bake fast path** → **absorbed into Track F (F2)** as a flag on the native Rust bake.
 6. ~~**E6 — Curve visualization**~~ — **SHIPPED 2026-06-26** as the React report app's metric curves (see [DONE.md](DONE.md)).
-7. **E7 — On-device solvability & quality assertion pass** (pre-commit gate for a re-bake).
+7. **E7 — On-device solvability & quality assertion pass** → **becomes the cross-language JS validation gate (Track F, F4)**.
 8. **E8 — Golden curve snapshot regression test** (catch silent bake drift in review).
 9. **E9 — Diagnostics readout + live-config toggle.** (DEV gating removed — the admin hatch is the sole gate now.)
 
@@ -228,6 +364,10 @@ constructing a meaningful `stuck`/`deadlocked` board is high-effort / low-value.
 
 ### E5 — Single-level / single-chapter bake fast path
 
+> **Absorbed into Track F (F2).** Don't build this as a standalone JS effort — the native Rust bake makes a
+> full run near-instant and the `--level N` / `--chapter N` slice flag rides along for free. Original spec
+> kept below for the requirements it captures.
+
 `build:levels` re-bakes the whole campaign (~8–10 min). Add `--level N` / `--chapter N` flags that bake
 just that slice and print full metrics, so an agent iterating on one mechanic isn't paying full wall time
 per try. **Output is for inspection only — never commit a partial `levels.data.ts`** (guard: a partial
@@ -255,6 +395,10 @@ committed data rather than a vitest snapshot.
 ---
 
 ### E7 — On-device solvability & quality assertion pass
+
+> **Re-scoped into Track F (F4) as the cross-language contract gate.** After the port, this is the check
+> that keeps the Rust bake and the JS runtime honest — run in *JS* over the committed (Rust-baked) boards,
+> in CI, so no Rust toolchain is needed there. Spec below still applies.
 
 One command (`npm run levels:verify`) that re-validates every committed baked board under the *runtime*
 rules: solvable under hidden+funnel+ice, `optimal` reproducible within budget, `par ≥ optimal`, no
@@ -303,6 +447,10 @@ every board's score." The snapshot surfaces that in review. Regenerate intention
   tuned against how chapters *read*; revisit per chapter as new mechanics land.
 
 ## Watch-list (bundle into the next re-bake, don't touch the hot loop alone)
+
+> **Superseded by Track F.** These are micro-optimizations of the JS solver hot loop that the Rust port
+> replaces wholesale — do **not** invest in them now. Kept only as a record of known JS inefficiencies (and
+> as behaviors the Rust core must reproduce, not the JS quirks).
 
 - `nearOptimalCutoffs` (`search.ts`) iterates `layer.values()` twice per depth and recomputes `isSolved`
   (re-runs the `frozenCells` fixpoint) per state per pass. Fold the solved-check into the single
