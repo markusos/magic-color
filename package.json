@@ -18,7 +18,7 @@
     "vectors:emit": "tsx scripts/emit-vectors.ts",
     "core:build": "cargo build --release",
     "core:test": "cargo test",
-    "core:wasm": "wasm-pack build core --target web",
+    "core:wasm": "wasm-pack build core --target web --out-dir ../src/game/core-pkg && rm -f src/game/core-pkg/.gitignore src/game/core-pkg/package.json src/game/core-pkg/README.md && tsx scripts/emit-core-stamp.ts",
     "report:dev": "vite --config vite.report.config.ts",
     "report:build": "tsc --noEmit && vite build --config vite.report.config.ts"
   },

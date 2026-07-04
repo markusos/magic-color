@@ -56,6 +56,12 @@ export function deriveStatus(
   state: GameState,
   overlays: OverlaySet,
   visited: ReadonlySet<string>,
+  /**
+   * Optional replacement for the JS loop check (Track F3): when the WASM core is active the
+   * store injects a core-side check (visited keys held in the wasm registry) and `visited` is
+   * only the JS fallback's book-keeping. Same contract: `true` ⇒ provably circling.
+   */
+  stuckCheck?: (state: GameState) => boolean,
 ): GameStatus {
   // Every blocking mechanic (concealed "?"s, frozen ice) folded into the columns the run-cap/cap
   // helpers consult (a no-op when the board carries no blocking mechanic).
@@ -63,7 +69,10 @@ export function deriveStatus(
   if (isWon(state) && !blocksCompletion(overlays, state)) return 'won';
   if (noPlayerMove(state, blocked, overlays)) return 'deadlocked';
   if (isWon(state)) return 'playing'; // sorted but mechanic-blocked, and a thawing/revealing move remains
-  if (isStuckInLoop(state, visited, { funnels: overlays.funnels })) return 'stuck';
+  const stuck = stuckCheck
+    ? stuckCheck(state)
+    : isStuckInLoop(state, visited, { funnels: overlays.funnels });
+  if (stuck) return 'stuck';
   return 'playing';
 }
 

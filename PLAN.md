@@ -150,6 +150,20 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
   `isStuckInLoop` and its `canonical`/`stateKey` dependencies join the retained gameplay set and can't be
   deleted with the rest of the JS solver. **With F6 adopted, prefer moving it fully into WASM** (visited
   keys computed and held core-side), so F5/F6 can delete `stateKey`/`canonical` from JS entirely.
+  **STATUS 2026-07-04 — solver seams SHIPPED; live gen remaining.** The committed wasm package lives at
+  `src/game/core-pkg/` (47 kB, built by `npm run core:wasm`, which also stamps the crate-source hash);
+  **G5 is live** (`coreVersion.test.ts` fails if `core/` changes without a rebuild) and wired into
+  `exe/test` — the full G1–G5 gate passes. Adapter: `coreWasm.ts` (id↔index conversion, `wasmHintMove`,
+  `wasmStuck`) + `coreHintWorker.ts` (twin of `hintWorker.ts`, same message contract). Admin-hatch
+  **"WASM Core" toggle** (persisted `wasmCore`, default OFF): hint + auto-solve pick the wasm worker
+  (swap needs no reload), and **stuck detection resolved per the F6 note** — visited keys live in a
+  core-side registry (`stuck_reset`/`visit`/`check`; the JS Set stays as parallel fallback, so the flag
+  can flip mid-attempt; an under-populated registry can only under-fire). `deriveStatus` takes an
+  injected `stuckCheck`. Differential adapter tests load the real committed `.wasm` in vitest (hint
+  agreement incl. tie-breaks, registry-vs-Set agreement). **Verified in-browser**: flag on → wasm fetched
+  on the main thread, hint computed by `coreHintWorker`, pour committed through the wasm stuck path, no
+  console errors. **Remaining for F3:** live gen via the core (pickBest/generateDailyLevel seams) + the
+  JS-vs-WASM live-gen differential + the E9 diagnostics readout (core: wasm/js, version, timings).
 - **F4 — Cutover.** Native bake → overwrite committed `levels.data.ts` with the accepted new levels;
   archive its provenance as the new baseline. Flip the runtime flag default to WASM. The full **`exe/test`
   gate (G1–G5) must pass** before deploying. Keep the JS core as a flagged fallback for one release.

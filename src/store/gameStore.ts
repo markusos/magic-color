@@ -39,6 +39,7 @@ import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
 import { hintMove, type HintMove } from '../game/search';
+import { coreWasmReady, initCoreWasm, wasmStuck } from '../game/coreWasm';
 import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
 import type { Color, Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
@@ -253,6 +254,9 @@ const HINT_SPINNER_DELAY_MS = 500;
  * surface even a first move. A move that still overflows this stops the run (with the "no move" notice).
  */
 const AUTO_SOLVE_NODE_BUDGET = 20_000_000;
+
+/** Node budget for the stuck-loop check via the wasm core (matches the JS `isStuckInLoop` default). */
+const STUCK_NODE_BUDGET = 20_000;
 /** Delay between auto-solve moves so the solution plays out visibly, move by move. */
 const AUTO_SOLVE_DELAY_MS = 500;
 /**
@@ -287,18 +291,40 @@ function forcePour(state: GameState, from: number, to: number): { state: GameSta
  * Lazily-created, reused worker that runs the hint A* off the main thread. Created on first hint so
  * boot stays light, and kept alive for subsequent hints. Returns null when the platform has no
  * `Worker` (jsdom/tests) or construction throws, so the store can fall back to a synchronous solve.
+ *
+ * Track F3: two twin workers share the request/response contract — the JS solver
+ * (`hintWorker.ts`) and the Rust core (`coreHintWorker.ts`) — selected by the admin `wasmCore`
+ * flag. Toggling the flag swaps the worker on the next request (the old one is terminated), so
+ * the A/B needs no reload.
  */
 let hintWorker: Worker | null = null;
+let hintWorkerIsWasm = false;
 const getHintWorker = (): Worker | null => {
-  if (hintWorker) return hintWorker;
+  const wantWasm = useSettings.getState().wasmCore;
+  if (hintWorker && hintWorkerIsWasm === wantWasm) return hintWorker;
+  hintWorker?.terminate();
+  hintWorker = null;
   if (typeof Worker === 'undefined') return null;
   try {
-    hintWorker = new Worker(new URL('../game/hintWorker.ts', import.meta.url), { type: 'module' });
+    hintWorker = wantWasm
+      ? new Worker(new URL('../game/coreHintWorker.ts', import.meta.url), { type: 'module' })
+      : new Worker(new URL('../game/hintWorker.ts', import.meta.url), { type: 'module' });
+    hintWorkerIsWasm = wantWasm;
   } catch {
     hintWorker = null;
   }
   return hintWorker;
 };
+
+/**
+ * Initialize the main-thread wasm instance whenever the flag is (or becomes) enabled — the
+ * stuck-loop check calls it synchronously, so it must be instantiated ahead of need. Until it
+ * resolves, every wasm entry point reports "not ready" and the JS path serves.
+ */
+if (useSettings.getState().wasmCore) void initCoreWasm();
+useSettings.subscribe((s, prev) => {
+  if (s.wasmCore && !prev.wasmCore) void initCoreWasm();
+});
 
 export const useGameStore = create<GameStore>((set, get) => {
   // The persisted campaign — the sole owner of progress + localStorage.
@@ -341,7 +367,16 @@ export const useGameStore = create<GameStore>((set, get) => {
     const funnels = extra.funnels ?? get().funnels;
     const ice = extra.ice ?? get().ice;
     const visited = extra.visited ?? get().visited;
-    const status = deriveStatus(current, { hidden, funnels, ice }, visited);
+    // Track F3: mirror every committed board into the wasm core's visited registry (no-op
+    // until the module is ready; inserts are idempotent, so undo targets are fine). The JS
+    // `visited` Set stays maintained in parallel as the fallback, so the A/B flag can flip
+    // mid-attempt without losing state.
+    wasmStuck.visit(current);
+    const stuckCheck =
+      useSettings.getState().wasmCore && coreWasmReady()
+        ? (s: GameState) => wasmStuck.check(s, funnels, STUCK_NODE_BUDGET) ?? false
+        : undefined;
+    const status = deriveStatus(current, { hidden, funnels, ice }, visited, stuckCheck);
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -387,34 +422,37 @@ export const useGameStore = create<GameStore>((set, get) => {
     generated: LoadedLevel,
     board: GameState,
     display: OverlaySet,
-  ): Partial<GameStore> => ({
-    initial: generated.state,
-    hidden: display.hidden,
-    initialHidden: generated.hidden,
-    funnels: display.funnels,
-    initialFunnels: generated.funnels,
-    ice: display.ice,
-    initialIce: generated.ice,
-    hiddenHistory: [],
-    history: [],
-    moves: [],
-    undos: 0,
-    visited: new Set([canonical(board)]),
-    selected: null,
-    hint: null,
-    hintUsed: false,
-    hintLoading: false,
-    hintUnavailable: false,
-    autoSolving: false,
-    autoSolveNotice: null,
-    boardNonce: get().boardNonce + 1,
-    loading: false,
-    phase: generated.phase,
-    mechanics: generated.mechanics,
-    optimal: generated.optimal,
-    twoStarMax: generated.twoStarMax,
-    liveProvenance: generated.liveProvenance ?? null,
-  });
+  ): Partial<GameStore> => {
+    wasmStuck.reset(board); // Track F3: re-seed the core-side visited registry with the new board
+    return {
+      initial: generated.state,
+      hidden: display.hidden,
+      initialHidden: generated.hidden,
+      funnels: display.funnels,
+      initialFunnels: generated.funnels,
+      ice: display.ice,
+      initialIce: generated.ice,
+      hiddenHistory: [],
+      history: [],
+      moves: [],
+      undos: 0,
+      visited: new Set([canonical(board)]),
+      selected: null,
+      hint: null,
+      hintUsed: false,
+      hintLoading: false,
+      hintUnavailable: false,
+      autoSolving: false,
+      autoSolveNotice: null,
+      boardNonce: get().boardNonce + 1,
+      loading: false,
+      phase: generated.phase,
+      mechanics: generated.mechanics,
+      optimal: generated.optimal,
+      twoStarMax: generated.twoStarMax,
+      liveProvenance: generated.liveProvenance ?? null,
+    };
+  };
 
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
   const applyLevel = (level: number) => {

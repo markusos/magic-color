@@ -6,7 +6,7 @@
 #   G2  Rust→JS conformance trace   `trace` emits, scripts/verify-trace.ts replays
 #   G3  golden winning-line replay  scripts/verify-bake.ts (exact-optimal wins in JS)
 #   G4  committed-level statics     scripts/verify-bake.ts (degenerate/presence/bounds)
-#   G5  artifact freshness          lands with F3 (committed .wasm hash guard)
+#   G5  artifact freshness          committed .wasm crate-hash guard (coreVersion.test.ts)
 #
 # Usage: exe/test [bake-out-dir]
 #   bake-out-dir  a `bake --out` directory (default ./bake-out). If absent, the bake-artifact
@@ -35,6 +35,8 @@ check "G1 rust vectors (rng + solver + difficulty)" \
   cargo test --release --test rng_vectors --test conformance --test difficulty_vectors
 check "G1 js pinning (rng + solver vectors)" \
   npx vitest run src/game/rng.vectors.test.ts src/game/solver.vectors.test.ts
+check "G5 committed wasm freshness + adapter differential" \
+  npx vitest run src/game/coreVersion.test.ts src/game/coreWasm.test.ts
 
 if [ -d "$BAKE_DIR" ] && [ -f "$BAKE_DIR/levels.json" ]; then
   check "G2 trace emit ($BAKE_DIR)" \
