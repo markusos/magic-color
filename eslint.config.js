@@ -24,6 +24,8 @@ export default tseslint.config(
       'scripts',
       'src/game/levels.data.ts',
       'src/game/levels.provenance.ts',
+      // wasm-pack build output (Track F core); generated JS/dts, nothing to lint.
+      'core/pkg',
     ],
   },
   {

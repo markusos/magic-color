@@ -15,6 +15,10 @@
     "levels:provenance": "tsx scripts/emit-provenance.ts",
     "levels:archive": "tsx scripts/archive-report.ts",
     "levels:report": "tsx scripts/level-report.ts",
+    "vectors:emit": "tsx scripts/emit-vectors.ts",
+    "core:build": "cargo build --release",
+    "core:test": "cargo test",
+    "core:wasm": "wasm-pack build core --target web",
     "report:dev": "vite --config vite.report.config.ts",
     "report:build": "tsc --noEmit && vite build --config vite.report.config.ts"
   },

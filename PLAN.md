@@ -55,7 +55,9 @@ Track F port preserve it (the Rust core reimplements the same derived-overlay ru
   endless/daily/tail generation call the WASM worker (off the main thread — same seam as today's
   `hintWorker`). **JS keeps** the gameplay engine ops (`pour`/`isWon`/`legalMoves`), the mechanic
   *interaction* reads (`blockedColumns`/`acceptsPour`/`blocksCompletion`), baked-level load/deserialize,
-  display shuffle/recolor, the store, and all UI.
+  display shuffle/recolor, the store, and all UI — **through cutover**. The adopted end-state
+  (decided 2026-07-04) is **F6**: once the core is trusted, the gameplay rules move behind the WASM
+  boundary too, so the rules live in exactly ONE place and the drift gate can largely retire.
 - **Cutover accepts new levels.** A Rust bake won't reproduce today's 240 boards byte-for-byte (different
   RNG consumption, float scoring, hash-iteration order). Cutover swaps in freshly-validated boards.
   Progress/stars are keyed by level *number*, so saves are unaffected (a player mid-board sees a new board
@@ -80,16 +82,37 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
 `isStuckInLoop` (`session.ts`), and `pickBest`/`generateDailyLevel` live gen (`levelLoader.ts`).
 
 ### Phases (JS stays fully live until F4)
-- **F0 — Scaffolding.** Add the Rust crate (`core/`) + cargo workspace, `wasm-pack`/`wasm-bindgen` + Vite
-  wasm integration, npm wiring (`build:levels` shells the native binary). Define the byte-boundary types
-  (board as flat bytes; overlays as flat arrays) both targets share. No behavior change.
+- **F0 — Scaffolding. ✅ DONE 2026-07-03.** Rust workspace + `core/` crate; both targets build (native
+  `bake` stub via `npm run core:build`, 14 kB wasm via `npm run core:wasm`; wasm-pack 0.15 installed via
+  brew). Byte-boundary types in `core/src/types.rs` (flat `u8` cells, `NO_COLOR=255` sentinel, bottle-major
+  bottom-first; funnels per-tube / ice+hidden per-cell). `rng.ts` ported bit-exact and the **G1 vector
+  infrastructure stood up early**: `scripts/emit-vectors.ts` (JS oracle) → `vectors/rng.json` → asserted by
+  both `rng.vectors.test.ts` (vitest) and `core/tests/rng_vectors.rs` (cargo), plus a Node smoke test
+  proving the wasm module loads and matches. **Gotcha for future vectors: store integers, never floats** —
+  serde_json's default float parse is off by 1 ulp (correct rounding is the opt-in `float_roundtrip`
+  feature), so rng draws are stored as raw u32. Vite wasm wiring deferred to F3 (nothing imports the wasm
+  until the runtime adapters exist). Toolchain note: the `~/.cargo/bin` rustup shims were broken symlinks
+  (rustup moved to Homebrew); relinked to `/opt/homebrew/opt/rustup/libexec/bin/rustup`.
 - **F1 — Core rules + solver, differential-tested.** Port engine + mechanics + search + generator + rng.
   Stand up the **`exe/test` gate's first checks** (G1 shared vectors + G2 Rust→JS conformance trace, see
   below): the Rust core emits a trace of visited states + move-sets + transitions, JS validates it. Gate:
   100% agreement. *No app change.*
+  **STATUS 2026-07-04 — port complete, conformance green.** All of engine/hidden/funnels/ice/solver/
+  search/generator ported (`core/src/*`), packed state (nibble-packed `u64` tubes, `u16` hidden masks,
+  sorted-`u128` canonical keys — equivalence classes identical to JS `stateKey`). `vectors/solver.json`
+  (10 seeded cases spanning every SHAPES family + all three mechanics + minPar/parMode paths) replays
+  **exactly** in both `core/tests/conformance.rs` and the JS pinning test `solver.vectors.test.ts`:
+  identical boards, DFS solutions, overlays, capped-search results — including budget-exhaustion `null`s
+  and hint tie-breaking (the JS `MinHeap` is structurally replicated). Release-mode core runs the vector
+  workload ~5× faster than JS before any tuning. **Remaining for F1:** the full G2 harness (Rust emits a
+  bounded trace over the *committed* boards + a seeded random corpus; JS validates) — needs the baked-data
+  read path, so it lands alongside F2's serialize/deserialize work.
 - **F2 — Native bake, compared not committed.** Port difficulty (metrics + scoring + slot assignment) +
   progression + the parallel bake (rayon across all cores). The `bake` binary writes to a **scratch path**
-  + provenance JSON — never the committed data yet. Archive that provenance and **diff it against the
+  + provenance JSON — never the committed data yet. **Emission path (decided):** the Rust binary emits
+  JSON only (boards + provenance); a small JS emitter turns that into `levels.data.ts`, reusing the
+  existing `emit-provenance.ts`/`archive-report.ts` post-bake wiring — Rust never writes TS directly.
+  (This JSON↔TS seam is also where G4's Rust-written ↔ JS-read round-trip test lives.) Archive that provenance and **diff it against the
   committed JS bake in the report app's build-history view** to vet the new curve. The bake also emits a
   **golden optimal winning-line per level** (feeds gate G3). Absorbs **E5**: the `--level N`/`--chapter N`
   slice fast-path is now trivial + near-instant. *Still no app change.*
@@ -98,23 +121,40 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
   default OFF: hint worker, auto-solve, stuck-detection, live gen. Both paths coexist → A/B on-device.
   Differential-test live-gen (JS vs WASM) for solvability + metric agreement + daily determinism. **Design
   point:** `isStuckInLoop`'s store-side visited `Set<string>` either stays a thin JS check or its keys
-  cross the boundary — decide here.
+  cross the boundary — decide here. Note this decision sets F5's deletion list: if it stays JS, then
+  `isStuckInLoop` and its `canonical`/`stateKey` dependencies join the retained gameplay set and can't be
+  deleted with the rest of the JS solver. **With F6 adopted, prefer moving it fully into WASM** (visited
+  keys computed and held core-side), so F5/F6 can delete `stateKey`/`canonical` from JS entirely.
 - **F4 — Cutover.** Native bake → overwrite committed `levels.data.ts` with the accepted new levels;
   archive its provenance as the new baseline. Flip the runtime flag default to WASM. The full **`exe/test`
   gate (G1–G5) must pass** before deploying. Keep the JS core as a flagged fallback for one release.
 - **F5 — Cleanup / parity confirmed.** After a confident release, delete the dead JS solver/search/
-  generator/difficulty (keep gameplay engine + mechanic interaction; optionally keep a slim oracle in
-  tests). Point the staleness hash at the Rust crate. The JS hot-loop **watch-list items become WON'T-FIX**
-  (superseded). **E8** golden-snapshot is optional (build-history + the hash guards cover most drift).
-  **E9** diagnostics readout absorbs the F3 core-toggle (show core: wasm/js, last solve timing, baked vs
-  live). Update docs/memory.
+  generator/difficulty (keep gameplay engine + mechanic interaction — **until F6 takes those too**;
+  optionally keep a slim oracle in tests). Point the staleness hash at the Rust crate. The JS hot-loop
+  **watch-list items become WON'T-FIX** (superseded). **E8** golden-snapshot is optional (build-history +
+  the hash guards cover most drift). **E9** diagnostics readout absorbs the F3 core-toggle (show core:
+  wasm/js, last solve timing, baked vs live). Update docs/memory.
+- **F6 — Gameplay rules into WASM; retire the drift gate.** (Adopted 2026-07-04; run only after F4/F5
+  prove the core.) Move the LAST rule-bearing JS — the gameplay engine ops and the mechanic interaction
+  reads — behind the WASM boundary, so the rules live in exactly one place and the dual-implementation
+  drift hazard is gone *structurally*, not just gated. Shape (details TBD at implementation): the store
+  makes **one synchronous call per player action** (WASM instantiates on the main thread too — calls are
+  sync, taps stay instant; the worker copy remains for search) and gets back a **view snapshot** — next
+  state + revealed cells + frozen masks + capped tubes + won/stuck/legal-move info — which the UI renders;
+  JS keeps zero rule semantics. Includes: `isStuckInLoop` fully core-side (per the F3 note), the
+  `forcePour` cheat via a core entry point, vitest loading the wasm for store tests (proven: `initSync`
+  works under Node), and a candidate simplification — recolor as a render-time id→display mapping instead
+  of state mutation, shrinking the boundary further. **Payoff: G1/G2 retire** (nothing left to drift);
+  the release gate shrinks to G3-style replay of committed data + G4 static checks + G5 freshness. Then
+  delete `engine.ts`, `hidden.ts`/`funnels.ts`/`ice.ts` interaction reads, and `stateKey`/`canonical`.
 
 ### Drift defense — the `exe/test` release gate
 > The one real hazard is **rule drift**: after cutover the same rules live in both the Rust core (solving +
 > generation) and the JS gameplay engine, and a later edit to one side could silently diverge — a
 > WASM-generated board unsolvable, or a committed `optimal` unreachable, under JS rules. **Initial** drift
 > (port bug) is easy; **regression** drift (a months-later edit) is the danger, so the defense is a
-> permanent local gate, not a one-time harness.
+> permanent local gate, not a one-time harness. *(Permanent until **F6**: once the gameplay rules also
+> move into the core, the dual-implementation window closes — the gate holds F1→F6, then G1/G2 retire.)*
 
 **Strategy: Rust generates the evidence, JS validates it cheaply.** The Rust solver already explores a huge
 reachable graph per solve, so it emits bounded artifacts that JS checks in O(moves) with **no JS search and
@@ -130,8 +170,10 @@ definition of "the port is finished"* (F4/F5):
   cell blocks a run, hidden keeps a tube unfinished). Both the JS engine and the Rust core run the same
   vectors. A rule change means editing the vectors, forcing both sides to move together. *(from F1)*
 - **G2 — Rust→JS conformance trace.** Rust emits a bounded trace (visited states + their legal/useful move
-  sets + each move's resulting state) from solves of all committed boards + a seeded random corpus. JS
-  replays every entry: each move legal under JS rules, move-set **set-equal** to Rust's, next-state
+  sets + each move's resulting state) from solves of all committed boards + a seeded random corpus.
+  **Bound (decided):** per level, the full optimal line plus a seeded random sample of ≤200 other visited
+  states — never the full visited set (a hard board's search visits millions of nodes; replaying all of
+  them would break the runs-in-seconds budget the gate design rests on). JS replays every entry: each move legal under JS rules, move-set **set-equal** to Rust's, next-state
   **exactly** equal. Move-set equality catches drift in *both* directions (a move Rust sees and JS doesn't
   → its solution would be illegal in JS; a move Rust pruned that JS keeps → its optimal could be wrong).
   This is what replaces slow independent JS re-solving. *(from F1)*
