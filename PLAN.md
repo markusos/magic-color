@@ -177,12 +177,41 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
 - **F4 — Cutover.** Native bake → overwrite committed `levels.data.ts` with the accepted new levels;
   archive its provenance as the new baseline. Flip the runtime flag default to WASM. The full **`exe/test`
   gate (G1–G5) must pass** before deploying. Keep the JS core as a flagged fallback for one release.
+  **F4 COMPLETE 2026-07-04.** The committed data now flows through the Rust pipeline:
+  `npm run build:levels` shells the native bake (`bake --out bake-out` → `emit-baked-from-rust.ts` →
+  the existing provenance/archive steps; ~2 min vs the JS bake's 8–10, which stays as
+  `build:levels:js` for one release). Cutover was a **player no-op as predicted**: boards byte-match
+  (the emitter asserts and prints it), provenance JSON zero-diff (after fixing `serde_json::json!`'s
+  alphabetized key order with a typed wrapper), only the generated-by headers changed. **Flag default
+  flipped ON** (fresh installs AND legacy saves; explicit admin toggles respected; jsdom tests keep the
+  JS path via the `typeof Worker` sentinel). Interim version-stamp policy documented in the emitter:
+  committed data keeps the JS-source hash until F5 repoints it at the crate; G5 covers crate↔wasm
+  freshness meanwhile. **Go/no-go ran green**: full G1–G5 gate against the cutover bake, 333 tests,
+  lint/tsc, production build (wasm as hashed precached asset — offline intact), and a fresh-user
+  browser boot loads the wasm core with a clean console.
 - **F5 — Cleanup / parity confirmed.** After a confident release, delete the dead JS solver/search/
   generator/difficulty (keep gameplay engine + mechanic interaction — **until F6 takes those too**;
   optionally keep a slim oracle in tests). Point the staleness hash at the Rust crate. The JS hot-loop
   **watch-list items become WON'T-FIX** (superseded). **E8** golden-snapshot is optional (build-history +
   the hash guards cover most drift). **E9** diagnostics readout absorbs the F3 core-toggle (show core:
   wasm/js, last solve timing, baked vs live). Update docs/memory.
+  **F5 COMPLETE 2026-07-05.** The JS core is out of the RUNTIME GRAPH — `hintWorker.ts` and the JS bake
+  scripts deleted; `solver/search/generator/difficulty.ts` **demoted to test-only oracles** (the "slim
+  oracle" option: the mechanic suites generate fixtures with them, `coreWasm.test.ts` uses them as the
+  differential reference, `emit-vectors.ts` as the frozen-vector oracle), enforced by an ESLint
+  `no-restricted-imports` guard — which caught a real leak on its first run. Bundle proof: main chunk
+  369.9 → 357.9 kB, one worker. Store/session carry zero rule-search state: the `visited` Set and
+  `canonical` are gone (registry is core-side), `deriveStatus` takes only the injected `stuckCheck`,
+  hint fallbacks are sync main-thread wasm, `levelLoader` awaits core init at module load (test setup
+  byte-inits first) and the live path is wasm-only. **The A/B flag was removed with the JS core it
+  toggled** (F4's "one release" fallback superseded by doing F5 immediately — Markus's call). Staleness
+  hash REPOINTED AT THE CRATE: `levelVersion` delegates to `coreVersion`, so ONE crate hash stamps both
+  committed artifacts (`levels.meta.ts` re-stamped `874caec0a6f9133f`, provenance re-archived as the new
+  baseline). **E9 shipped**: Settings admin shows core+version, last load (board/source/ms), cache sizes,
+  live budget. Runtime homes extracted: `palette.ts` (PALETTE/DEFAULT_CAPACITY), `provenance.ts`
+  (`Metrics`), `coreWasm.ts` (`HintMove`/`HintRequest`). Boundary made fail-soft for admin-injected
+  non-palette boards (hint/stuck degrade to "no verdict" instead of throwing). Full gate + 326 tests +
+  prod build + fresh-boot browser check all green.
 - **F6 — Gameplay rules into WASM; retire the drift gate.** (Adopted 2026-07-04; run only after F4/F5
   prove the core.) Move the LAST rule-bearing JS — the gameplay engine ops and the mechanic interaction
   reads — behind the WASM boundary, so the rules live in exactly one place and the dual-implementation
@@ -512,7 +541,13 @@ every board's score." The snapshot surfaces that in review. Regenerate intention
 
 ---
 
-### E9 — Diagnostics readout + live-config toggle
+### E9 — Diagnostics readout + live-config toggle — SHIPPED with F5 (2026-07-05)
+
+> Readout live in the Settings admin section: active core + wasm build version, last board load
+> (label / baked-vs-live / ms), live+daily cache sizes, and the active pool budget
+> (`loadDiagnostics()` in `levelLoader.ts`). The `DEFAULT_LIVE_CONFIG ⇄ TEST_LIVE_CONFIG` toggle was
+> dropped — the budget now displays inline and tuning it is a one-line code change passed straight
+> through to the wasm core. Original spec below for reference.
 
 - **Readout** in the admin section / extend the existing build/version footer: live-gen `liveCache` size,
   last `getLevel` timing, whether the current board is **baked vs live**, and the active `LiveGenConfig`.
@@ -537,11 +572,11 @@ every board's score." The snapshot surfaces that in review. Regenerate intention
 - **Mechanic-density tuning.** The signature/inherited/balanced density literals (`progression.ts`) are
   tuned against how chapters *read*; revisit per chapter as new mechanics land.
 
-## Watch-list (bundle into the next re-bake, don't touch the hot loop alone)
+## Watch-list — CLOSED as WON'T-FIX (F5, 2026-07-05)
 
-> **Superseded by Track F.** These are micro-optimizations of the JS solver hot loop that the Rust port
-> replaces wholesale — do **not** invest in them now. Kept only as a record of known JS inefficiencies (and
-> as behaviors the Rust core must reproduce, not the JS quirks).
+> **Superseded by Track F, now formally closed.** These were micro-optimizations of the JS solver hot
+> loop; that loop is a test-only oracle since F5 (the runtime searches in the Rust core), so its
+> inefficiencies no longer matter. Kept below only as historical record until F6 deletes the oracle.
 
 - `nearOptimalCutoffs` (`search.ts`) iterates `layer.values()` twice per depth and recomputes `isSolved`
   (re-runs the `frozenCells` fixpoint) per state per pass. Fold the solved-check into the single
@@ -553,7 +588,10 @@ every board's score." The snapshot surfaces that in review. Regenerate intention
 
 ## Re-baking
 
-`npm run build:levels` (≈8–10 min for the full campaign, deterministic). Any change to a bake-relevant
-source bumps the `levelVersion.ts` hash; `baked.test.ts` fails until you re-bake. Re-baking reproduces
+`npm run build:levels` (≈2 min — the native Rust bake since the F4 cutover: `bake --out bake-out` +
+`emit-baked-from-rust.ts`; the retired JS bake stays available as `npm run build:levels:js` for one
+release). Any change to a bake-relevant source bumps the `levelVersion.ts` hash; `baked.test.ts` fails
+until you re-bake (interim until F5 repoints the hash at the crate — bake-relevant RULE changes now live
+in `core/`, and G1 discipline keeps the JS twins in lockstep while they exist). Re-baking reproduces
 earlier chapters byte-identically (seed-deterministic) — that byte-identity is the regression check for
-every new-mechanic change.
+every new-mechanic change. Single-slice fast paths: `bake --chapter N` / `--level N`.

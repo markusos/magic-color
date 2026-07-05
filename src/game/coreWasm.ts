@@ -26,14 +26,27 @@ import initWasm, {
   stuck_visited_count,
   initSync,
 } from './core-pkg/magic_color_core';
-import type { Metrics } from './difficulty';
 import type { FunnelGrid } from './funnels';
-import { PALETTE } from './generator';
 import type { HiddenGrid } from './hidden';
 import type { IceGrid } from './ice';
 import type { Overlays } from './overlays';
-import type { HintMove } from './search';
+import { PALETTE } from './palette';
+import type { Metrics } from './provenance';
 import { toColor, type Color, type GameState, type Move } from './types';
+
+/** A suggested pour (source → destination) — the hint contract. Runtime home since F5. */
+export interface HintMove {
+  from: number;
+  to: number;
+}
+
+/** The hint worker's request message (`coreHintWorker.ts`). */
+export interface HintRequest {
+  state: GameState;
+  hidden: HiddenGrid;
+  overlays: Overlays;
+  maxNodes: number;
+}
 
 /** The core's "no color" sentinel (see core `types::NO_COLOR`). */
 const NO_COLOR = 255;
@@ -127,8 +140,9 @@ function encodeIce(ice: Overlays['ice'], bottles: number): Uint8Array {
 }
 
 /**
- * The first move of an optimal continuation, via the Rust core — same contract as
- * `search.hintMove` (`null` = solved / stuck / budget exhausted / core not ready).
+ * The first move of an optimal continuation, via the Rust core (`null` = solved / stuck /
+ * budget exhausted / core not ready — or a board the boundary can't encode, e.g. an
+ * admin-injected test board with non-palette color ids).
  */
 export function wasmHintMove(
   state: GameState,
@@ -137,16 +151,21 @@ export function wasmHintMove(
   maxNodes: number,
 ): HintMove | null {
   if (!ready) return null;
-  const n = state.bottles.length;
-  const encoded = hint(
-    encodeCells(state),
-    n,
-    state.capacity,
-    encodeHidden(hidden),
-    encodeFunnels(overlays?.funnels, n),
-    encodeIce(overlays?.ice, n),
-    maxNodes,
-  );
+  let encoded: number;
+  try {
+    const n = state.bottles.length;
+    encoded = hint(
+      encodeCells(state),
+      n,
+      state.capacity,
+      encodeHidden(hidden),
+      encodeFunnels(overlays?.funnels, n),
+      encodeIce(overlays?.ice, n),
+      maxNodes,
+    );
+  } catch {
+    return null; // unencodable board — "no hint" beats a crash
+  }
   if (encoded < 0) return null;
   return { from: encoded >> 8, to: encoded & 0xff };
 }
@@ -279,17 +298,34 @@ export function wasmPickBest(
  * no-ops / non-committal until the wasm is ready — callers keep the JS check as fallback.
  */
 export const wasmStuck = {
+  // All fail-soft on unencodable boards (admin-injected fixtures with non-palette ids): a
+  // board the registry can't track just means the stuck nudge stays quiet — the check only
+  // ever under-fires, which is its safe direction.
   reset(state: GameState): void {
-    if (ready) stuck_reset(encodeCells(state), state.bottles.length, state.capacity);
+    if (!ready) return;
+    try {
+      stuck_reset(encodeCells(state), state.bottles.length, state.capacity);
+    } catch {
+      /* untrackable board — leave the registry as-is */
+    }
   },
   visit(state: GameState): void {
-    if (ready) stuck_visit(encodeCells(state), state.bottles.length, state.capacity);
+    if (!ready) return;
+    try {
+      stuck_visit(encodeCells(state), state.bottles.length, state.capacity);
+    } catch {
+      /* untrackable board */
+    }
   },
-  /** `null` = core not ready (caller should use the JS check instead). */
+  /** `null` = core not ready or board unencodable (no verdict — treat as "not stuck"). */
   check(state: GameState, funnels: Overlays['funnels'], maxNodes: number): boolean | null {
     if (!ready) return null;
-    const n = state.bottles.length;
-    return stuck_check(encodeCells(state), n, state.capacity, encodeFunnels(funnels, n), maxNodes);
+    try {
+      const n = state.bottles.length;
+      return stuck_check(encodeCells(state), n, state.capacity, encodeFunnels(funnels, n), maxNodes);
+    } catch {
+      return null;
+    }
   },
   /** Registry size, for diagnostics/tests. */
   visitedCount(): number {

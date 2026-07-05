@@ -1,35 +1,20 @@
 /**
- * Live-generation differential, JS vs WASM (Track F3): with the real committed `.wasm`
- * loaded, the core-side `pickBest` must produce the IDENTICAL board, overlays, star data, and
- * provenance as the JS path — for the daily challenge (cross-device determinism is the whole
- * point) and the endless random mode. Runs under the test live-config the suite installs
- * (small pools), which exercises the identical selection logic at test-friendly breadth.
+ * Live generation through the Rust core (Track F5 — the only live path; the JS twin and the
+ * A/B flag are gone). The committed `.wasm` is loaded for real by the test setup, so these
+ * exercise the shipping pipeline end-to-end: determinism per seed/date (the daily's
+ * cross-device contract), memoization, and the shape of what reaches the store.
  */
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { initCoreWasmSync } from './coreWasm';
+import { describe, expect, it } from 'vitest';
+import { isWon, pour } from './engine';
 import {
   generateDailyLevel,
   generateRandomLevel,
+  loadDiagnostics,
   resetLiveGenerator,
-  setLiveCoreEnabled,
   type LoadedLevel,
 } from './levelLoader';
 
-const wasmPath = join(dirname(fileURLToPath(import.meta.url)), 'core-pkg/magic_color_core_bg.wasm');
-
-beforeAll(() => {
-  initCoreWasmSync(readFileSync(wasmPath));
-});
-
-afterEach(() => {
-  setLiveCoreEnabled(false);
-  resetLiveGenerator();
-});
-
-/** The fields that must agree exactly (drop functions/undefined noise via JSON round-trip). */
+/** Comparable projection (JSON round-trip drops functions/undefined noise). */
 function comparable(level: LoadedLevel): unknown {
   const { state, solution, hidden, funnels, ice, optimal, twoStarMax, par, minMoves, seed, liveProvenance } = level;
   return JSON.parse(
@@ -37,30 +22,40 @@ function comparable(level: LoadedLevel): unknown {
   );
 }
 
-describe('live generation differential (JS vs WASM core)', () => {
-  it('daily challenge boards are identical on both cores', () => {
-    for (const key of ['2026-07-04', '2026-01-15', '2025-11-30']) {
-      setLiveCoreEnabled(false);
-      resetLiveGenerator();
-      const js = generateDailyLevel(key);
+describe('live generation (Rust core)', () => {
+  it('daily boards are deterministic per date key and memoized', () => {
+    resetLiveGenerator();
+    const a = generateDailyLevel('2026-07-04');
+    expect(generateDailyLevel('2026-07-04')).toBe(a); // cache hit — same object
 
-      setLiveCoreEnabled(true); // also clears the caches
-      const wasm = generateDailyLevel(key);
+    resetLiveGenerator();
+    const b = generateDailyLevel('2026-07-04');
+    expect(comparable(b)).toEqual(comparable(a)); // regenerated — identical board
 
-      expect(comparable(wasm)).toEqual(comparable(js));
+    const other = generateDailyLevel('2026-01-15');
+    expect(comparable(other)).not.toEqual(comparable(a)); // different date, different board
+  });
+
+  it('random-mode boards are deterministic per seed and solvable via their stored solution', () => {
+    for (const seed of [7, 123456]) {
+      const a = generateRandomLevel(seed);
+      const b = generateRandomLevel(seed);
+      expect(comparable(b)).toEqual(comparable(a));
+
+      let cur = a.state;
+      for (const m of a.solution) cur = pour(cur, m.from, m.to).state;
+      expect(isWon(cur)).toBe(true);
+      expect(a.twoStarMax).toBeGreaterThan(a.optimal);
+      expect(a.liveProvenance?.metrics.colors).toBe(a.colors);
     }
   });
 
-  it('random-mode boards are identical on both cores', () => {
-    for (const seed of [7, 123456, 987654321]) {
-      setLiveCoreEnabled(false);
-      resetLiveGenerator();
-      const js = generateRandomLevel(seed);
-
-      setLiveCoreEnabled(true);
-      const wasm = generateRandomLevel(seed);
-
-      expect(comparable(wasm)).toEqual(comparable(js));
-    }
+  it('records load diagnostics for the E9 readout', () => {
+    resetLiveGenerator();
+    generateDailyLevel('2026-03-03');
+    const d = loadDiagnostics();
+    expect(d.last?.label).toBe('daily 2026-03-03');
+    expect(d.last?.source).toBe('live');
+    expect(d.dailyCacheSize).toBe(1);
   });
 });

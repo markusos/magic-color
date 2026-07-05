@@ -3,6 +3,7 @@ import { useGameStore } from './gameStore';
 import { useSettings } from './settings';
 import { BAKED_LEVEL_COUNT, getLevel } from '../game/levelLoader';
 import { canonical, isSolvable, solve, usefulMoves } from '../game/solver';
+import { wasmStuck } from '../game/coreWasm';
 import { pour } from '../game/engine';
 import { optimalCappedMoves } from '../game/search';
 import { board, color } from '../test/board';
@@ -610,9 +611,10 @@ describe('deadlock detection (genuine walls only)', () => {
 });
 
 describe('"going in circles" detection (soft loop)', () => {
-  /** Every canonical board reachable from `start` under the solver's useful-move pruning. */
-  const closureOf = (start: ReturnType<typeof board>): Set<string> => {
+  /** Every board reachable from `start` under the (oracle) useful-move pruning. */
+  const closureOf = (start: ReturnType<typeof board>): ReturnType<typeof board>[] => {
     const seen = new Set<string>([canonical(start)]);
+    const states = [start];
     const stack = [start];
     while (stack.length > 0) {
       const current = stack.pop()!;
@@ -621,11 +623,18 @@ describe('"going in circles" detection (soft loop)', () => {
         const key = canonical(next);
         if (!seen.has(key)) {
           seen.add(key);
+          states.push(next);
           stack.push(next);
         }
       }
     }
-    return seen;
+    return states;
+  };
+
+  /** Seed the CORE-SIDE visited registry (where the stuck check lives since F5) with a closure. */
+  const visitAll = (states: ReturnType<typeof board>[]) => {
+    wasmStuck.reset(states[0]!);
+    for (const s of states) wasmStuck.visit(s);
   };
 
   // Unsolvable loop board: moves remain forever but it can never be won.
@@ -662,8 +671,10 @@ describe('"going in circles" detection (soft loop)', () => {
     const { state: B, move } = pour(A, from, to);
     const gridA = A.bottles.map((b) => b.map(() => false));
     const gridB = B.bottles.map((b) => b.map(() => false));
-    // Sit on B with A as the prior board and the WHOLE closure already visited; undoing back to A
-    // recomputes status — A's every reachable board is in `visited` and none wins → going in circles.
+    // Sit on B with A as the prior board and the WHOLE closure already in the core-side
+    // registry; undoing back to A recomputes status — every board reachable from A has been
+    // visited and none wins → going in circles.
+    visitAll(closureOf(A));
     useGameStore.setState({
       current: B,
       initial: A,
@@ -673,7 +684,6 @@ describe('"going in circles" detection (soft loop)', () => {
       hiddenHistory: [gridA],
       moves: [move],
       undos: 0,
-      visited: closureOf(A),
       selected: null,
     });
     store().undo();
@@ -842,7 +852,6 @@ describe('debug cheats (E4)', () => {
       hiddenHistory: [],
       moves: [],
       undos: 0,
-      visited: new Set<string>(),
       mode: 'campaign',
     });
 

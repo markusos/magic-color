@@ -14,7 +14,7 @@
  * hashes this file. The runtime LOADING path (`getLevel`, the live generator, baked deserialization)
  * lives in `levelLoader.ts` so that tuning it does NOT force a re-bake.
  */
-import { DEFAULT_CAPACITY } from './generator';
+import { DEFAULT_CAPACITY } from './palette';
 import type { FunnelGrid } from './funnels';
 import type { HiddenGrid } from './hidden';
 import type { IceGrid } from './ice';

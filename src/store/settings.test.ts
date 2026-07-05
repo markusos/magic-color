@@ -37,7 +37,6 @@ describe('settings store', () => {
       'musicVolume',
       'patterns',
       'soundVolume',
-      'wasmCore',
     ]);
     useSettings.getState().setMusicVolume(0); // restore default
     expect(useSettings.getState().musicVolume).toBe(0);

@@ -6,32 +6,23 @@
  * A naive random-pour walk from the solved board does NOT guarantee solvability:
  * pouring same-color-onto-same-color merges runs and loses the split point, so the
  * walk isn't reversible. Verifying with a real solver sidesteps that entirely.
+ *
+ * **TEST ORACLE since Track F5.** The runtime generates through the Rust core
+ * (`core/src/generator.rs` via `coreWasm.ts`); this JS twin stays ONLY as test
+ * infrastructure (mechanic suites generate fixtures with it, `coreWasm.test.ts` uses it as
+ * the differential reference, `emit-vectors.ts` as the frozen-vector oracle). Never import
+ * it from runtime code — an ESLint `no-restricted-imports` rule enforces this. Deleted at F6.
  */
 import { isComplete, isWon } from './engine';
+import { DEFAULT_CAPACITY, PALETTE } from './palette';
 import { mulberry32 } from './rng';
 import { bfsOptimal, canonical, solve } from './solver';
 import type { Color, GameState, GeneratedLevel, Move, ParMode } from './types';
 
-// Re-exported for callers that historically imported the PRNG from here; its home is now rng.ts.
-export { mulberry32 };
+// Re-exported for callers that historically imported these from here (tests/scripts only,
+// post-F5); the runtime homes are rng.ts and palette.ts.
+export { mulberry32, DEFAULT_CAPACITY, PALETTE };
 
-/** Default palette ids (see ../theme/colors.ts). Generation uses the first N. */
-export const PALETTE: readonly Color[] = [
-  'ruby',
-  'amethyst',
-  'sapphire',
-  'emerald',
-  'amber',
-  'rose',
-  'teal',
-  'violet',
-  'lime',
-  'tangerine',
-  'cobalt',
-  'magenta',
-].map((id) => id as Color);
-
-export const DEFAULT_CAPACITY = 4;
 const MAX_COLORS = PALETTE.length; // 12
 const MAX_RETRIES = 300;
 /**

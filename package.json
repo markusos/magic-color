@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "bench": "tsx scripts/benchmark-generation.ts",
-    "build:levels": "tsx scripts/build-levels.ts && tsx scripts/emit-provenance.ts && tsx scripts/archive-report.ts",
+    "build:levels": "cargo build --release && ./target/release/bake --out bake-out && tsx scripts/emit-baked-from-rust.ts bake-out && tsx scripts/emit-provenance.ts && tsx scripts/archive-report.ts",
     "levels:provenance": "tsx scripts/emit-provenance.ts",
     "levels:archive": "tsx scripts/archive-report.ts",
     "levels:report": "tsx scripts/level-report.ts",

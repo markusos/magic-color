@@ -93,6 +93,18 @@ struct ProvenanceOut {
     metrics: MetricsOut,
 }
 
+/// Typed wrapper for provenance.json — a struct (not `serde_json::json!`) so key order stays
+/// declaration order; the `json!` Value map alphabetizes, which churned the committed
+/// provenance diff at cutover.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProvenanceFile {
+    version: String,
+    count: usize,
+    per_shape: usize,
+    levels: Vec<ProvenanceOut>,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GoldenLineOut {
@@ -399,12 +411,12 @@ fn main() {
     write("levels.json", serde_json::to_string_pretty(&baked).unwrap());
     write(
         "provenance.json",
-        serde_json::to_string_pretty(&serde_json::json!({
-            "version": version,
-            "count": baked.len(),
-            "perShape": per_shape,
-            "levels": provenance,
-        }))
+        serde_json::to_string_pretty(&ProvenanceFile {
+            version,
+            count: baked.len(),
+            per_shape,
+            levels: provenance,
+        })
         .unwrap(),
     );
     write("golden-lines.json", serde_json::to_string_pretty(&golden).unwrap());

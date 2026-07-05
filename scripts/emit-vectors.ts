@@ -1,12 +1,10 @@
 /**
- * Emits the language-neutral conformance vectors (`vectors/*.json`) that both the JS core and
- * the Rust core (`core/`) test against — the G1 leg of the Track F `exe/test` gate. JS is the
- * oracle while it remains authoritative (through F4), so vectors are generated FROM the JS
- * implementations and asserted by both sides; a rule change means re-emitting the vectors,
- * forcing both implementations to move together.
- *
- * F0 scope: the mulberry32 stream (every seeded system flows through it, so rng parity is the
- * precondition for all other parity). Engine/mechanic vectors join in F1.
+ * Emits the language-neutral conformance vectors (`vectors/*.json`) — the G1 leg of the
+ * Track F `exe/test` gate. Generated FROM the JS implementations, which since F5 are
+ * TEST-ONLY ORACLES (the runtime is the Rust core): the committed vectors pin the Rust core
+ * against regression drift (`core/tests/*`), and the surviving JS twins (rng + the mechanic
+ * build fns) against the same frozen truth. Re-emit only on an intentional rule change —
+ * which now means changing `core/` AND the oracle in lockstep until F6 deletes the oracle.
  *
  * Usage: npm run vectors:emit
  */
@@ -163,8 +161,8 @@ const solverVectors = {
   description:
     'Seeded generator/solver/mechanic conformance cases, generated from the JS core (the ' +
     'oracle) by scripts/emit-vectors.ts. Colors are palette indices; hidden = per-tube ' +
-    'bitmasks; ice = per-tube (trigger, height). Asserted by core/tests/conformance.rs and ' +
-    'src/game/solver.vectors.test.ts.',
+    'bitmasks; ice = per-tube (trigger, height). Asserted by core/tests/conformance.rs ' +
+    '(the JS pinning twin retired with F5).',
   cases: solverCases,
 };
 

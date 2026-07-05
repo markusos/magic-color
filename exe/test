@@ -33,8 +33,8 @@ echo "== Track F release gate =="
 
 check "G1 rust vectors (rng + solver + difficulty)" \
   cargo test --release --test rng_vectors --test conformance --test difficulty_vectors
-check "G1 js pinning (rng + solver vectors)" \
-  npx vitest run src/game/rng.vectors.test.ts src/game/solver.vectors.test.ts
+check "G1 js pinning (rng vectors)" \
+  npx vitest run src/game/rng.vectors.test.ts
 check "G5 committed wasm freshness + adapter/live differential" \
   npx vitest run src/game/coreVersion.test.ts src/game/coreWasm.test.ts src/game/coreLive.test.ts
 

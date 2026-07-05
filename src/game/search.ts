@@ -7,6 +7,10 @@
  * This module owns the *searches*; `hidden.ts` owns the concealment *mechanic* (which cells
  * are hidden, how they reveal). Search depends on the mechanic's read-only helpers, never the
  * other way around.
+ *
+ * **TEST ORACLE since Track F5.** The runtime searches through the Rust core
+ * (`core/src/search.rs` via `coreWasm.ts`); this JS twin stays only for tests and
+ * `emit-vectors.ts`. Never import it from runtime code — ESLint enforces it. Deleted at F6.
  */
 import { anyHidden, isCapped, knownTopRun, revealExposed, type HiddenGrid } from './hidden';
 import { funnelAccepts } from './funnels';

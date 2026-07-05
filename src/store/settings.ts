@@ -30,23 +30,13 @@ interface Persisted {
   patterns: boolean;
   /** Debug (Track E1): overlay the active board's difficulty metrics. Hidden behind the admin hatch, off by default. */
   inspector: boolean;
-  /**
-   * Track F3: route the solver seams (hints, auto-solve, stuck detection) through the Rust
-   * WASM core instead of the JS implementations. Admin-hatch A/B flag, off by default; the JS
-   * path remains the fallback whenever the wasm isn't ready.
-   */
-  wasmCore: boolean;
 }
 
+// Track F5 note: the F3/F4 `wasmCore` A/B flag was removed with the JS core it toggled — the
+// Rust core is the only solver/generator now (a stale persisted key is simply ignored).
+
 function defaults(): Persisted {
-  return {
-    soundVolume: DEFAULT_SOUND,
-    musicVolume: 0,
-    haptics: true,
-    patterns: false,
-    inspector: false,
-    wasmCore: false,
-  };
+  return { soundVolume: DEFAULT_SOUND, musicVolume: 0, haptics: true, patterns: false, inspector: false };
 }
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
@@ -73,7 +63,6 @@ function load(): Persisted {
       haptics: typeof p.haptics === 'boolean' ? p.haptics : true,
       patterns: typeof p.patterns === 'boolean' ? p.patterns : false,
       inspector: typeof p.inspector === 'boolean' ? p.inspector : false,
-      wasmCore: typeof p.wasmCore === 'boolean' ? p.wasmCore : false,
     };
   } catch {
     return defaults();
@@ -108,7 +97,6 @@ interface SettingsStore extends Persisted {
   toggleHaptics: () => void;
   togglePatterns: () => void;
   toggleInspector: () => void;
-  toggleWasmCore: () => void;
   /** Expand/collapse the inspector overlay without disabling it (the ⓘ button + the panel's ✕). */
   toggleInspectorOpen: () => void;
   toggleRevealHidden: () => void;
@@ -122,7 +110,6 @@ const persistedOf = (s: SettingsStore): Persisted => ({
   haptics: s.haptics,
   patterns: s.patterns,
   inspector: s.inspector,
-  wasmCore: s.wasmCore,
 });
 
 export const useSettings = create<SettingsStore>((set, get) => {
@@ -171,13 +158,6 @@ export const useSettings = create<SettingsStore>((set, get) => {
       const inspector = !get().inspector;
       set(inspector ? { inspector, inspectorOpen: false } : { inspector, inspectorOpen: false, revealHidden: false, freePour: false });
       save(persistedOf(get())); // inspectorOpen + the cheats are ephemeral, excluded from persistedOf
-    },
-    toggleWasmCore: () => {
-      // Track F3 A/B flag. The store layer watches this and initializes the wasm module on
-      // enable (see gameStore) — this stays a plain persisted toggle.
-      const wasmCore = !get().wasmCore;
-      set({ wasmCore });
-      save(persistedOf(get()));
     },
     toggleInspectorOpen: () => set({ inspectorOpen: !get().inspectorOpen }),
     toggleRevealHidden: () => set({ revealHidden: !get().revealHidden }),

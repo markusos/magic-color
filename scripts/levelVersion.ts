@@ -1,36 +1,16 @@
 /**
- * Staleness guard for the baked levels. `currentGeneratorVersion()` hashes the source files that
- * determine what boards the bake produces; the build script stamps this into `levels.data.ts`, and a
- * test (`baked.test.ts`) fails if the committed stamp no longer matches — i.e. someone changed the
- * generator/curve/selection without re-running `npm run build:levels`. Cheap (a hash, no search), so
- * it's safe in CI.
+ * Staleness guard for the baked levels — repointed at the RUST CRATE since Track F5. The bake
+ * lives in `core/` now, so `currentGeneratorVersion()` is the crate-source hash (shared with
+ * the G5 wasm-freshness guard — one hash covers both committed artifacts): the build stamps it
+ * into `levels.data.ts`/`levels.meta.ts`, and `baked.test.ts` fails if the committed stamp no
+ * longer matches — i.e. someone changed the generator/curve/selection (in `core/`) without
+ * re-running `npm run build:levels`. Cheap (a hash, no search), so it's safe in CI.
+ *
+ * The pre-F5 version hashed the JS bake sources; those are test-only oracles now and no
+ * longer determine the committed boards.
  */
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-/** Source files whose contents affect the baked board set. Keep in sync with what the bake reads. */
-const SOURCES = [
-  'src/game/generator.ts',
-  'src/game/progression.ts',
-  'src/game/hidden.ts',
-  'src/game/funnels.ts',
-  'src/game/ice.ts',
-  'src/game/overlays.ts',
-  'src/game/mechanics.ts',
-  'src/game/difficulty.ts',
-  'src/game/search.ts',
-  'src/game/solver.ts',
-  'src/game/engine.ts',
-  'scripts/build-levels.ts',
-  'scripts/build-levels.worker.ts',
-];
+import { currentCoreVersion } from './coreVersion';
 
 export function currentGeneratorVersion(): string {
-  const hash = createHash('sha256');
-  for (const rel of SOURCES) hash.update(readFileSync(join(ROOT, rel)));
-  return hash.digest('hex').slice(0, 16);
+  return currentCoreVersion();
 }

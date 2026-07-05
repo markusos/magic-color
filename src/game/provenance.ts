@@ -10,8 +10,35 @@
  * lazily-fetched chunk — never in the main bundle, and only downloaded once an admin opens the inspector.
  * (Access control is the admin hatch, not the build mode — see `store/settings.ts` `inspector`.)
  */
-import type { Metrics } from './difficulty';
 import type { Difficulty } from './types';
+
+/**
+ * Per-board difficulty measurements — the committed/live provenance schema. This is the
+ * RUNTIME home of the type since Track F5 (the measuring code lives in the Rust core;
+ * `difficulty.ts` is a test-only oracle that re-imports this shape).
+ */
+export interface Metrics {
+  /** Exact hidden-aware optimal player pours, or a proxy upper bound if the A* overflowed. */
+  optimal: number;
+  /** Whether `optimal` is the exact A* result (false ⇒ proxy fallback was used). */
+  optimalExact: boolean;
+  /** 2★ ceiling: the adjusted near-optimal band's upper bound (always `> optimal`). */
+  twoStarMax: number;
+  /** Fraction of solution-path states with ≤1 useful move. Lower ⇒ more choices ⇒ harder. */
+  forcedMoveRatio: number;
+  /** Fraction of random playouts that wander into an unrecoverable state. */
+  deadEndDensity: number;
+  /** Concealment burden (0 for non-hidden boards), size-normalized. */
+  digDepth: number;
+  /** Funnel load (0 for non-funnel boards): fraction of tubes color-locked, per colors. */
+  funnelLoad: number;
+  /** Ice load (0 for non-ice boards): fraction of segments that start frozen. */
+  iceLoad: number;
+  /** Distinct colors on the board (for size normalization). */
+  colors: number;
+  /** Spare tubes (`bottles - colors`) — the slack budget. */
+  empties: number;
+}
 
 /** One baked level's bake-time provenance — mirrors the `Provenance` row written by the bake. */
 export interface LevelProvenance {

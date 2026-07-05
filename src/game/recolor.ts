@@ -10,7 +10,7 @@
  * The remap is drawn from `Math.random` (not the level seed): colors are intentionally NOT
  * reproducible, only the layout is. `random` is injectable so tests can pin the mapping.
  */
-import { PALETTE } from './generator';
+import { PALETTE } from './palette';
 import { recolorOverlays, type OverlaySet } from './mechanics';
 import { colorDistance } from '../theme/colors';
 import type { Color, GameState } from './types';

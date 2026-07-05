@@ -15,20 +15,20 @@ function overlays(state: GameState, over: Partial<OverlaySet> = {}): OverlaySet 
 describe('deriveStatus', () => {
   it('reports a fully-sorted board as won', () => {
     const state = board([['r', 'r', 'r', 'r'], []], 4);
-    expect(deriveStatus(state, overlays(state), new Set())).toBe('won');
+    expect(deriveStatus(state, overlays(state))).toBe('won');
   });
 
   it('is still playing while a concealed cell remains, even if the colors already match', () => {
     const state = board([['r', 'r', 'r', 'r'], []], 4);
     const hidden = [[false, true, false, false], []];
-    expect(deriveStatus(state, overlays(state, { hidden }), new Set())).toBe('playing');
+    expect(deriveStatus(state, overlays(state, { hidden }))).toBe('playing');
   });
 
   it('is still playing while a frozen cell remains', () => {
     const state = board([['r', 'r', 'r', 'r'], []], 4);
     // A floor cell tinted by a trigger color that is NOT yet capped stays frozen.
     const ice = [[color('b'), null, null, null], []];
-    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('playing');
+    expect(deriveStatus(state, overlays(state, { ice }))).toBe('playing');
   });
 
   it('reports a color-sorted board as deadlocked when remaining ice can no longer be thawed', () => {
@@ -37,7 +37,7 @@ describe('deriveStatus', () => {
     // full), so the player is genuinely out of moves — not "still playing".
     const state = board([['r', 'r', 'r', 'r'], ['b', 'b', 'b', 'b']], 4);
     const ice = [[color('g'), color('g'), color('g'), color('g')], []];
-    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('deadlocked');
+    expect(deriveStatus(state, overlays(state, { ice }))).toBe('deadlocked');
   });
 
   it('stays playing when a sorted-but-frozen board still has a move that can free the ice', () => {
@@ -45,7 +45,7 @@ describe('deriveStatus', () => {
     // tube, so the board is not out of moves even though ice keeps it unfinished.
     const state = board([['r', 'r', 'r', 'r'], []], 4);
     const ice = [[color('b'), null, null, null], []];
-    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('playing');
+    expect(deriveStatus(state, overlays(state, { ice }))).toBe('playing');
   });
 
   it('does not count a frozen-topped tube as a source even when its color matches an open tube', () => {
@@ -55,18 +55,27 @@ describe('deriveStatus', () => {
     // full), so the board is genuinely out of moves.
     const state = board([['r', 'r', 'r', 'r'], ['r', 'r']], 4);
     const ice = [[color('g'), color('g'), color('g'), color('g')], []];
-    expect(deriveStatus(state, overlays(state, { ice }), new Set())).toBe('deadlocked');
+    expect(deriveStatus(state, overlays(state, { ice }))).toBe('deadlocked');
   });
 
   it('reports a board with no legal move as deadlocked', () => {
     // Two full tubes of clashing colors, no empty: nothing can be poured anywhere.
     const state = board([['r', 'b', 'r', 'b'], ['b', 'r', 'b', 'r']], 4);
-    expect(deriveStatus(state, overlays(state), new Set())).toBe('deadlocked');
+    expect(deriveStatus(state, overlays(state))).toBe('deadlocked');
   });
 
   it('reports an ordinary mid-game board as playing', () => {
     const state = board([['r', 'b'], ['b', 'r'], []], 4);
-    expect(deriveStatus(state, overlays(state), new Set())).toBe('playing');
+    expect(deriveStatus(state, overlays(state))).toBe('playing');
+  });
+
+  it('reports stuck only when the injected loop check fires', () => {
+    // The check itself lives core-side (see gameStore/wasmStuck); here we just verify the
+    // injection seam: a firing check flips a playable board to stuck, an absent or quiet one
+    // never does.
+    const state = board([['r', 'b'], ['b', 'r'], []], 4);
+    expect(deriveStatus(state, overlays(state), () => true)).toBe('stuck');
+    expect(deriveStatus(state, overlays(state), () => false)).toBe('playing');
   });
 });
 

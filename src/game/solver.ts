@@ -1,7 +1,12 @@
 /**
  * Solver for the color-sort puzzle. Used to (a) verify that a generated level is
  * actually solvable — the hard guarantee behind the generator — and (b) compute a
- * known solution and its step count. The same machinery can later power a "hint" tool.
+ * known solution and its step count.
+ *
+ * **TEST ORACLE since Track F5.** The runtime solves through the Rust core
+ * (`core/src/solver.rs` via `coreWasm.ts`); this JS twin stays only as test infrastructure
+ * and the differential reference. Never import it from runtime code — ESLint enforces it.
+ * Deleted at F6.
  */
 import { isWon, legalMoves, pour, topColor } from './engine';
 import { funnelAccepts } from './funnels';

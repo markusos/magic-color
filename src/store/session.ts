@@ -12,7 +12,6 @@ import { canPour, isWon, pour, topColor } from '../game/engine';
 import { isCapped, knownTopRun, revealExposed, type HiddenGrid } from '../game/hidden';
 import { cappedColors, frozenCells, type IceGrid } from '../game/ice';
 import { acceptsPour, blockedColumns, blocksCompletion, type OverlaySet } from '../game/mechanics';
-import { isStuckInLoop } from '../game/solver';
 import type { GameState, Move } from '../game/types';
 import type { Cue } from '../audio/cues';
 
@@ -40,10 +39,11 @@ function noPlayerMove(state: GameState, blocked: HiddenGrid, overlays: OverlaySe
 
 /**
  * The status of a board: a win, a hard wall (no legal move), a `stuck` loop (moves remain but every
- * reachable board has already been seen — `visited`), or normal play. A board only counts as won once
- * every bottle is sorted AND no mechanic keeps it unfinished (a concealed "?" or a frozen block). The
- * loop check runs full-information, a superset of the player's (cap/conceal-limited) moves, so it can
- * only ever *under*-fire — a player who still has a real move is never told they're stuck.
+ * reachable board has already been visited this attempt — per the injected core-side check), or
+ * normal play. A board only counts as won once every bottle is sorted AND no mechanic keeps it
+ * unfinished (a concealed "?" or a frozen block). The loop check runs full-information, a superset of
+ * the player's (cap/conceal-limited) moves, so it can only ever *under*-fire — a player who still has
+ * a real move is never told they're stuck.
  *
  * `isWon` (pure engine) treats a full single-color tube as complete even when it's frozen, so a board
  * that's sorted by color but still holds ice reads as "won-but-blocked". We must NOT short-circuit such
@@ -55,11 +55,11 @@ function noPlayerMove(state: GameState, blocked: HiddenGrid, overlays: OverlaySe
 export function deriveStatus(
   state: GameState,
   overlays: OverlaySet,
-  visited: ReadonlySet<string>,
   /**
-   * Optional replacement for the JS loop check (Track F3): when the WASM core is active the
-   * store injects a core-side check (visited keys held in the wasm registry) and `visited` is
-   * only the JS fallback's book-keeping. Same contract: `true` ⇒ provably circling.
+   * The stuck-loop check, injected by the store (Track F5): the wasm core holds the visited
+   * registry and answers "is the player provably circling". Omitted (core not ready) ⇒ no
+   * nudge — conservative in the same direction as the check itself, which only ever
+   * under-fires. `true` ⇒ provably circling.
    */
   stuckCheck?: (state: GameState) => boolean,
 ): GameStatus {
@@ -69,10 +69,7 @@ export function deriveStatus(
   if (isWon(state) && !blocksCompletion(overlays, state)) return 'won';
   if (noPlayerMove(state, blocked, overlays)) return 'deadlocked';
   if (isWon(state)) return 'playing'; // sorted but mechanic-blocked, and a thawing/revealing move remains
-  const stuck = stuckCheck
-    ? stuckCheck(state)
-    : isStuckInLoop(state, visited, { funnels: overlays.funnels });
-  if (stuck) return 'stuck';
+  if (stuckCheck?.(state)) return 'stuck';
   return 'playing';
 }
 

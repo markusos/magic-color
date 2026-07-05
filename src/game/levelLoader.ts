@@ -11,16 +11,8 @@
  * Persistence stores only the level number; baked boards load from data, live ones regenerate.
  */
 import type { BakedLevel } from './baked';
-import { coreWasmReady, wasmPickBest } from './coreWasm';
-import { assignSlots, compositeScores, measureMetrics, type MetricOptions } from './difficulty';
-import {
-  buildOverlays,
-  deserializeOverlays,
-  staticOverlays,
-  type OverlaySet,
-} from './mechanics';
-import { DEFAULT_CAPACITY, generateCandidates, generateLevel } from './generator';
-import { cappedSolveMoves } from './hidden';
+import { coreWasmReady, initCoreWasm, wasmPickBest } from './coreWasm';
+import { deserializeOverlays } from './mechanics';
 import { dailySeed } from './daily';
 import {
   balancedDensity,
@@ -35,9 +27,8 @@ import {
   SHAPES,
   targetPercentile,
 } from './progression';
-import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import type { LiveProvenance } from './provenance';
-import { type Difficulty, type GameState, type GeneratedLevel, toColors } from './types';
+import { type Difficulty, type GameState, toColors } from './types';
 
 /**
  * A loaded board. For LIVE boards (random/endless, daily, un-baked tail) it carries the difficulty
@@ -56,116 +47,22 @@ export type LoadedLevel = PlayableLevel & { liveProvenance?: LiveProvenance };
  */
 const { BAKED_LEVELS } = await import('./levels.data');
 
-/**
- * Largest board (in bottles) for which we attempt the exact optimal at load time. Kept to small,
- * STANDARD-height boards (≤8 tubes, capacity ≤ 4): the exact A* stays cheap there, but on bigger
- * boards it costs tens-to-hundreds of ms, and on tall (capacity > 4) boards the deeper search blows
- * up too — so those skip straight to the fast upper bound. (This only affects the live path; baked
- * levels carry an exact `optimal` computed offline.)
- */
-const EXACT_OPTIMAL_MAX_BOTTLES = 8;
+// Live generation runs in the Rust core (Track F5 — the JS generator/solver are test-only
+// oracles now), so instantiate the wasm before any `getLevel` can need it. Module evaluation
+// already awaits the baked-data import above, so this adds one small parallel-ish await to
+// boot. In tests the setup file has already `initCoreWasmSync`'d, making this a no-op; if it
+// ever genuinely fails (blocked fetch), baked levels still load and the live path throws a
+// clear error instead of silently degrading.
+await initCoreWasm();
 
 /**
- * The live level's star reference (achievable near-optimal player pours). For small standard-height
- * boards we compute the EXACT hidden-aware minimum via A*. Bigger or taller boards are expensive
- * (NP-hard, worse under concealment) and would stall the load, so we use a fast, safe upper bound:
- * the stored solution replayed under the capped/reveal rules.
+ * A single playable board for a campaign level, uncached (tests exercise per-chapter
+ * generation with this; the app path is `getLevel`, which memoizes). Since F5 this runs the
+ * core's pick loop like every other live board — the old JS "light path" went with the JS
+ * generator.
  */
-function optimalFor(generated: GeneratedLevel, overlays: OverlaySet): number {
-  const { state, solution, bottles, capacity } = generated;
-  if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
-    const exact = optimalCappedMoves(state, overlays.hidden, undefined, staticOverlays(overlays));
-    if (exact !== null) return exact;
-  }
-  // The stored solution is funnel- and ice-legal by construction, so it's still a valid upper bound.
-  return cappedSolveMoves(state, solution, overlays.hidden);
-}
-
-/**
- * The live level's star cutoffs (3★ `optimal`, 2★ `twoStarMax`). On small standard-height boards the
- * tier sweep is cheap and yields the adjusted near-optimal band; on bigger/taller boards (where the
- * sweep would stall the load) we fall back to the proxy optimal with a `+2` band — matching how the
- * bake degrades on the few boards its own exact search can't crack.
- */
-function cutoffsFor(
-  generated: GeneratedLevel,
-  overlays: OverlaySet,
-): { optimal: number; twoStarMax: number } {
-  const { state, bottles, capacity } = generated;
-  const optimal = optimalFor(generated, overlays);
-  if (bottles <= EXACT_OPTIMAL_MAX_BOTTLES && capacity <= DEFAULT_CAPACITY) {
-    const tiers = nearOptimalCutoffs(state, overlays.hidden, undefined, staticOverlays(overlays));
-    if (tiers && tiers.optimal === optimal) return tiers;
-  }
-  return { optimal, twoStarMax: optimal + 2 };
-}
-
-/**
- * The initial overlay set for a generated board: each active mechanic built from the stored solution
- * (so the board stays solvable by construction), all-clear for mechanics this chapter doesn't use. See
- * {@link buildOverlays} — a new mechanic plugs in via the registry, with no change here.
- */
-function overlaysFor(plan: LevelPlan, generated: GeneratedLevel): OverlaySet {
-  return buildOverlays(plan.mechanics, {
-    state: generated.state,
-    solution: generated.solution,
-    seed: plan.seed,
-    density: plan.density,
-  });
-}
-
-/** Wrap a generated board + its overlay set as a campaign-annotated `LoadedLevel`. */
-function toPlayable(
-  level: number,
-  plan: LevelPlan,
-  generated: GeneratedLevel,
-  overlays: OverlaySet,
-  liveProvenance?: LiveProvenance,
-): LoadedLevel {
-  const { optimal, twoStarMax } = cutoffsFor(generated, overlays);
-  return {
-    ...generated,
-    level,
-    chapter: plan.chapter,
-    phase: plan.phase,
-    mechanics: plan.mechanics,
-    hidden: overlays.hidden,
-    funnels: overlays.funnels,
-    ice: overlays.ice,
-    optimal,
-    twoStarMax,
-    liveProvenance,
-  };
-}
-
-/**
- * Generate a single playable board from a `plan` (the LIGHT path): accept the first board over the par
- * floor. Robust to the (rare) seed that fails to yield a solvable board — it bumps the salt and
- * retries. Backs `generateForLevel` and is the fallback for the pooled quality path.
- */
-function generateFromPlan(level: number, plan: LevelPlan): LoadedLevel {
-  for (let salt = 0; salt < 8; salt++) {
-    try {
-      const generated = generateLevel({
-        colors: plan.colors,
-        bottles: plan.bottles,
-        capacity: plan.capacity,
-        seed: salt === 0 ? plan.seed : seedForLevel(level, salt),
-        minPar: plan.minPar,
-        parMode: plan.parMode,
-      });
-      return toPlayable(level, plan, generated, overlaysFor(plan, generated));
-    } catch {
-      // Extremely unlikely; try a different seed for this same plan.
-    }
-  }
-
-  throw new Error(`Failed to generate level ${level} after salting`);
-}
-
-/** The light single-board generator for a campaign level. Used by tests and the bake fallback. */
 export function generateForLevel(level: number): LoadedLevel {
-  return generateFromPlan(level, planForLevel(level));
+  return pickBest(level, planForLevel(level), targetPercentile(level));
 }
 
 /**
@@ -215,51 +112,30 @@ export function resetLiveGenerator(): void {
   dailyCache.clear();
 }
 
-/**
- * Track F3: whether live generation routes through the Rust core. Set by the store layer from
- * the admin `wasmCore` flag (injected rather than read here, so `game/` never imports
- * `store/`). The JS path below remains the fallback whenever the core can't serve a pick.
- */
-let liveCoreEnabled = false;
-export function setLiveCoreEnabled(on: boolean): void {
-  liveCoreEnabled = on;
-  // A/B hygiene: dump memoized boards picked by the other core. (With full parity the boards
-  // are identical anyway, but a stale mixed cache would muddy any divergence investigation.)
-  liveCache.clear();
-  dailyCache.clear();
+/** What the last board load did — the E9 diagnostics readout's payload. */
+export interface LoadDiagnostics {
+  /** Which board: `L245`, `daily 2026-07-04`, `random 7`. */
+  label: string;
+  /** Committed data vs the core's live generator (cache hits count as live — same path). */
+  source: 'baked' | 'live';
+  ms: number;
 }
 
-/** Coarse scoring: proxy optimal (no A*) and no dead-end sampling, to scan the big pool cheaply. */
-const CHEAP_METRICS: MetricOptions = { optimalNodeBudget: 0, tierNodeBudget: 0, deadEndSamples: 0 };
-/**
- * Fine scoring for the current budget: dead-end-density sampling on the finalists only. We deliberately
- * keep the proxy optimal (`optimalNodeBudget: 0`) rather than the exact A* — the A* is 40–65× more
- * expensive and *explodes* on the hidden 10-tube boards the random mode produces, whereas dead-end
- * sampling is ~2 ms/board regardless of concealment and is the heaviest-weighted term in the scorer.
- */
-function fineMetrics(): MetricOptions {
-  return {
-    optimalNodeBudget: 0,
-    tierNodeBudget: 0,
-    deadEndSamples: liveConfig.fineDeadEndSamples,
-    deadEndNodeBudget: 12_000,
-  };
+let lastLoad: LoadDiagnostics | null = null;
+const recordLoad = (label: string, source: LoadDiagnostics['source'], started: number): void => {
+  lastLoad = { label, source, ms: Math.round(performance.now() - started) };
+};
+
+/** Snapshot for the admin diagnostics readout (Track E9): last load + cache sizes + budget. */
+export function loadDiagnostics(): {
+  last: LoadDiagnostics | null;
+  liveCacheSize: number;
+  dailyCacheSize: number;
+  config: LiveGenConfig;
+} {
+  return { last: lastLoad, liveCacheSize: liveCache.size, dailyCacheSize: dailyCache.size, config: liveConfig };
 }
 
-/** Score at percentile `p` of `scores` (mirrors `difficulty.quantile`, which isn't exported). */
-function percentileScore(scores: number[], p: number): number {
-  if (scores.length === 0) return 0;
-  const sorted = [...scores].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))]!;
-}
-
-/**
- * Coarse-to-fine best-of-N: sample a big pool from `plan`, cheaply rank it to the few finalists
- * nearest the curve `target`, then re-score those finalists with the heavier dead-end signal and pick
- * the best fit (the same scorer the offline bake uses, but with the exact-optimal A* swapped for the
- * proxy — too slow/explosive for a per-load budget). Falls back to the light generator if the pool
- * ever comes up empty.
- */
 /**
  * The shape family for a plan's footprint. Live boards carry no committed family, but every live plan's
  * footprint comes from a {@link SHAPES} entry, so we recover it by matching colors/bottles/capacity
@@ -272,89 +148,47 @@ function familyForPlan(plan: LevelPlan): string {
   return shape?.family ?? 'live';
 }
 
+/**
+ * Coarse-to-fine best-of-N, run entirely in the Rust core (Track F5 — the JS twin of this
+ * loop was retired with the rest of the JS solver): sample a pool from `plan`, cheap-score it
+ * to the finalists nearest the curve `target`, re-score those with dead-end sampling, pick
+ * the best fit, and return it with its star cutoffs and provenance. The budget (`liveConfig`)
+ * stays a JS-side knob passed through the boundary.
+ */
 function pickBest(level: number, plan: LevelPlan, target: number): LoadedLevel {
-  // Track F3: the whole coarse-to-fine loop runs core-side when the wasm is active. Bit-parity
-  // with the JS path below is asserted by `coreLive.test.ts`; `null` (core not ready / pools
-  // empty) falls through to the JS implementation.
-  if (liveCoreEnabled && coreWasmReady()) {
-    const picked = wasmPickBest(plan, target, liveConfig);
-    if (picked) {
-      return {
-        state: picked.state,
-        colors: plan.colors,
-        bottles: plan.bottles,
-        capacity: plan.capacity,
-        solution: picked.solution,
-        minMoves: picked.minMoves,
-        par: picked.par,
-        seed: picked.seed,
-        level,
-        chapter: plan.chapter,
-        phase: plan.phase,
-        mechanics: plan.mechanics,
-        hidden: picked.hidden,
-        funnels: picked.funnels,
-        ice: picked.ice,
-        optimal: picked.optimal,
-        twoStarMax: picked.twoStarMax,
-        liveProvenance: {
-          score: picked.score,
-          targetPercentile: target,
-          family: familyForPlan(plan),
-          metrics: picked.metrics,
-        },
-      };
-    }
+  const picked = wasmPickBest(plan, target, liveConfig);
+  if (!picked) {
+    // Only two ways here: the wasm never initialized (blocked fetch — baked levels still
+    // work), or every salted pool came up empty (practically impossible for the SHAPES menu).
+    throw new Error(
+      `live generation failed for level ${level} (core ${coreWasmReady() ? 'ready' : 'unavailable'})`,
+    );
   }
-  for (let salt = 0; salt < 8; salt++) {
-    const candidates = generateCandidates(
-      {
-        colors: plan.colors,
-        bottles: plan.bottles,
-        capacity: plan.capacity,
-        seed: salt === 0 ? plan.seed : seedForLevel(level, salt),
-      },
-      liveConfig.poolSize,
-    );
-    if (candidates.length === 0) continue;
-
-    const built = candidates.map((g) => ({ g, overlays: overlaysFor(plan, g) }));
-
-    // Coarse pass: cheap-score the whole pool and keep the finalists nearest the curve target —
-    // narrowing hundreds of boards to a handful at roughly the right difficulty.
-    const coarse = compositeScores(
-      built.map(({ g, overlays }) =>
-        measureMetrics(g.state, overlays.hidden, g.solution, CHEAP_METRICS, staticOverlays(overlays)),
-      ),
-    );
-    const coarseTarget = percentileScore(coarse, target);
-    const finalists = built
-      .map((b, i) => ({ b, dist: Math.abs(coarse[i]! - coarseTarget) }))
-      .sort((a, b) => a.dist - b.dist)
-      .slice(0, Math.min(liveConfig.finalists, built.length))
-      .map((x) => x.b);
-
-    // Fine pass: re-score the finalists with dead-end sampling (the strongest signal, absent above)
-    // and pick the best fit on the curve.
-    const fineOpts = fineMetrics();
-    const fineMeasured = finalists.map(({ g, overlays }) =>
-      measureMetrics(g.state, overlays.hidden, g.solution, fineOpts, staticOverlays(overlays)),
-    );
-    const fine = compositeScores(fineMeasured);
-    const idx = assignSlots(fine.map((score) => ({ score, family: 'live' })), [target])[0]!;
-    const chosen = finalists[idx]!;
-    // Retain the chosen board's measurements for the inspector (we computed them anyway). Approximate:
-    // proxy optimal + pool-relative score — see {@link LiveProvenance}.
-    const liveProvenance: LiveProvenance = {
-      score: fine[idx]!,
+  return {
+    state: picked.state,
+    colors: plan.colors,
+    bottles: plan.bottles,
+    capacity: plan.capacity,
+    solution: picked.solution,
+    minMoves: picked.minMoves,
+    par: picked.par,
+    seed: picked.seed,
+    level,
+    chapter: plan.chapter,
+    phase: plan.phase,
+    mechanics: plan.mechanics,
+    hidden: picked.hidden,
+    funnels: picked.funnels,
+    ice: picked.ice,
+    optimal: picked.optimal,
+    twoStarMax: picked.twoStarMax,
+    liveProvenance: {
+      score: picked.score,
       targetPercentile: target,
       family: familyForPlan(plan),
-      metrics: fineMeasured[idx]!,
-    };
-    return toPlayable(level, plan, chosen.g, chosen.overlays, liveProvenance);
-  }
-
-  return generateFromPlan(level, plan); // pool kept failing — fall back to the light generator
+      metrics: picked.metrics,
+    },
+  };
 }
 
 /**
@@ -430,7 +264,10 @@ export function generateRandomLevel(seed: number): LoadedLevel {
     mechanics,
     density: balancedDensity(),
   };
-  return pickBest(0, plan, target);
+  const started = performance.now();
+  const result = pickBest(0, plan, target);
+  recordLoad(`random ${seed}`, 'live', started);
+  return result;
 }
 
 /**
@@ -478,8 +315,10 @@ export function generateDailyLevel(key: string): LoadedLevel {
     mechanics: mechanicsForLevel(CAMPAIGN_LENGTH), // full set — a daily showcases every mechanic
     density: balancedDensity(),
   };
+  const started = performance.now();
   const result = pickBest(0, plan, target);
   dailyCache.set(key, result);
+  recordLoad(`daily ${key}`, 'live', started);
   return result;
 }
 
@@ -532,6 +371,9 @@ function bakedToPlayable(baked: BakedLevel): PlayableLevel {
  * store defers it behind a loading flag). Prefer this over `generateForLevel` in app code.
  */
 export function getLevel(level: number): LoadedLevel {
+  const started = performance.now();
   const baked = BAKED_BY_LEVEL.get(level);
-  return baked ? bakedToPlayable(baked) : generateBestLevel(level);
+  const loaded = baked ? bakedToPlayable(baked) : generateBestLevel(level);
+  recordLoad(`L${level}`, baked ? 'baked' : 'live', started);
+  return loaded;
 }

@@ -16,9 +16,15 @@
  * while there's still somewhere new to explore — only once they're looping with nowhere to go.
  */
 import { create } from 'zustand';
-import { canonical } from '../game/solver';
+import {
+  coreWasmReady,
+  initCoreWasm,
+  wasmHintMove,
+  wasmStuck,
+  type HintMove,
+} from '../game/coreWasm';
 import { topRunLength } from '../game/engine';
-import { DEFAULT_CAPACITY } from '../game/generator';
+import { DEFAULT_CAPACITY } from '../game/palette';
 import {
   BAKED_LEVEL_COUNT,
   generateDailyLevel,
@@ -27,7 +33,6 @@ import {
   hasBakedLevel,
   type LoadedLevel,
   resetLiveGenerator,
-  setLiveCoreEnabled,
 } from '../game/levelLoader';
 import type { LiveProvenance } from '../game/provenance';
 import { type DailyRecord, todayKey } from '../game/daily';
@@ -39,8 +44,6 @@ import { type OverlaySet } from '../game/mechanics';
 import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
-import { hintMove, type HintMove } from '../game/search';
-import { coreWasmReady, initCoreWasm, wasmStuck } from '../game/coreWasm';
 import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
 import type { Color, Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
@@ -66,12 +69,8 @@ interface GameStore {
   moves: Move[];
   /** Undos used this attempt. Counts toward the star metric (`moves.length + undos`) — undoing costs rating. */
   undos: number;
-  /**
-   * Canonical keys of every board seen this attempt, kept monotonically across undo (so re-treading
-   * a branch still reads as circling) and reset only on a fresh board / restart. Drives the `stuck`
-   * "going in circles" detection. Not React-reactive — read only inside the store.
-   */
-  visited: Set<string>;
+  // (The per-attempt visited set lives CORE-SIDE since F5 — see `wasmStuck` — kept
+  // monotonically across undo and reset only on a fresh board / restart.)
   /** The board the level started from, for Restart. */
   initial: GameState;
   /** Concealment overlay for the live board (hidden-colors mechanic; all-false otherwise). */
@@ -289,45 +288,29 @@ function forcePour(state: GameState, from: number, to: number): { state: GameSta
 }
 
 /**
- * Lazily-created, reused worker that runs the hint A* off the main thread. Created on first hint so
- * boot stays light, and kept alive for subsequent hints. Returns null when the platform has no
- * `Worker` (jsdom/tests) or construction throws, so the store can fall back to a synchronous solve.
- *
- * Track F3: two twin workers share the request/response contract — the JS solver
- * (`hintWorker.ts`) and the Rust core (`coreHintWorker.ts`) — selected by the admin `wasmCore`
- * flag. Toggling the flag swaps the worker on the next request (the old one is terminated), so
- * the A/B needs no reload.
+ * Lazily-created, reused worker that runs the hint A* off the main thread (`coreHintWorker` —
+ * the Rust core; the JS twin was deleted at F5). Created on first hint so boot stays light,
+ * and kept alive for subsequent hints. Returns null when the platform has no `Worker`
+ * (jsdom/tests) or construction throws, so the store falls back to a synchronous main-thread
+ * wasm solve.
  */
 let hintWorker: Worker | null = null;
-let hintWorkerIsWasm = false;
 const getHintWorker = (): Worker | null => {
-  const wantWasm = useSettings.getState().wasmCore;
-  if (hintWorker && hintWorkerIsWasm === wantWasm) return hintWorker;
-  hintWorker?.terminate();
-  hintWorker = null;
+  if (hintWorker) return hintWorker;
   if (typeof Worker === 'undefined') return null;
   try {
-    hintWorker = wantWasm
-      ? new Worker(new URL('../game/coreHintWorker.ts', import.meta.url), { type: 'module' })
-      : new Worker(new URL('../game/hintWorker.ts', import.meta.url), { type: 'module' });
-    hintWorkerIsWasm = wantWasm;
+    hintWorker = new Worker(new URL('../game/coreHintWorker.ts', import.meta.url), { type: 'module' });
   } catch {
     hintWorker = null;
   }
   return hintWorker;
 };
 
-/**
- * Initialize the main-thread wasm instance whenever the flag is (or becomes) enabled — the
- * stuck-loop check calls it synchronously, so it must be instantiated ahead of need. Until it
- * resolves, every wasm entry point reports "not ready" and the JS path serves.
- */
-if (useSettings.getState().wasmCore) void initCoreWasm();
-setLiveCoreEnabled(useSettings.getState().wasmCore);
-useSettings.subscribe((s, prev) => {
-  if (s.wasmCore !== prev.wasmCore) setLiveCoreEnabled(s.wasmCore);
-  if (s.wasmCore && !prev.wasmCore) void initCoreWasm();
-});
+// Initialize the main-thread wasm instance at boot: the stuck-loop check and the no-worker
+// hint fallback call it synchronously, so it must be instantiated ahead of need. `typeof
+// Worker` is the real-browser sentinel — jsdom/tests have no Worker and no wasm fetch either;
+// they init explicitly via `initCoreWasmSync` (see src/test/setup.ts).
+if (typeof Worker !== 'undefined') void initCoreWasm();
 
 export const useGameStore = create<GameStore>((set, get) => {
   // The persisted campaign — the sole owner of progress + localStorage.
@@ -369,17 +352,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     const hidden = extra.hidden ?? get().hidden;
     const funnels = extra.funnels ?? get().funnels;
     const ice = extra.ice ?? get().ice;
-    const visited = extra.visited ?? get().visited;
-    // Track F3: mirror every committed board into the wasm core's visited registry (no-op
-    // until the module is ready; inserts are idempotent, so undo targets are fine). The JS
-    // `visited` Set stays maintained in parallel as the fallback, so the A/B flag can flip
-    // mid-attempt without losing state.
+    // Record every committed board into the core's visited registry (no-op until the wasm is
+    // ready; inserts are idempotent, so undo targets are fine), then derive status with the
+    // core-side stuck check. Before the wasm is ready there is no check — the nudge simply
+    // stays quiet, which is the conservative direction.
     wasmStuck.visit(current);
-    const stuckCheck =
-      useSettings.getState().wasmCore && coreWasmReady()
-        ? (s: GameState) => wasmStuck.check(s, funnels, STUCK_NODE_BUDGET) ?? false
-        : undefined;
-    const status = deriveStatus(current, { hidden, funnels, ice }, visited, stuckCheck);
+    const stuckCheck = coreWasmReady()
+      ? (s: GameState) => wasmStuck.check(s, funnels, STUCK_NODE_BUDGET) ?? false
+      : undefined;
+    const status = deriveStatus(current, { hidden, funnels, ice }, stuckCheck);
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -416,7 +397,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   /**
    * The reset fields shared by every "install a freshly generated board" path (`applyLevel`,
    * `applyRandom`): clear the in-progress attempt (history / moves / undos / selection, and re-seed
-   * `visited`), install the recolored `board`/`funnels` alongside the canonical `initial`/`initial*`
+   * the core-side visited registry), install the recolored `board`/`funnels` alongside the canonical `initial`/`initial*`
    * (kept generator-canonical so Restart re-rolls the hues), carry the board's level metadata, clear
    * `loading`, and bump the remount nonce. The mode-specific fields (campaign records vs. the endless
    * reset) are spread on top by each caller.
@@ -426,7 +407,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     board: GameState,
     display: OverlaySet,
   ): Partial<GameStore> => {
-    wasmStuck.reset(board); // Track F3: re-seed the core-side visited registry with the new board
+    wasmStuck.reset(board); // re-seed the core-side visited registry with the new board
     return {
       initial: generated.state,
       hidden: display.hidden,
@@ -439,7 +420,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       history: [],
       moves: [],
       undos: 0,
-      visited: new Set([canonical(board)]),
       selected: null,
       hint: null,
       hintUsed: false,
@@ -620,7 +600,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   const firstDisplay: OverlaySet = firstRecolored?.overlays ?? { hidden: [], funnels: [], ice: [] };
   const firstInitialFunnels: FunnelGrid = first?.funnels ?? [];
   const firstInitialIce: IceGrid = first?.ice ?? [];
-  const firstVisited = new Set<string>([canonical(firstBoard)]);
+  wasmStuck.reset(firstBoard); // seed the core-side visited registry with the resume board
   if (!startBaked) deferAfterPaint(() => applyLevel(startLevel));
 
   return {
@@ -636,7 +616,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     history: [],
     moves: [],
     undos: 0,
-    visited: firstVisited,
     selected: null,
     hint: null,
     hintUsed: false,
@@ -645,7 +624,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     autoSolving: false,
     autoSolveNotice: null,
     boardNonce: 0,
-    status: first ? deriveStatus(firstBoard, firstDisplay, firstVisited) : 'playing',
+    status: first ? deriveStatus(firstBoard, firstDisplay) : 'playing',
     loading: !startBaked,
     level: startLevel,
     phase: first?.phase ?? phaseForLevel(startLevel),
@@ -725,7 +704,6 @@ export const useGameStore = create<GameStore>((set, get) => {
           hiddenHistory: [...get().hiddenHistory, hidden],
           hidden: revealExposed(fp.state, hidden),
           moves: [...get().moves, fp.move],
-          visited: new Set(get().visited).add(canonical(fp.state)),
           selected: null,
           hint: null,
         });
@@ -746,13 +724,11 @@ export const useGameStore = create<GameStore>((set, get) => {
           set({ selected: null, hint: null });
           break;
         case 'pour': {
-          const visited = new Set(get().visited).add(canonical(plan.next));
           commit(plan.next, {
             history: [...get().history, current],
             hiddenHistory: [...get().hiddenHistory, hidden],
             hidden: plan.revealedHidden,
             moves: [...get().moves, plan.move],
-            visited,
             selected: null,
             hint: null,
           });
@@ -803,6 +779,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         ice: get().initialIce,
       });
       const { board, overlays } = recolorBoard(shuffled.state, shuffled.overlays);
+      wasmStuck.reset(board); // restart = a fresh attempt: re-seed the visited registry
       commit(board, {
         history: [],
         hiddenHistory: [],
@@ -811,7 +788,6 @@ export const useGameStore = create<GameStore>((set, get) => {
         ice: overlays.ice,
         moves: [],
         undos: 0,
-        visited: new Set([canonical(board)]),
         selected: null,
         hint: null,
         hintUsed: false,
@@ -867,14 +843,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       if (worker) {
         worker.onmessage = (e: MessageEvent<HintMove | null>) => finish(e.data);
         worker.onerror = () => {
-          // Worker failed to load/run — fall back to a synchronous solve so the hint still works.
-          finish(hintMove(current, hidden, overlays, HINT_NODE_BUDGET));
+          // Worker failed to load/run — fall back to a synchronous main-thread wasm solve.
+          finish(wasmHintMove(current, hidden, overlays, HINT_NODE_BUDGET));
         };
         worker.postMessage({ state: current, hidden, overlays, maxNodes: HINT_NODE_BUDGET });
       } else {
-        // No worker (e.g. jsdom/tests): solve inline. The spinner timer is cancelled by `finish`
-        // before it can fire, so this stays a synchronous, spinner-free hint.
-        finish(hintMove(current, hidden, overlays, HINT_NODE_BUDGET));
+        // No worker (e.g. jsdom/tests): solve inline through the main-thread wasm. The spinner
+        // timer is cancelled by `finish` before it can fire, so this stays synchronous.
+        finish(wasmHintMove(current, hidden, overlays, HINT_NODE_BUDGET));
       }
     },
 
@@ -923,7 +899,6 @@ export const useGameStore = create<GameStore>((set, get) => {
           hiddenHistory: [...get().hiddenHistory, hidden],
           hidden: plan.revealedHidden,
           moves: [...get().moves, plan.move],
-          visited: new Set(get().visited).add(canonical(plan.next)),
           selected: null,
           hint: null,
         });
@@ -974,10 +949,10 @@ export const useGameStore = create<GameStore>((set, get) => {
         const worker = getHintWorker();
         if (worker) {
           worker.onmessage = (e: MessageEvent<HintMove | null>) => done(e.data);
-          worker.onerror = () => done(hintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
+          worker.onerror = () => done(wasmHintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
           worker.postMessage({ state: current, hidden, overlays, maxNodes: AUTO_SOLVE_NODE_BUDGET });
         } else {
-          done(hintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
+          done(wasmHintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
         }
       };
 

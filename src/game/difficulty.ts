@@ -8,16 +8,24 @@
  * more moves), so ranking by it just recreates a tube-count ladder. The score blends mostly
  * size-independent signals so a tricky 5-tube board can outrank a sprawling 15-tube one (see
  * PLAN.md, "Revised model v2").
+ *
+ * **TEST ORACLE since Track F5.** The runtime measures/scores through the Rust core
+ * (`core/src/difficulty.rs`); this JS twin stays only for tests and `emit-vectors.ts`.
+ * The `Metrics` shape's runtime home is `provenance.ts` (re-exported here for the tests).
+ * Never import this from runtime code — ESLint enforces it. Deleted at F6.
  */
 import { isWon, pour } from './engine';
 import { funnelLoad as funnelLoadOf } from './funnels';
 import { iceLoad as iceLoadOf } from './ice';
 import { cappedSolveMoves, type HiddenGrid } from './hidden';
 import type { Overlays } from './overlays';
+import type { Metrics } from './provenance';
 import { mulberry32 } from './rng';
 import { nearOptimalCutoffs, optimalCappedMoves } from './search';
 import { isUnsolvable, usefulMoves } from './solver';
 import type { GameState, Move } from './types';
+
+export type { Metrics };
 
 /**
  * Offline node budget for the exact-optimal A*. Far above the runtime's 12k cap (we're not on a
@@ -25,30 +33,6 @@ import type { GameState, Move } from './types';
  * exactly.
  */
 export const OPTIMAL_NODE_BUDGET = 200_000;
-
-/** Per-candidate difficulty measurements. */
-export interface Metrics {
-  /** Exact hidden-aware optimal player pours, or a proxy upper bound if the A* overflowed. */
-  optimal: number;
-  /** Whether `optimal` is the exact A* result (false ⇒ proxy fallback was used). */
-  optimalExact: boolean;
-  /** 2★ ceiling: the adjusted near-optimal band's upper bound (always `> optimal`). See `stars.ts`. */
-  twoStarMax: number;
-  /** Fraction of solution-path states with ≤1 useful move. Lower ⇒ more choices ⇒ harder. */
-  forcedMoveRatio: number;
-  /** Fraction of random playouts that wander into an unrecoverable state. Higher ⇒ more punishing. */
-  deadEndDensity: number;
-  /** Concealment burden (0 for non-hidden boards): how buried the "?"s are, size-normalized. */
-  digDepth: number;
-  /** Funnel load (0 for non-funnel boards): fraction of tubes color-locked, normalized by colors. */
-  funnelLoad: number;
-  /** Ice load (0 for non-ice boards): fraction of segments that start frozen. */
-  iceLoad: number;
-  /** Distinct colors on the board (for size normalization). */
-  colors: number;
-  /** Spare tubes (`bottles - colors`) — the slack budget (for the tightness term). */
-  empties: number;
-}
 
 export interface MetricOptions {
   /** Node budget for the exact-optimal A*. */
