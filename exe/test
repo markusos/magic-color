@@ -1,16 +1,15 @@
 #!/bin/bash
-# The Track F release gate (PLAN.md "Drift defense"). One script, PASS/FAIL per check,
-# nonzero exit on any failure — run before every deploy (or as a pre-push hook).
+# The release gate (PLAN.md "Drift defense"), post-F6. The gameplay rules now live ONLY in the
+# Rust core, so the cross-language drift checks retired: G2 (Rust→JS conformance trace) is gone,
+# and G3/G4 became a native core SELF-CHECK of the emitted artifacts (they no longer replay under
+# a second "JS rules" implementation, because there isn't one). What remains:
 #
-#   G1  shared-vector conformance   cargo vector tests + the vitest pinning tests
-#   G2  Rust→JS conformance trace   `trace` emits, scripts/verify-trace.ts replays
-#   G3  golden winning-line replay  scripts/verify-bake.ts (exact-optimal wins in JS)
-#   G4  committed-level statics     scripts/verify-bake.ts (degenerate/presence/bounds)
-#   G5  artifact freshness          committed .wasm crate-hash guard (coreVersion.test.ts)
+#   G1  vector conformance   cargo suites (rng + solver + difficulty vectors) + vitest rng pinning
+#   G3  golden winning-line  core `verify` bin: each optimal line wins in exactly `optimal`
+#   G4  committed statics    core `verify` bin: no degenerate, presence, bounds, round-trip, dedupe
+#   G5  artifact freshness   committed .wasm crate-hash guard + adapter/live differentials (vitest)
 #
-# Usage: exe/test [bake-out-dir]
-#   bake-out-dir  a `bake --out` directory (default ./bake-out). If absent, the bake-artifact
-#   checks (G2–G4) are skipped with a warning — G1 always runs.
+# Runs in seconds; nonzero exit on any failure. Usage: exe/test [bake-out-dir] (default ./bake-out).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -29,7 +28,7 @@ check() { # check <name> <command...>
   fi
 }
 
-echo "== Track F release gate =="
+echo "== release gate =="
 
 check "G1 rust vectors (rng + solver + difficulty)" \
   cargo test --release --test rng_vectors --test conformance --test difficulty_vectors
@@ -39,13 +38,9 @@ check "G5 committed wasm freshness + adapter/live differential" \
   npx vitest run src/game/coreVersion.test.ts src/game/coreWasm.test.ts src/game/coreLive.test.ts
 
 if [ -d "$BAKE_DIR" ] && [ -f "$BAKE_DIR/levels.json" ]; then
-  check "G2 trace emit ($BAKE_DIR)" \
-    ./target/release/trace --levels "$BAKE_DIR/levels.json" --golden "$BAKE_DIR/golden-lines.json" \
-      --out "$BAKE_DIR/trace.json"
-  check "G2 trace replay under JS rules" npx tsx scripts/verify-trace.ts "$BAKE_DIR/trace.json"
-  check "G3+G4 golden lines + statics under JS rules" npx tsx scripts/verify-bake.ts "$BAKE_DIR"
+  check "G3+G4 golden lines + statics (core verify)" ./target/release/verify "$BAKE_DIR"
 else
-  echo "SKIP  G2-G4 (no bake artifacts at $BAKE_DIR — run: cargo build --release && ./target/release/bake --out $BAKE_DIR)"
+  echo "SKIP  G3-G4 (no bake artifacts at $BAKE_DIR — run: cargo build --release && ./target/release/bake --out $BAKE_DIR)"
 fi
 
 rm -f /tmp/exe-test-$$.log

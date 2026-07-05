@@ -235,18 +235,33 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
   `src/game/` internals — only erased type imports.** Test fixtures canonicalize shorthand ids to real
   palette ids (the boundary encodes palette indices); the one non-palette-trigger test trick was
   reworked via `undo`. Verified: 325 tests, gate G1–G5 PASS, prod build, in-browser pour/select/
-  target-highlight through the core with a clean console. **Remaining for F6:** trim the now-dead
-  interaction half of `mechanics.ts`, demote/delete `engine.ts` + the mechanic modules' rule reads
-  (their types/serialize/permute/recolor halves stay), move G3/G4 into a Rust `verify` bin, and shrink
-  `exe/test` to the retired-gate shape (Rust suites + rng pinning + adapter differentials + G5).
+  target-highlight through the core with a clean console.
+  **F6 COMPLETE 2026-07-05 — the drift gate is retired; TRACK F IS DONE.** `mechanics.ts` trimmed to
+  the DISPLAY half only (a slim `{get,put,empty,permute,recolor,deserialize}` registry driving
+  `emptyOverlays`/`permuteOverlays`/`recolorOverlays`/`deserializeOverlays`); the interaction methods +
+  `blockedColumns`/`acceptsPour`/`blocksCompletion` + the build/serialize/presence/static machinery are
+  gone (zero callers). **G2 RETIRED** (no second implementation to trace against): deleted the `trace`
+  bin + `verify-trace.ts`. **G3/G4 went native**: `core/src/bin/verify.rs` replays each committed golden
+  line through the core's own `plan_tap` (win at exactly `optimal`) + static checks (degenerate/presence/
+  bounds/round-trip/dedupe), replacing `verify-bake.ts` — same coverage (240 levels, 203 lines, 37 proxy
+  skipped), now a core self-check. `exe/test` shrunk to **G1 (vectors) + G3/G4 (core verify) + G5
+  (freshness + differentials)**. Main bundle 361.8 → 356.1 kB. The mechanic modules keep their compute/
+  rule fns as test-only oracles (their OverlaySet transforms — `recolorFunnels`/`recolorIce`/grid
+  shapers — stay runtime). Verified: full gate PASS, 325 tests, lint/tsc, prod build, in-browser
+  ice-chapter board rendering 6 frozen cells from the core `viewOf`.
 
 ### Drift defense — the `exe/test` release gate
-> The one real hazard is **rule drift**: after cutover the same rules live in both the Rust core (solving +
-> generation) and the JS gameplay engine, and a later edit to one side could silently diverge — a
-> WASM-generated board unsolvable, or a committed `optimal` unreachable, under JS rules. **Initial** drift
-> (port bug) is easy; **regression** drift (a months-later edit) is the danger, so the defense is a
-> permanent local gate, not a one-time harness. *(Permanent until **F6**: once the gameplay rules also
-> move into the core, the dual-implementation window closes — the gate holds F1→F6, then G1/G2 retire.)*
+> **RESOLVED at F6 (2026-07-05): the drift hazard is gone — the rules live in exactly ONE place (the
+> Rust core), so there is no second implementation to drift from.** The gate below served F1→F6 while
+> both the core and the JS engine held rules; the cross-language legs (**G2** Rust→JS trace, and the
+> JS-replay of **G3/G4**) retired with the JS engine. What survives is regression coverage, not drift
+> defense: **G1** vector conformance (rng + solver/difficulty vectors pin the core against its own
+> regressions), **G3/G4** as a native `verify` self-check of the committed artifacts, and **G5**
+> artifact freshness. The historical design is kept below for context.
+>
+> The one hazard *was* **rule drift**: after cutover the same rules lived in both the Rust core and the
+> JS gameplay engine, and a later edit to one side could silently diverge — a WASM-generated board
+> unsolvable, or a committed `optimal` unreachable, under JS rules.
 
 **Strategy: Rust generates the evidence, JS validates it cheaply.** The Rust solver already explores a huge
 reachable graph per solve, so it emits bounded artifacts that JS checks in O(moves) with **no JS search and

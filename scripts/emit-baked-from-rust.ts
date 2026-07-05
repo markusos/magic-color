@@ -3,14 +3,11 @@
  * the committed modules — the F2-decided emission path, live as of the F4 cutover: Rust emits
  * JSON only, this script writes `src/game/levels.data.ts`, `src/game/levels.meta.ts`, and
  * `scripts/levels.provenance.json` (then `emit-provenance.ts` / `archive-report.ts` run as
- * before). Wired into `npm run build:levels`; the retired JS bake remains available as
- * `npm run build:levels:js` for one release (the F4 fallback).
+ * before). Wired into `npm run build:levels`. (The JS bake it replaced was deleted in F5.)
  *
- * Version stamp (interim policy until F5): the committed data keeps the JS-source hash
- * (`currentGeneratorVersion()`), because `baked.test.ts` pins committed-data freshness to the
- * JS sources that must move in lockstep with the crate anyway (G1 discipline), while the
- * crate↔wasm freshness is separately pinned by G5 (`coreVersion.test.ts`). F5 repoints the
- * staleness hash at the crate and retires the JS-source list.
+ * Version stamp: the committed data carries the crate-source hash (`currentGeneratorVersion()`
+ * delegates to `coreVersion` since F5), so ONE hash stamps both committed artifacts — the boards
+ * here (`baked.test.ts`) and the `.wasm` (G5 `coreVersion.test.ts`).
  *
  * Prints whether the boards byte-match the currently committed data — at cutover they MUST
  * (the Rust bake is byte-identical); after a future intentional rule change they won't.
