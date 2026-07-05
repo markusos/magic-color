@@ -19,6 +19,7 @@ use crate::live::{pick_best, LiveConfig, LivePlan};
 use crate::progression::{Mechanic, MechanicDensity};
 use crate::rng::Mulberry32;
 use crate::search::{hint_move, Overlays};
+use crate::session::{force_pour, plan_tap, view, Status, TapOutcome};
 use crate::solver::{canonical, is_stuck_in_loop};
 use crate::state::{Hidden, Key, State, Tube};
 use crate::types::NO_COLOR;
@@ -144,6 +145,165 @@ pub fn stuck_check(cells: &[u8], bottles: u8, capacity: u8, funnels: &[u8], max_
 #[wasm_bindgen]
 pub fn stuck_visited_count() -> u32 {
     VISITED.with(|v| v.borrow().len() as u32)
+}
+
+// ------------------------------------------------------------------------------------------
+// Gameplay session (F6): one sync `board_view` per state answers everything the UI renders
+// and gates on; one `tap` decides a tap's outcome. The stuck verdict inside `board_view`
+// consults the same VISITED registry the store maintains via stuck_reset/stuck_visit.
+// ------------------------------------------------------------------------------------------
+
+/// Flat `View` for the boundary: per-tube masks/flags + the status byte
+/// (0 playing / 1 won / 2 deadlocked / 3 stuck).
+#[wasm_bindgen(getter_with_clone)]
+pub struct BoardView {
+    pub status: u8,
+    pub blocked: Vec<u16>,
+    pub frozen: Vec<u16>,
+    pub selectable: Vec<u8>,
+    pub capped: Vec<u8>,
+    pub pour_targets: Vec<u8>,
+}
+
+/// The board snapshot (F6). `selected` is `-1` for none; `stuck_max_nodes` bounds the
+/// loop check (it runs only when the board is otherwise in play).
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn board_view(
+    cells: &[u8],
+    bottles: u8,
+    capacity: u8,
+    hidden: &[u16],
+    funnels: &[u8],
+    ice_pairs: &[u8],
+    selected: i32,
+    stuck_max_nodes: u32,
+) -> BoardView {
+    let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
+    let v = view(
+        &state,
+        &hidden,
+        &funnels,
+        &ice,
+        usize::try_from(selected).ok(),
+        || {
+            VISITED.with(|vis| {
+                is_stuck_in_loop(&state, &vis.borrow(), Some(&funnels), stuck_max_nodes as usize)
+            })
+        },
+    );
+    BoardView {
+        status: match v.status {
+            Status::Playing => 0,
+            Status::Won => 1,
+            Status::Deadlocked => 2,
+            Status::Stuck => 3,
+        },
+        blocked: v.blocked,
+        frozen: v.frozen,
+        selectable: v.selectable.iter().map(|&b| b as u8).collect(),
+        capped: v.capped.iter().map(|&b| b as u8).collect(),
+        pour_targets: v.pour_targets.iter().map(|&b| b as u8).collect(),
+    }
+}
+
+/// A tap's outcome (F6). `kind`: 0 ignore / 1 select / 2 deselect / 3 pour. For a pour the
+/// post-board, revealed concealment, executed move, and cue facts are populated.
+#[wasm_bindgen(getter_with_clone)]
+pub struct TapResult {
+    pub kind: u8,
+    /// The new selection for kind=select.
+    pub select_index: u8,
+    pub next_cells: Vec<u8>,
+    pub next_hidden: Vec<u16>,
+    /// Executed move for kind=pour: from, to, count, color.
+    pub mv: Vec<u8>,
+    pub thawed: bool,
+    pub newly_capped: bool,
+}
+
+fn empty_tap(kind: u8) -> TapResult {
+    TapResult {
+        kind,
+        select_index: 0,
+        next_cells: Vec::new(),
+        next_hidden: Vec::new(),
+        mv: Vec::new(),
+        thawed: false,
+        newly_capped: false,
+    }
+}
+
+/// Decide what tapping tube `i` does (F6) — the core-side `planTap`.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn tap(
+    cells: &[u8],
+    bottles: u8,
+    capacity: u8,
+    hidden: &[u16],
+    funnels: &[u8],
+    ice_pairs: &[u8],
+    selected: i32,
+    i: u8,
+) -> TapResult {
+    let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
+    match plan_tap(&state, &hidden, &funnels, &ice, usize::try_from(selected).ok(), i as usize) {
+        TapOutcome::Ignore => empty_tap(0),
+        TapOutcome::Select { index } => {
+            let mut t = empty_tap(1);
+            t.select_index = index as u8;
+            t
+        }
+        TapOutcome::Deselect => empty_tap(2),
+        TapOutcome::Pour { next, next_hidden, mv, thawed, newly_capped } => TapResult {
+            kind: 3,
+            select_index: 0,
+            next_cells: encode_cells(&next),
+            next_hidden,
+            mv: vec![mv.from, mv.to, mv.count, mv.color],
+            thawed,
+            newly_capped,
+        },
+    }
+}
+
+/// The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
+/// pour-kind TapResult, or ignore-kind when nothing can move.
+#[wasm_bindgen]
+pub fn cheat_force_pour(
+    cells: &[u8],
+    bottles: u8,
+    capacity: u8,
+    hidden: &[u16],
+    from: u8,
+    to: u8,
+) -> TapResult {
+    let (state, hidden, ..) = decode(cells, bottles, capacity, hidden, &[], &[]);
+    match force_pour(&state, &hidden, from as usize, to as usize) {
+        None => empty_tap(0),
+        Some((next, revealed, mv)) => TapResult {
+            kind: 3,
+            select_index: 0,
+            next_cells: encode_cells(&next),
+            next_hidden: revealed,
+            mv: vec![mv.from, mv.to, mv.count, mv.color],
+            thawed: false,
+            newly_capped: false,
+        },
+    }
+}
+
+/// Board → flat cell bytes (the shared boundary layout).
+fn encode_cells(state: &State) -> Vec<u8> {
+    let cap = state.capacity as usize;
+    let mut cells = vec![NO_COLOR; state.tubes.len() * cap];
+    for (b, t) in state.tubes.iter().enumerate() {
+        for (i, &c) in t.cells().iter().enumerate() {
+            cells[b * cap + i] = c;
+        }
+    }
+    cells
 }
 
 // ------------------------------------------------------------------------------------------

@@ -3,8 +3,6 @@ import { cueForTap, deriveStatus, planTap } from './session';
 import { emptyOverlays, type OverlaySet } from '../game/mechanics';
 import { canonical } from '../game/solver';
 import { board, color } from '../test/board';
-import { emptyGrid } from '../game/hidden';
-import { noIce } from '../game/ice';
 import type { GameState } from '../game/types';
 
 /** Clean (no-mechanic) overlays for a board, optionally with field overrides. */
@@ -69,14 +67,8 @@ describe('deriveStatus', () => {
     expect(deriveStatus(state, overlays(state))).toBe('playing');
   });
 
-  it('reports stuck only when the injected loop check fires', () => {
-    // The check itself lives core-side (see gameStore/wasmStuck); here we just verify the
-    // injection seam: a firing check flips a playable board to stuck, an absent or quiet one
-    // never does.
-    const state = board([['r', 'b'], ['b', 'r'], []], 4);
-    expect(deriveStatus(state, overlays(state), () => true)).toBe('stuck');
-    expect(deriveStatus(state, overlays(state), () => false)).toBe('playing');
-  });
+  // The 'stuck' branch is exercised end-to-end in gameStore.test.ts ("going in circles"),
+  // where the core-side visited registry it consults is seeded through real play.
 });
 
 describe('planTap', () => {
@@ -141,27 +133,22 @@ describe('planTap', () => {
 });
 
 describe('cueForTap', () => {
-  const grids = (state: GameState) => ({ hidden: emptyGrid(state), ice: noIce(state) });
-
   it('plays the select cue when picking up a tube', () => {
     const state = board([['r'], []], 4);
     const plan = planTap(state, overlays(state), null, 0);
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', null, 0)).toBe('select');
+    expect(cueForTap(plan, 'playing', null, 0)).toBe('select');
   });
 
   it('stays silent on an ignored tap (no selection, empty tube)', () => {
     const state = board([['r'], []], 4);
     const plan = planTap(state, overlays(state), null, 1);
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', null, 1)).toBeNull();
+    expect(cueForTap(plan, 'playing', null, 1)).toBeNull();
   });
 
   it('plays deselect when re-tapping the selected tube', () => {
     const state = board([['r'], []], 4);
     const plan = planTap(state, overlays(state), 0, 0);
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', 0, 0)).toBe('deselect');
+    expect(cueForTap(plan, 'playing', 0, 0)).toBe('deselect');
   });
 
   it('plays invalid when a deselect comes from an illegal pour onto another tube', () => {
@@ -171,41 +158,38 @@ describe('cueForTap', () => {
     const funnels = [null, color('g')];
     const plan = planTap(state, overlays(state, { funnels }), 0, 1);
     expect(plan).toEqual({ kind: 'deselect' });
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', 0, 1)).toBe('invalid');
+    expect(cueForTap(plan, 'playing', 0, 1)).toBe('invalid');
   });
 
   it('plays a plain pour cue for an ordinary pour', () => {
     const state = board([['r', 'b'], [], []], 4);
     const plan = planTap(state, overlays(state), 0, 1);
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', 0, 1)).toBe('pour');
+    expect(cueForTap(plan, 'playing', 0, 1)).toBe('pour');
   });
 
   it('plays the cap cue when a pour completes a color', () => {
     // Pouring the single r onto three r's fills tube 1 to a finished color; tube 2 keeps the board
     // unfinished so the status stays 'playing' and the cap branch (not the win branch) is exercised.
+    // The core supplies the newlyCapped fact on the plan itself.
     const state = board([['r'], ['r', 'r', 'r'], ['b', 'g']], 4);
     const plan = planTap(state, overlays(state), 0, 1);
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', 0, 1)).toBe('cap');
+    expect(cueForTap(plan, 'playing', 0, 1)).toBe('cap');
   });
 
   it('plays the win cue when the resulting status is won', () => {
     const state = board([['r'], ['r', 'r', 'r'], ['b', 'b', 'b', 'b']], 4);
     const plan = planTap(state, overlays(state), 0, 1);
     // The store passes the post-pour status; here the pour finishes the board.
-    const { hidden, ice } = grids(state);
-    expect(cueForTap(plan, state, hidden, ice, 'won', 0, 1)).toBe('win');
+    expect(cueForTap(plan, 'won', 0, 1)).toBe('win');
   });
 
   it('plays the thaw cue when a pour caps a trigger and frees ice', () => {
     // Pour the (unfrozen) single r onto three r's: tube 1 finishes red, the trigger tinting tube 2's
-    // frozen floor cell, so it thaws. Thaw outranks the cap that caused it.
+    // frozen floor cell, so it thaws. Thaw outranks the cap that caused it — the core reports both
+    // facts and the classifier prefers thaw.
     const state = board([['r'], ['r', 'r', 'r'], ['b', 'b']], 4);
     const ice = [[null], [null, null, null], [color('r'), null]];
     const plan = planTap(state, overlays(state, { ice }), 0, 1);
-    const hidden = emptyGrid(state);
-    expect(cueForTap(plan, state, hidden, ice, 'playing', 0, 1)).toBe('thaw');
+    expect(cueForTap(plan, 'playing', 0, 1)).toBe('thaw');
   });
 });

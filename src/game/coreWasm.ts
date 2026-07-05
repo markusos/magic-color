@@ -16,6 +16,8 @@
  * checks are microseconds) and inside the wasm hint worker (long solves stay off-thread).
  */
 import initWasm, {
+  board_view,
+  cheat_force_pour,
   core_version,
   generate_live,
   hint,
@@ -24,6 +26,7 @@ import initWasm, {
   stuck_reset,
   stuck_visit,
   stuck_visited_count,
+  tap,
   initSync,
 } from './core-pkg/magic_color_core';
 import type { FunnelGrid } from './funnels';
@@ -290,6 +293,165 @@ export function wasmPickBest(
   };
   picked.free(); // wasm-bindgen struct — release the linear-memory allocation promptly
   return result;
+}
+
+// -----------------------------------------------------------------------------------------
+// F6: the gameplay session surface. One `wasmBoardView` per state answers everything the UI
+// renders and gates on; one `wasmPlanTap` decides a tap. JS holds no rule semantics.
+// -----------------------------------------------------------------------------------------
+
+/** The board snapshot the UI renders from — decoded `core::session::View`. */
+export interface BoardViewSnapshot {
+  status: 'playing' | 'won' | 'deadlocked' | 'stuck';
+  /** Per-cell "blocks the run / capping" flags (concealed + still-frozen), current shape. */
+  blocked: boolean[][];
+  /** Per-cell still-frozen flags (the ice tint rendering). */
+  frozen: boolean[][];
+  /** Legal pour source per tube. */
+  selectable: boolean[];
+  /** Finished-tube visual per tube. */
+  capped: boolean[];
+  /** Legal pour destination per tube from `selected` (all-false without a selection). */
+  pourTargets: boolean[];
+}
+
+const STATUS_NAMES = ['playing', 'won', 'deadlocked', 'stuck'] as const;
+
+/** Node budget for the stuck-loop leg of a status derivation (matches the old JS default). */
+const STUCK_NODE_BUDGET = 20_000;
+
+const masksToGrid = (state: GameState, masks: Uint16Array): boolean[][] =>
+  state.bottles.map((col, b) => col.map((_, i) => (masks[b]! & (1 << i)) !== 0));
+
+/**
+ * The full board snapshot (F6). `checkStuck` gates the loop-check leg: the STORE passes true
+ * when deriving a committed status (the check consults the core-side visited registry);
+ * render-path callers pass false, making the call microseconds-cheap.
+ */
+export function wasmBoardView(
+  state: GameState,
+  hidden: HiddenGrid,
+  overlays: Overlays | undefined,
+  selected: number | null,
+  checkStuck: boolean,
+): BoardViewSnapshot {
+  if (!ready) throw new Error('[core-wasm] not initialized');
+  const n = state.bottles.length;
+  const v = board_view(
+    encodeCells(state),
+    n,
+    state.capacity,
+    encodeHidden(hidden),
+    encodeFunnels(overlays?.funnels, n),
+    encodeIce(overlays?.ice, n),
+    selected ?? -1,
+    checkStuck ? STUCK_NODE_BUDGET : 0,
+  );
+  const snapshot: BoardViewSnapshot = {
+    status: STATUS_NAMES[v.status]!,
+    blocked: masksToGrid(state, v.blocked),
+    frozen: masksToGrid(state, v.frozen),
+    selectable: Array.from(v.selectable, (x) => x !== 0),
+    capped: Array.from(v.capped, (x) => x !== 0),
+    pourTargets: Array.from(v.pour_targets, (x) => x !== 0),
+  };
+  v.free();
+  return snapshot;
+}
+
+/** A tap's decided outcome — decoded `core::session::TapOutcome` (mirrors the old TapPlan). */
+export type WasmTapPlan =
+  | { kind: 'ignore' }
+  | { kind: 'select'; selected: number }
+  | { kind: 'deselect' }
+  | {
+      kind: 'pour';
+      next: GameState;
+      move: Move;
+      revealedHidden: HiddenGrid;
+      /** Cue facts (computed core-side): a frozen cell thawed / a color newly capped. */
+      thawed: boolean;
+      newlyCapped: boolean;
+    };
+
+const decodeTapPour = (
+  r: { next_cells: Uint8Array; next_hidden: Uint16Array; mv: Uint8Array },
+  capacity: number,
+  bottles: number,
+): { next: GameState; move: Move; revealedHidden: HiddenGrid } => {
+  const cols: Color[][] = [];
+  for (let b = 0; b < bottles; b++) {
+    const col: Color[] = [];
+    for (let i = 0; i < capacity; i++) {
+      const c = r.next_cells[b * capacity + i]!;
+      if (c === NO_COLOR) break;
+      col.push(toColor(PALETTE[c]!));
+    }
+    cols.push(col);
+  }
+  const next: GameState = { bottles: cols, capacity };
+  return {
+    next,
+    move: {
+      from: r.mv[0]!,
+      to: r.mv[1]!,
+      count: r.mv[2]!,
+      color: toColor(PALETTE[r.mv[3]!]!),
+    },
+    revealedHidden: cols.map((col, b) => col.map((_, i) => (r.next_hidden[b]! & (1 << i)) !== 0)),
+  };
+};
+
+/** Decide what tapping `i` does (F6) — the core-side `planTap`. */
+export function wasmPlanTap(
+  state: GameState,
+  hidden: HiddenGrid,
+  overlays: Overlays | undefined,
+  selected: number | null,
+  i: number,
+): WasmTapPlan {
+  if (!ready) throw new Error('[core-wasm] not initialized');
+  const n = state.bottles.length;
+  const r = tap(
+    encodeCells(state),
+    n,
+    state.capacity,
+    encodeHidden(hidden),
+    encodeFunnels(overlays?.funnels, n),
+    encodeIce(overlays?.ice, n),
+    selected ?? -1,
+    i,
+  );
+  const out: WasmTapPlan =
+    r.kind === 0
+      ? { kind: 'ignore' }
+      : r.kind === 1
+        ? { kind: 'select', selected: r.select_index }
+        : r.kind === 2
+          ? { kind: 'deselect' }
+          : {
+              kind: 'pour',
+              ...decodeTapPour(r, state.capacity, n),
+              thawed: r.thawed,
+              newlyCapped: r.newly_capped,
+            };
+  r.free();
+  return out;
+}
+
+/** The free-pour cheat (F6): engine geometry only, mechanics ignored. `null` = nothing moves. */
+export function wasmForcePour(
+  state: GameState,
+  hidden: HiddenGrid,
+  from: number,
+  to: number,
+): { next: GameState; move: Move; revealedHidden: HiddenGrid } | null {
+  if (!ready) throw new Error('[core-wasm] not initialized');
+  const n = state.bottles.length;
+  const r = cheat_force_pour(encodeCells(state), n, state.capacity, encodeHidden(hidden), from, to);
+  const out = r.kind === 3 ? decodeTapPour(r, state.capacity, n) : null;
+  r.free();
+  return out;
 }
 
 /**

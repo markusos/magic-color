@@ -11,11 +11,11 @@ import {
   legalMoves,
   isDeadlocked,
 } from './engine';
-import { board as state, tube } from '../test/board';
+import { board as state, color, tube } from '../test/board';
 
 describe('inspection helpers', () => {
   it('topColor returns the last segment or null', () => {
-    expect(topColor(tube(['r', 'g', 'b']))).toBe('b');
+    expect(topColor(tube(['r', 'g', 'b']))).toBe(color('b'));
     expect(topColor(tube([]))).toBeNull();
   });
 
@@ -64,19 +64,19 @@ describe('pour', () => {
   it('moves only the top run, limited by free space, immutably', () => {
     const s = state([['r', 'g', 'g', 'g'], ['g']]);
     const { state: next, move } = pour(s, 0, 1);
-    expect(move).toEqual({ from: 0, to: 1, count: 3, color: 'g' });
-    expect(next.bottles[0]).toEqual(['r']);
-    expect(next.bottles[1]).toEqual(['g', 'g', 'g', 'g']);
+    expect(move).toEqual({ from: 0, to: 1, count: 3, color: color('g') });
+    expect(next.bottles[0]).toEqual(tube(['r']));
+    expect(next.bottles[1]).toEqual(tube(['g', 'g', 'g', 'g']));
     // original untouched
-    expect(s.bottles[0]).toEqual(['r', 'g', 'g', 'g']);
+    expect(s.bottles[0]).toEqual(tube(['r', 'g', 'g', 'g']));
   });
 
   it('limits the count to the destination free space', () => {
     const s = state([['g', 'g', 'g'], ['g', 'g']]); // dst free space = 2
     const { state: next, move } = pour(s, 0, 1);
     expect(move.count).toBe(2);
-    expect(next.bottles[0]).toEqual(['g']);
-    expect(next.bottles[1]).toEqual(['g', 'g', 'g', 'g']);
+    expect(next.bottles[0]).toEqual(tube(['g']));
+    expect(next.bottles[1]).toEqual(tube(['g', 'g', 'g', 'g']));
   });
 
   it('pourAmount returns 0 for illegal pours and pour throws', () => {

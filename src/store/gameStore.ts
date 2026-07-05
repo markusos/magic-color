@@ -17,13 +17,12 @@
  */
 import { create } from 'zustand';
 import {
-  coreWasmReady,
   initCoreWasm,
+  wasmForcePour,
   wasmHintMove,
   wasmStuck,
   type HintMove,
 } from '../game/coreWasm';
-import { topRunLength } from '../game/engine';
 import { DEFAULT_CAPACITY } from '../game/palette';
 import {
   BAKED_LEVEL_COUNT,
@@ -37,7 +36,7 @@ import {
 import type { LiveProvenance } from '../game/provenance';
 import { type DailyRecord, todayKey } from '../game/daily';
 import { mechanicsForLevel, phaseForLevel } from '../game/progression';
-import { revealExposed, type HiddenGrid } from '../game/hidden';
+import { type HiddenGrid } from '../game/hidden';
 import { type FunnelGrid } from '../game/funnels';
 import { type IceGrid } from '../game/ice';
 import { type OverlaySet } from '../game/mechanics';
@@ -45,7 +44,7 @@ import { recolorBoard } from '../game/recolor';
 import { shuffleBottles } from '../game/shuffle';
 import { starsFor, type Stars } from '../game/stars';
 import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
-import type { Color, Difficulty, GameState, Mechanic, Move } from '../game/types';
+import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
 import { useSettings } from './settings';
 import type { CampaignStats } from './progressStats';
@@ -255,8 +254,6 @@ const HINT_SPINNER_DELAY_MS = 500;
  */
 const AUTO_SOLVE_NODE_BUDGET = 20_000_000;
 
-/** Node budget for the stuck-loop check via the wasm core (matches the JS `isStuckInLoop` default). */
-const STUCK_NODE_BUDGET = 20_000;
 /** Delay between auto-solve moves so the solution plays out visibly, move by move. */
 const AUTO_SOLVE_DELAY_MS = 500;
 /**
@@ -267,25 +264,6 @@ const AUTO_SOLVE_DELAY_MS = 500;
 const AUTO_SOLVE_MOVE_TIMEOUT_MS = 60_000;
 /** How long the auto-solve stop notice ("timed out" / "no further moves") stays up before fading. */
 const AUTO_SOLVE_NOTICE_MS = 5_000;
-
-/**
- * A DEBUG "free pour" (E4): move the top run of `from` onto `to` ignoring colour / funnel / ice rules —
- * only room is required. Returns the post-pour state + move, or null if it can't (same tube, empty
- * source, or no room). Lives here, NOT in the bake-hashed `engine.ts`, since it's an admin-only cheat.
- */
-function forcePour(state: GameState, from: number, to: number): { state: GameState; move: Move } | null {
-  if (from === to) return null;
-  const src = state.bottles[from];
-  const dst = state.bottles[to];
-  if (!src || !dst || src.length === 0) return null;
-  const count = Math.min(topRunLength(src), state.capacity - dst.length);
-  if (count <= 0) return null;
-  const color = src[src.length - 1]!;
-  const bottles = state.bottles.map((b, k) =>
-    k === from ? b.slice(0, b.length - count) : k === to ? [...b, ...Array<Color>(count).fill(color)] : b,
-  );
-  return { state: { ...state, bottles }, move: { from, to, count, color } };
-}
 
 /**
  * Lazily-created, reused worker that runs the hint A* off the main thread (`coreHintWorker` —
@@ -352,15 +330,11 @@ export const useGameStore = create<GameStore>((set, get) => {
     const hidden = extra.hidden ?? get().hidden;
     const funnels = extra.funnels ?? get().funnels;
     const ice = extra.ice ?? get().ice;
-    // Record every committed board into the core's visited registry (no-op until the wasm is
-    // ready; inserts are idempotent, so undo targets are fine), then derive status with the
-    // core-side stuck check. Before the wasm is ready there is no check — the nudge simply
-    // stays quiet, which is the conservative direction.
+    // Record every committed board into the core's visited registry (inserts are idempotent,
+    // so undo targets are fine), then derive status — F6: one core call; the stuck check
+    // consults the same registry internally.
     wasmStuck.visit(current);
-    const stuckCheck = coreWasmReady()
-      ? (s: GameState) => wasmStuck.check(s, funnels, STUCK_NODE_BUDGET) ?? false
-      : undefined;
-    const status = deriveStatus(current, { hidden, funnels, ice }, stuckCheck);
+    const status = deriveStatus(current, { hidden, funnels, ice });
     set({ current, status, ...extra });
 
     if (status !== 'won') return;
@@ -694,20 +668,20 @@ export const useGameStore = create<GameStore>((set, get) => {
           set({ selected: null, hint: null });
           return;
         }
-        const fp = forcePour(current, selected, i);
+        const fp = wasmForcePour(current, hidden, selected, i);
         if (!fp) {
           set({ selected: current.bottles[i]!.length > 0 ? i : null, hint: null });
           return;
         }
-        commit(fp.state, {
+        commit(fp.next, {
           history: [...get().history, current],
           hiddenHistory: [...get().hiddenHistory, hidden],
-          hidden: revealExposed(fp.state, hidden),
+          hidden: fp.revealedHidden,
           moves: [...get().moves, fp.move],
           selected: null,
           hint: null,
         });
-        feedback('pour', fp.state.bottles[i]!.length / fp.state.capacity);
+        feedback('pour', fp.next.bottles[i]!.length / fp.next.capacity);
         return;
       }
 
@@ -739,7 +713,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       // Fire the matching audio/haptic cue off the (now-applied) outcome — a thin adapter over the
       // pure session classification, read against the post-tap status (a pour may have won the board).
       // For a pour, pass the destination's resulting fill so the blip rises as a tube fills up.
-      const cue = cueForTap(plan, current, hidden, ice, get().status, selected, i);
+      const cue = cueForTap(plan, get().status, selected, i);
       if (cue) {
         const level =
           plan.kind === 'pour'
@@ -904,7 +878,7 @@ export const useGameStore = create<GameStore>((set, get) => {
         });
         applied++;
         // Play the move's natural cue — including the win chime on the final move.
-        const cue = cueForTap(plan, current, hidden, ice, get().status, from, to);
+        const cue = cueForTap(plan, get().status, from, to);
         if (cue) feedback(cue, plan.next.bottles[plan.move.to]!.length / plan.next.capacity);
         if (get().status === 'won') {
           finishRun();

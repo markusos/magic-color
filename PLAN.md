@@ -225,6 +225,20 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
   of state mutation, shrinking the boundary further. **Payoff: G1/G2 retire** (nothing left to drift);
   the release gate shrinks to G3-style replay of committed data + G4 static checks + G5 freshness. Then
   delete `engine.ts`, `hidden.ts`/`funnels.ts`/`ice.ts` interaction reads, and `stateKey`/`canonical`.
+  **STATUS 2026-07-05 — the session surface is LIVE; deletion + gate retirement remain.**
+  `core/src/session.rs` (+ wasm exports `board_view`/`tap`/`cheat_force_pour`) now answers every
+  runtime rule question: `session.ts` is a thin typed adapter (`deriveStatus`/`viewOf`/`planTap` are
+  core pass-throughs; `cueForTap` classifies from core-supplied facts — the pour outcome carries
+  `thawed`/`newlyCapped`), `GameBoard`/`Bottle` render from the `viewOf` snapshot (frozen cells, capped
+  tubes, pour-target highlights — the stuck check is skipped on render-path views), and the free-pour
+  cheat runs core-side. **Zero VALUE imports of engine/hidden/funnels/ice/mechanics remain outside
+  `src/game/` internals — only erased type imports.** Test fixtures canonicalize shorthand ids to real
+  palette ids (the boundary encodes palette indices); the one non-palette-trigger test trick was
+  reworked via `undo`. Verified: 325 tests, gate G1–G5 PASS, prod build, in-browser pour/select/
+  target-highlight through the core with a clean console. **Remaining for F6:** trim the now-dead
+  interaction half of `mechanics.ts`, demote/delete `engine.ts` + the mechanic modules' rule reads
+  (their types/serialize/permute/recolor halves stay), move G3/G4 into a Rust `verify` bin, and shrink
+  `exe/test` to the retired-gate shape (Rust suites + rng pinning + adapter differentials + G5).
 
 ### Drift defense — the `exe/test` release gate
 > The one real hazard is **rule drift**: after cutover the same rules live in both the Rust core (solving +

@@ -1,6 +1,128 @@
 /* @ts-self-types="./magic_color_core.d.ts" */
 
 /**
+ * Flat `View` for the boundary: per-tube masks/flags + the status byte
+ * (0 playing / 1 won / 2 deadlocked / 3 stuck).
+ */
+export class BoardView {
+    static __wrap(ptr) {
+        const obj = Object.create(BoardView.prototype);
+        obj.__wbg_ptr = ptr;
+        BoardViewFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        BoardViewFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_boardview_free(ptr, 0);
+    }
+    /**
+     * @returns {Uint16Array}
+     */
+    get blocked() {
+        const ret = wasm.__wbg_get_boardview_blocked(this.__wbg_ptr);
+        var v1 = getArrayU16FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 2, 2);
+        return v1;
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    get capped() {
+        const ret = wasm.__wbg_get_boardview_capped(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {Uint16Array}
+     */
+    get frozen() {
+        const ret = wasm.__wbg_get_boardview_frozen(this.__wbg_ptr);
+        var v1 = getArrayU16FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 2, 2);
+        return v1;
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    get pour_targets() {
+        const ret = wasm.__wbg_get_boardview_pour_targets(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    get selectable() {
+        const ret = wasm.__wbg_get_boardview_selectable(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {number}
+     */
+    get status() {
+        const ret = wasm.__wbg_get_boardview_status(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @param {Uint16Array} arg0
+     */
+    set blocked(arg0) {
+        const ptr0 = passArray16ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_boardview_blocked(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint8Array} arg0
+     */
+    set capped(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_boardview_capped(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint16Array} arg0
+     */
+    set frozen(arg0) {
+        const ptr0 = passArray16ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_boardview_frozen(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint8Array} arg0
+     */
+    set pour_targets(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_boardview_pour_targets(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint8Array} arg0
+     */
+    set selectable(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_boardview_selectable(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set status(arg0) {
+        wasm.__wbg_set_boardview_status(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) BoardView.prototype[Symbol.dispose] = BoardView.prototype.free;
+
+/**
  * A chosen live board, flat-encoded for the boundary. Vec fields are exposed through
  * `getter_with_clone` (one copy per level load — negligible).
  */
@@ -352,6 +474,183 @@ export class LiveLevel {
 if (Symbol.dispose) LiveLevel.prototype[Symbol.dispose] = LiveLevel.prototype.free;
 
 /**
+ * A tap's outcome (F6). `kind`: 0 ignore / 1 select / 2 deselect / 3 pour. For a pour the
+ * post-board, revealed concealment, executed move, and cue facts are populated.
+ */
+export class TapResult {
+    static __wrap(ptr) {
+        const obj = Object.create(TapResult.prototype);
+        obj.__wbg_ptr = ptr;
+        TapResultFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        TapResultFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_tapresult_free(ptr, 0);
+    }
+    /**
+     * @returns {number}
+     */
+    get kind() {
+        const ret = wasm.__wbg_get_tapresult_kind(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Executed move for kind=pour: from, to, count, color.
+     * @returns {Uint8Array}
+     */
+    get mv() {
+        const ret = wasm.__wbg_get_tapresult_mv(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {boolean}
+     */
+    get newly_capped() {
+        const ret = wasm.__wbg_get_tapresult_newly_capped(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    get next_cells() {
+        const ret = wasm.__wbg_get_tapresult_next_cells(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {Uint16Array}
+     */
+    get next_hidden() {
+        const ret = wasm.__wbg_get_tapresult_next_hidden(this.__wbg_ptr);
+        var v1 = getArrayU16FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 2, 2);
+        return v1;
+    }
+    /**
+     * The new selection for kind=select.
+     * @returns {number}
+     */
+    get select_index() {
+        const ret = wasm.__wbg_get_tapresult_select_index(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {boolean}
+     */
+    get thawed() {
+        const ret = wasm.__wbg_get_tapresult_thawed(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @param {number} arg0
+     */
+    set kind(arg0) {
+        wasm.__wbg_set_tapresult_kind(this.__wbg_ptr, arg0);
+    }
+    /**
+     * Executed move for kind=pour: from, to, count, color.
+     * @param {Uint8Array} arg0
+     */
+    set mv(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_tapresult_mv(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set newly_capped(arg0) {
+        wasm.__wbg_set_tapresult_newly_capped(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {Uint8Array} arg0
+     */
+    set next_cells(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_tapresult_next_cells(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint16Array} arg0
+     */
+    set next_hidden(arg0) {
+        const ptr0 = passArray16ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_tapresult_next_hidden(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * The new selection for kind=select.
+     * @param {number} arg0
+     */
+    set select_index(arg0) {
+        wasm.__wbg_set_tapresult_select_index(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set thawed(arg0) {
+        wasm.__wbg_set_tapresult_thawed(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) TapResult.prototype[Symbol.dispose] = TapResult.prototype.free;
+
+/**
+ * The board snapshot (F6). `selected` is `-1` for none; `stuck_max_nodes` bounds the
+ * loop check (it runs only when the board is otherwise in play).
+ * @param {Uint8Array} cells
+ * @param {number} bottles
+ * @param {number} capacity
+ * @param {Uint16Array} hidden
+ * @param {Uint8Array} funnels
+ * @param {Uint8Array} ice_pairs
+ * @param {number} selected
+ * @param {number} stuck_max_nodes
+ * @returns {BoardView}
+ */
+export function board_view(cells, bottles, capacity, hidden, funnels, ice_pairs, selected, stuck_max_nodes) {
+    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(funnels, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(ice_pairs, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.board_view(ptr0, len0, bottles, capacity, ptr1, len1, ptr2, len2, ptr3, len3, selected, stuck_max_nodes);
+    return BoardView.__wrap(ret);
+}
+
+/**
+ * The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
+ * pour-kind TapResult, or ignore-kind when nothing can move.
+ * @param {Uint8Array} cells
+ * @param {number} bottles
+ * @param {number} capacity
+ * @param {Uint16Array} hidden
+ * @param {number} from
+ * @param {number} to
+ * @returns {TapResult}
+ */
+export function cheat_force_pour(cells, bottles, capacity, hidden, from, to) {
+    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.cheat_force_pour(ptr0, len0, bottles, capacity, ptr1, len1, from, to);
+    return TapResult.__wrap(ret);
+}
+
+/**
  * Core build version, for the diagnostics readout (E9/F5: "show core: wasm/js").
  * @returns {string}
  */
@@ -485,6 +784,31 @@ export function stuck_visited_count() {
     const ret = wasm.stuck_visited_count();
     return ret >>> 0;
 }
+
+/**
+ * Decide what tapping tube `i` does (F6) — the core-side `planTap`.
+ * @param {Uint8Array} cells
+ * @param {number} bottles
+ * @param {number} capacity
+ * @param {Uint16Array} hidden
+ * @param {Uint8Array} funnels
+ * @param {Uint8Array} ice_pairs
+ * @param {number} selected
+ * @param {number} i
+ * @returns {TapResult}
+ */
+export function tap(cells, bottles, capacity, hidden, funnels, ice_pairs, selected, i) {
+    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(funnels, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(ice_pairs, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.tap(ptr0, len0, bottles, capacity, ptr1, len1, ptr2, len2, ptr3, len3, selected, i);
+    return TapResult.__wrap(ret);
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -507,9 +831,15 @@ function __wbg_get_imports() {
     };
 }
 
+const BoardViewFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_boardview_free(ptr, 1));
 const LiveLevelFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_livelevel_free(ptr, 1));
+const TapResultFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_tapresult_free(ptr, 1));
 
 function getArrayF64FromWasm0(ptr, len) {
     ptr = ptr >>> 0;

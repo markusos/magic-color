@@ -2,6 +2,22 @@
 /* eslint-disable */
 
 /**
+ * Flat `View` for the boundary: per-tube masks/flags + the status byte
+ * (0 playing / 1 won / 2 deadlocked / 3 stuck).
+ */
+export class BoardView {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    blocked: Uint16Array;
+    capped: Uint8Array;
+    frozen: Uint16Array;
+    pour_targets: Uint8Array;
+    selectable: Uint8Array;
+    status: number;
+}
+
+/**
  * A chosen live board, flat-encoded for the boundary. Vec fields are exposed through
  * `getter_with_clone` (one copy per level load — negligible).
  */
@@ -45,6 +61,41 @@ export class LiveLevel {
     solution: Uint8Array;
     two_star_max: number;
 }
+
+/**
+ * A tap's outcome (F6). `kind`: 0 ignore / 1 select / 2 deselect / 3 pour. For a pour the
+ * post-board, revealed concealment, executed move, and cue facts are populated.
+ */
+export class TapResult {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    kind: number;
+    /**
+     * Executed move for kind=pour: from, to, count, color.
+     */
+    mv: Uint8Array;
+    newly_capped: boolean;
+    next_cells: Uint8Array;
+    next_hidden: Uint16Array;
+    /**
+     * The new selection for kind=select.
+     */
+    select_index: number;
+    thawed: boolean;
+}
+
+/**
+ * The board snapshot (F6). `selected` is `-1` for none; `stuck_max_nodes` bounds the
+ * loop check (it runs only when the board is otherwise in play).
+ */
+export function board_view(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, funnels: Uint8Array, ice_pairs: Uint8Array, selected: number, stuck_max_nodes: number): BoardView;
+
+/**
+ * The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
+ * pour-kind TapResult, or ignore-kind when nothing can move.
+ */
+export function cheat_force_pour(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, from: number, to: number): TapResult;
 
 /**
  * Core build version, for the diagnostics readout (E9/F5: "show core: wasm/js").
@@ -94,10 +145,22 @@ export function stuck_visit(cells: Uint8Array, bottles: number, capacity: number
  */
 export function stuck_visited_count(): number;
 
+/**
+ * Decide what tapping tube `i` does (F6) — the core-side `planTap`.
+ */
+export function tap(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, funnels: Uint8Array, ice_pairs: Uint8Array, selected: number, i: number): TapResult;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_boardview_free: (a: number, b: number) => void;
+    readonly __wbg_get_boardview_blocked: (a: number) => [number, number];
+    readonly __wbg_get_boardview_capped: (a: number) => [number, number];
+    readonly __wbg_get_boardview_frozen: (a: number) => [number, number];
+    readonly __wbg_get_boardview_pour_targets: (a: number) => [number, number];
+    readonly __wbg_get_boardview_selectable: (a: number) => [number, number];
+    readonly __wbg_get_boardview_status: (a: number) => number;
     readonly __wbg_get_livelevel_bottles: (a: number) => number;
     readonly __wbg_get_livelevel_capacity: (a: number) => number;
     readonly __wbg_get_livelevel_cells: (a: number) => [number, number];
@@ -121,7 +184,18 @@ export interface InitOutput {
     readonly __wbg_get_livelevel_seed: (a: number) => number;
     readonly __wbg_get_livelevel_solution: (a: number) => [number, number];
     readonly __wbg_get_livelevel_two_star_max: (a: number) => number;
+    readonly __wbg_get_tapresult_kind: (a: number) => number;
+    readonly __wbg_get_tapresult_newly_capped: (a: number) => number;
+    readonly __wbg_get_tapresult_next_cells: (a: number) => [number, number];
+    readonly __wbg_get_tapresult_select_index: (a: number) => number;
+    readonly __wbg_get_tapresult_thawed: (a: number) => number;
     readonly __wbg_livelevel_free: (a: number, b: number) => void;
+    readonly __wbg_set_boardview_blocked: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_boardview_capped: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_boardview_frozen: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_boardview_pour_targets: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_boardview_selectable: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_boardview_status: (a: number, b: number) => void;
     readonly __wbg_set_livelevel_bottles: (a: number, b: number) => void;
     readonly __wbg_set_livelevel_capacity: (a: number, b: number) => void;
     readonly __wbg_set_livelevel_cells: (a: number, b: number, c: number) => void;
@@ -145,6 +219,14 @@ export interface InitOutput {
     readonly __wbg_set_livelevel_seed: (a: number, b: number) => void;
     readonly __wbg_set_livelevel_solution: (a: number, b: number, c: number) => void;
     readonly __wbg_set_livelevel_two_star_max: (a: number, b: number) => void;
+    readonly __wbg_set_tapresult_kind: (a: number, b: number) => void;
+    readonly __wbg_set_tapresult_newly_capped: (a: number, b: number) => void;
+    readonly __wbg_set_tapresult_next_cells: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_tapresult_select_index: (a: number, b: number) => void;
+    readonly __wbg_set_tapresult_thawed: (a: number, b: number) => void;
+    readonly __wbg_tapresult_free: (a: number, b: number) => void;
+    readonly board_view: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => number;
+    readonly cheat_force_pour: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
     readonly core_version: () => [number, number];
     readonly generate_live: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
     readonly hint: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
@@ -153,9 +235,14 @@ export interface InitOutput {
     readonly stuck_reset: (a: number, b: number, c: number, d: number) => void;
     readonly stuck_visit: (a: number, b: number, c: number, d: number) => void;
     readonly stuck_visited_count: () => number;
+    readonly tap: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => number;
+    readonly __wbg_set_tapresult_next_hidden: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_tapresult_mv: (a: number, b: number, c: number) => void;
+    readonly __wbg_get_tapresult_mv: (a: number) => [number, number];
+    readonly __wbg_get_tapresult_next_hidden: (a: number) => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
+    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

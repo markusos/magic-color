@@ -1,9 +1,7 @@
 import { useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useSettings } from '../../store/settings';
-import { canPour, topColor } from '../../game/engine';
-import { acceptsPour } from '../../game/mechanics';
-import { frozenCells } from '../../game/ice';
+import { viewOf } from '../../store/session';
 import { Bottle } from '../Bottle/Bottle';
 import { useBottleMetrics } from './useBottleMetrics';
 import styles from './GameBoard.module.css';
@@ -28,9 +26,10 @@ export function GameBoard() {
   const areaRef = useRef<HTMLDivElement>(null);
   const metrics = useBottleMetrics(areaRef, current.bottles.length, current.capacity);
 
-  // Which cells are CURRENTLY frozen (derived from the board: a cell thaws once its trigger color is
-  // capped). Cheap, and all-false when the board carries no ice, so non-ice chapters are unaffected.
-  const frozenGrid = frozenCells(current, hidden, ice);
+  // The core's render snapshot (F6): per-cell frozen flags, per-tube capped flags, and the
+  // legal pour targets from the current selection — one sync wasm call per render, no rule
+  // logic in JS. The stuck check is skipped on this path (render must never pay for a search).
+  const view = viewOf(current, { hidden, funnels, ice }, selected);
 
   return (
     <div className={styles.boardArea} ref={areaRef}>
@@ -52,16 +51,12 @@ export function GameBoard() {
             capacity={current.capacity}
             hidden={revealHidden ? undefined : hidden[i]}
             funnel={funnels[i] ?? null}
-            frozen={bottle.map((_, j) => (frozenGrid[i]?.[j] ? (ice[i]?.[j] ?? null) : null))}
+            frozen={bottle.map((_, j) => (view.frozen[i]?.[j] ? (ice[i]?.[j] ?? null) : null))}
+            capped={view.capped[i] ?? false}
             selected={selected === i}
             patterns={patterns}
             hintRole={hint?.from === i ? 'from' : hint?.to === i ? 'to' : undefined}
-            isTarget={
-              selected !== null &&
-              selected !== i &&
-              canPour(current, selected, i) &&
-              acceptsPour({ hidden, funnels, ice }, i, topColor(current.bottles[selected]!)!)
-            }
+            isTarget={view.pourTargets[i] ?? false}
             lift={metrics.segmentHeight * 0.7}
             onTap={() => tapBottle(i)}
           />

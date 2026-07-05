@@ -2,7 +2,6 @@ import { useEffect, useId, useRef } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
 import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
 import type { Bottle as BottleData, Color } from '../../game/types';
-import { isCapped } from '../../game/hidden';
 import { cssColor, patternFor } from '../../theme/colors';
 import { LiquidSegment } from '../LiquidSegment/LiquidSegment';
 import styles from './Bottle.module.css';
@@ -19,6 +18,8 @@ interface Props {
    * null once thawed / never iced. Frozen cells form a contiguous block from the floor, all one tint.
    */
   frozen?: (Color | null)[];
+  /** Finished-tube visual (full single color, revealed, thawed) — from the core's snapshot (F6). */
+  capped: boolean;
   selected: boolean;
   /** Colorblind aid: overlay each color's distinct texture (liquids, funnel collar, ice badge). */
   patterns?: boolean;
@@ -106,14 +107,12 @@ const ICE_CROWN_CRACKS: readonly string[] = [
 ];
 
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, hidden, funnel, frozen, selected, patterns, hintRole, isTarget, lift, onTap }: Props) {
+export function Bottle({ bottle, capacity, hidden, funnel, frozen, capped, selected, patterns, hintRole, isTarget, lift, onTap }: Props) {
   const segments = bottle.slice(0, capacity);
   // The frozen block is a contiguous run of cells from the floor, all sharing one trigger tint.
   const frozenCount = frozen ? frozen.filter((t) => t != null).length : 0;
   const iceTint = frozen?.find((t) => t != null) ?? null;
   const gid = useId(); // unique ids for this tube's ice facet gradients
-  // A tube holding ice isn't finished, so it shows no cap until it fully thaws.
-  const capped = isCapped(bottle, capacity, hidden) && frozenCount === 0;
 
   // Stagger a multi-band pour so the liquid rises bottom-to-top instead of every new band popping
   // in at once. Bands present before this render don't re-animate (AnimatePresence keeps them), so

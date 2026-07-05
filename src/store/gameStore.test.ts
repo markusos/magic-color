@@ -380,32 +380,31 @@ describe('frozen tubes (chapter 3)', () => {
   });
 
   it('does not count a board with frozen ice as won, even if structurally sorted', () => {
-    // Both tubes are structurally complete, but tube 0 holds ice whose trigger color is one the board
-    // can never hold, so it can never cap — the board is NOT won (a genuine deadlock, nothing thaws it).
-    //
-    // The trigger is deliberately a NON-palette color ('never'). `restart()` re-rolls the board's two
-    // colors across the whole 12-hue palette (`recolorBoard`), so a palette trigger that's merely absent
-    // here (e.g. amber) could be re-introduced onto a tube by the re-roll — thawing the ice and making
-    // the sorted board read as won (a ~1-in-N flake). A non-palette trigger can never be produced by the
-    // recolor, so the ice stays frozen on every re-roll.
-    const ice = [[color('never'), color('never')], [null, null]];
+    // Both tubes are structurally complete, but tube 0 holds ice whose trigger color ('amber')
+    // appears nowhere on the board, so it can never cap — the board is NOT won (a genuine
+    // deadlock, nothing thaws it). Status is recomputed through `undo` rather than `restart`:
+    // undo commits the prior board verbatim (no recolor), so the trigger's absence is stable.
+    // (Pre-F6 this used a fake non-palette trigger to survive restart's re-roll; the wasm
+    // boundary only encodes palette ids, and undo makes the trick unnecessary.)
+    const frozen = board([['ruby', 'ruby'], ['teal', 'teal']], 2);
+    const ice = [[color('amber'), color('amber')], [null, null]];
     useGameStore.setState({
-      current: board([['ruby', 'ruby'], ['teal', 'teal']], 2),
-      initial: board([['ruby', 'ruby'], ['teal', 'teal']], 2),
+      current: frozen,
+      initial: frozen,
       hidden: [[false, false], [false, false]],
       initialHidden: [[false, false], [false, false]],
       funnels: [null, null],
       initialFunnels: [null, null],
       ice,
       initialIce: ice,
-      history: [],
-      hiddenHistory: [],
-      moves: [],
+      history: [frozen], // undo target: the same sorted-but-frozen board
+      hiddenHistory: [[[false, false], [false, false]]],
+      moves: [{ from: 0, to: 1, count: 1, color: color('ruby') }],
       selected: null,
       status: 'playing',
       optimal: 1,
     });
-    store().restart(); // recomputes status from the committed board
+    store().undo(); // recomputes status from the committed board, without recoloring
     expect(store().status).not.toBe('won');
   });
 });
@@ -860,11 +859,11 @@ describe('debug cheats (E4)', () => {
 
     expect(store().moves.length).toBe(1);
     expect(store().current.bottles[0]).toEqual([]);
-    expect(store().current.bottles[1]).toEqual(['g', 'r', 'r']);
+    expect(store().current.bottles[1]).toEqual([color('g'), color('r'), color('r')]);
 
     // Undo still works (free pour records history).
     store().undo();
-    expect(store().current.bottles[1]).toEqual(['g']);
+    expect(store().current.bottles[1]).toEqual([color('g')]);
 
     useSettings.setState({ freePour: false });
   });

@@ -19,6 +19,7 @@ pub mod mechanics;
 pub mod progression;
 pub mod rng;
 pub mod search;
+pub mod session;
 pub mod solver;
 pub mod state;
 pub mod types;
