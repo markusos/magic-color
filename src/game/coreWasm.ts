@@ -17,6 +17,7 @@
  */
 import initWasm, {
   core_version,
+  generate_live,
   hint,
   rng_sample,
   stuck_check,
@@ -25,11 +26,14 @@ import initWasm, {
   stuck_visited_count,
   initSync,
 } from './core-pkg/magic_color_core';
+import type { Metrics } from './difficulty';
+import type { FunnelGrid } from './funnels';
 import { PALETTE } from './generator';
 import type { HiddenGrid } from './hidden';
+import type { IceGrid } from './ice';
 import type { Overlays } from './overlays';
 import type { HintMove } from './search';
-import type { Color, GameState } from './types';
+import { toColor, type Color, type GameState, type Move } from './types';
 
 /** The core's "no color" sentinel (see core `types::NO_COLOR`). */
 const NO_COLOR = 255;
@@ -145,6 +149,128 @@ export function wasmHintMove(
   );
   if (encoded < 0) return null;
   return { from: encoded >> 8, to: encoded & 0xff };
+}
+
+/** The plan fields the live selection loop needs (a `LevelPlan` slice — no import to avoid a cycle). */
+export interface WasmLivePlan {
+  level: number;
+  colors: number;
+  bottles: number;
+  capacity: number;
+  seed: number;
+  mechanics: readonly string[];
+  density: Record<string, number>;
+}
+
+/** What the core's live pick returns — everything `levelLoader.toPlayable` assembles from. */
+export interface WasmLivePick {
+  state: GameState;
+  solution: Move[];
+  hidden: HiddenGrid;
+  funnels: FunnelGrid;
+  ice: IceGrid;
+  optimal: number;
+  twoStarMax: number;
+  par: number;
+  minMoves: number;
+  seed: number;
+  score: number;
+  metrics: Metrics;
+}
+
+/**
+ * The whole coarse-to-fine live selection (`pickBest`) run core-side — Track F3's live-gen
+ * seam. `null` when the core isn't ready OR every salted pool came up empty; the caller falls
+ * back to the JS path either way.
+ */
+export function wasmPickBest(
+  plan: WasmLivePlan,
+  target: number,
+  config: { poolSize: number; finalists: number; fineDeadEndSamples: number },
+): WasmLivePick | null {
+  if (!ready) return null;
+  const mask =
+    (plan.mechanics.includes('hidden') ? 1 : 0) |
+    (plan.mechanics.includes('funnel') ? 2 : 0) |
+    (plan.mechanics.includes('ice') ? 4 : 0);
+  const picked = generate_live(
+    plan.level,
+    plan.colors,
+    plan.bottles,
+    plan.capacity,
+    plan.seed >>> 0,
+    mask,
+    plan.density.hidden ?? 0,
+    plan.density.funnel ?? 0,
+    plan.density.ice ?? 0,
+    target,
+    config.poolSize,
+    config.finalists,
+    config.fineDeadEndSamples,
+  );
+  if (!picked) return null;
+
+  const { bottles: n, capacity: cap } = picked;
+  const cells = picked.cells;
+  const bottles: Color[][] = [];
+  for (let b = 0; b < n; b++) {
+    const col: Color[] = [];
+    for (let i = 0; i < cap; i++) {
+      const c = cells[b * cap + i]!;
+      if (c === NO_COLOR) break;
+      col.push(toColor(PALETTE[c]!));
+    }
+    bottles.push(col);
+  }
+  const state: GameState = { bottles, capacity: cap };
+
+  const solution: Move[] = [];
+  for (let i = 0; i < picked.solution.length; i += 4) {
+    solution.push({
+      from: picked.solution[i]!,
+      to: picked.solution[i + 1]!,
+      count: picked.solution[i + 2]!,
+      color: toColor(PALETTE[picked.solution[i + 3]!]!),
+    });
+  }
+
+  const hidden: HiddenGrid = bottles.map((col, b) => col.map((_, i) => (picked.hidden[b]! & (1 << i)) !== 0));
+  const funnels: FunnelGrid = Array.from(picked.funnels, (f) => (f === NO_COLOR ? null : toColor(PALETTE[f]!)));
+  const ice: IceGrid = bottles.map((col, b) => {
+    const trigger = picked.ice_pairs[b * 2]!;
+    const height = picked.ice_pairs[b * 2 + 1]!;
+    return col.map((_, i) =>
+      trigger !== NO_COLOR && i < height ? toColor(PALETTE[trigger]!) : null,
+    );
+  });
+
+  const result: WasmLivePick = {
+    state,
+    solution,
+    hidden,
+    funnels,
+    ice,
+    optimal: picked.optimal,
+    twoStarMax: picked.two_star_max,
+    par: picked.par,
+    minMoves: picked.min_moves,
+    seed: picked.seed,
+    score: picked.score,
+    metrics: {
+      optimal: picked.m_optimal,
+      optimalExact: picked.m_optimal_exact,
+      twoStarMax: picked.m_two_star_max,
+      forcedMoveRatio: picked.m_forced_move_ratio,
+      deadEndDensity: picked.m_dead_end_density,
+      digDepth: picked.m_dig_depth,
+      funnelLoad: picked.m_funnel_load,
+      iceLoad: picked.m_ice_load,
+      colors: picked.m_colors,
+      empties: picked.m_empties,
+    },
+  };
+  picked.free(); // wasm-bindgen struct — release the linear-memory allocation promptly
+  return result;
 }
 
 /**

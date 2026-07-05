@@ -11,6 +11,7 @@
  * Persistence stores only the level number; baked boards load from data, live ones regenerate.
  */
 import type { BakedLevel } from './baked';
+import { coreWasmReady, wasmPickBest } from './coreWasm';
 import { assignSlots, compositeScores, measureMetrics, type MetricOptions } from './difficulty';
 import {
   buildOverlays,
@@ -214,6 +215,20 @@ export function resetLiveGenerator(): void {
   dailyCache.clear();
 }
 
+/**
+ * Track F3: whether live generation routes through the Rust core. Set by the store layer from
+ * the admin `wasmCore` flag (injected rather than read here, so `game/` never imports
+ * `store/`). The JS path below remains the fallback whenever the core can't serve a pick.
+ */
+let liveCoreEnabled = false;
+export function setLiveCoreEnabled(on: boolean): void {
+  liveCoreEnabled = on;
+  // A/B hygiene: dump memoized boards picked by the other core. (With full parity the boards
+  // are identical anyway, but a stale mixed cache would muddy any divergence investigation.)
+  liveCache.clear();
+  dailyCache.clear();
+}
+
 /** Coarse scoring: proxy optimal (no A*) and no dead-end sampling, to scan the big pool cheaply. */
 const CHEAP_METRICS: MetricOptions = { optimalNodeBudget: 0, tierNodeBudget: 0, deadEndSamples: 0 };
 /**
@@ -258,6 +273,39 @@ function familyForPlan(plan: LevelPlan): string {
 }
 
 function pickBest(level: number, plan: LevelPlan, target: number): LoadedLevel {
+  // Track F3: the whole coarse-to-fine loop runs core-side when the wasm is active. Bit-parity
+  // with the JS path below is asserted by `coreLive.test.ts`; `null` (core not ready / pools
+  // empty) falls through to the JS implementation.
+  if (liveCoreEnabled && coreWasmReady()) {
+    const picked = wasmPickBest(plan, target, liveConfig);
+    if (picked) {
+      return {
+        state: picked.state,
+        colors: plan.colors,
+        bottles: plan.bottles,
+        capacity: plan.capacity,
+        solution: picked.solution,
+        minMoves: picked.minMoves,
+        par: picked.par,
+        seed: picked.seed,
+        level,
+        chapter: plan.chapter,
+        phase: plan.phase,
+        mechanics: plan.mechanics,
+        hidden: picked.hidden,
+        funnels: picked.funnels,
+        ice: picked.ice,
+        optimal: picked.optimal,
+        twoStarMax: picked.twoStarMax,
+        liveProvenance: {
+          score: picked.score,
+          targetPercentile: target,
+          family: familyForPlan(plan),
+          metrics: picked.metrics,
+        },
+      };
+    }
+  }
   for (let salt = 0; salt < 8; salt++) {
     const candidates = generateCandidates(
       {

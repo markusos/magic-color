@@ -35,8 +35,8 @@ check "G1 rust vectors (rng + solver + difficulty)" \
   cargo test --release --test rng_vectors --test conformance --test difficulty_vectors
 check "G1 js pinning (rng + solver vectors)" \
   npx vitest run src/game/rng.vectors.test.ts src/game/solver.vectors.test.ts
-check "G5 committed wasm freshness + adapter differential" \
-  npx vitest run src/game/coreVersion.test.ts src/game/coreWasm.test.ts
+check "G5 committed wasm freshness + adapter/live differential" \
+  npx vitest run src/game/coreVersion.test.ts src/game/coreWasm.test.ts src/game/coreLive.test.ts
 
 if [ -d "$BAKE_DIR" ] && [ -f "$BAKE_DIR/levels.json" ]; then
   check "G2 trace emit ($BAKE_DIR)" \

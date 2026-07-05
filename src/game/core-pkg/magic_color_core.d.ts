@@ -2,9 +2,61 @@
 /* eslint-disable */
 
 /**
+ * A chosen live board, flat-encoded for the boundary. Vec fields are exposed through
+ * `getter_with_clone` (one copy per level load — negligible).
+ */
+export class LiveLevel {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    bottles: number;
+    capacity: number;
+    cells: Uint8Array;
+    funnels: Uint8Array;
+    hidden: Uint16Array;
+    /**
+     * `(trigger, height)` per tube.
+     */
+    ice_pairs: Uint8Array;
+    m_colors: number;
+    m_dead_end_density: number;
+    m_dig_depth: number;
+    m_empties: number;
+    m_forced_move_ratio: number;
+    m_funnel_load: number;
+    m_ice_load: number;
+    m_optimal_exact: boolean;
+    m_optimal: number;
+    m_two_star_max: number;
+    min_moves: number;
+    optimal: number;
+    par: number;
+    /**
+     * The fine composite score the board was selected at (LiveProvenance).
+     */
+    score: number;
+    /**
+     * The pool seed the chosen board came from (salt-adjusted).
+     */
+    seed: number;
+    /**
+     * `(from, to, count, color)` per move of the stored full-information solution.
+     */
+    solution: Uint8Array;
+    two_star_max: number;
+}
+
+/**
  * Core build version, for the diagnostics readout (E9/F5: "show core: wasm/js").
  */
 export function core_version(): string;
+
+/**
+ * Run the live selection loop (`pickBest`) core-side. `mechanics_mask`: 1 = hidden,
+ * 2 = funnel, 4 = ice (registry order is fixed internally). Returns `undefined` when every
+ * salted pool comes up empty — the JS side then falls back to its light generator.
+ */
+export function generate_live(level: number, colors: number, bottles: number, capacity: number, seed: number, mechanics_mask: number, density_hidden: number, density_funnel: number, density_ice: number, target: number, pool_size: number, finalists: number, fine_dead_end_samples: number): LiveLevel | undefined;
 
 /**
  * First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
@@ -46,7 +98,55 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_get_livelevel_bottles: (a: number) => number;
+    readonly __wbg_get_livelevel_capacity: (a: number) => number;
+    readonly __wbg_get_livelevel_cells: (a: number) => [number, number];
+    readonly __wbg_get_livelevel_funnels: (a: number) => [number, number];
+    readonly __wbg_get_livelevel_hidden: (a: number) => [number, number];
+    readonly __wbg_get_livelevel_ice_pairs: (a: number) => [number, number];
+    readonly __wbg_get_livelevel_m_colors: (a: number) => number;
+    readonly __wbg_get_livelevel_m_dead_end_density: (a: number) => number;
+    readonly __wbg_get_livelevel_m_dig_depth: (a: number) => number;
+    readonly __wbg_get_livelevel_m_empties: (a: number) => number;
+    readonly __wbg_get_livelevel_m_forced_move_ratio: (a: number) => number;
+    readonly __wbg_get_livelevel_m_funnel_load: (a: number) => number;
+    readonly __wbg_get_livelevel_m_ice_load: (a: number) => number;
+    readonly __wbg_get_livelevel_m_optimal: (a: number) => number;
+    readonly __wbg_get_livelevel_m_optimal_exact: (a: number) => number;
+    readonly __wbg_get_livelevel_m_two_star_max: (a: number) => number;
+    readonly __wbg_get_livelevel_min_moves: (a: number) => number;
+    readonly __wbg_get_livelevel_optimal: (a: number) => number;
+    readonly __wbg_get_livelevel_par: (a: number) => number;
+    readonly __wbg_get_livelevel_score: (a: number) => number;
+    readonly __wbg_get_livelevel_seed: (a: number) => number;
+    readonly __wbg_get_livelevel_solution: (a: number) => [number, number];
+    readonly __wbg_get_livelevel_two_star_max: (a: number) => number;
+    readonly __wbg_livelevel_free: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_bottles: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_capacity: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_cells: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_livelevel_funnels: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_livelevel_hidden: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_livelevel_ice_pairs: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_livelevel_m_colors: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_dead_end_density: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_dig_depth: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_empties: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_forced_move_ratio: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_funnel_load: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_ice_load: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_optimal: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_optimal_exact: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_m_two_star_max: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_min_moves: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_optimal: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_par: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_score: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_seed: (a: number, b: number) => void;
+    readonly __wbg_set_livelevel_solution: (a: number, b: number, c: number) => void;
+    readonly __wbg_set_livelevel_two_star_max: (a: number, b: number) => void;
     readonly core_version: () => [number, number];
+    readonly generate_live: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
     readonly hint: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
     readonly rng_sample: (a: number, b: number) => [number, number];
     readonly stuck_check: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;

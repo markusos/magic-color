@@ -1,6 +1,357 @@
 /* @ts-self-types="./magic_color_core.d.ts" */
 
 /**
+ * A chosen live board, flat-encoded for the boundary. Vec fields are exposed through
+ * `getter_with_clone` (one copy per level load — negligible).
+ */
+export class LiveLevel {
+    static __wrap(ptr) {
+        const obj = Object.create(LiveLevel.prototype);
+        obj.__wbg_ptr = ptr;
+        LiveLevelFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        LiveLevelFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_livelevel_free(ptr, 0);
+    }
+    /**
+     * @returns {number}
+     */
+    get bottles() {
+        const ret = wasm.__wbg_get_livelevel_bottles(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get capacity() {
+        const ret = wasm.__wbg_get_livelevel_capacity(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    get cells() {
+        const ret = wasm.__wbg_get_livelevel_cells(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    get funnels() {
+        const ret = wasm.__wbg_get_livelevel_funnels(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {Uint16Array}
+     */
+    get hidden() {
+        const ret = wasm.__wbg_get_livelevel_hidden(this.__wbg_ptr);
+        var v1 = getArrayU16FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 2, 2);
+        return v1;
+    }
+    /**
+     * `(trigger, height)` per tube.
+     * @returns {Uint8Array}
+     */
+    get ice_pairs() {
+        const ret = wasm.__wbg_get_livelevel_ice_pairs(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_colors() {
+        const ret = wasm.__wbg_get_livelevel_m_colors(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_dead_end_density() {
+        const ret = wasm.__wbg_get_livelevel_m_dead_end_density(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_dig_depth() {
+        const ret = wasm.__wbg_get_livelevel_m_dig_depth(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_empties() {
+        const ret = wasm.__wbg_get_livelevel_m_empties(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_forced_move_ratio() {
+        const ret = wasm.__wbg_get_livelevel_m_forced_move_ratio(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_funnel_load() {
+        const ret = wasm.__wbg_get_livelevel_m_funnel_load(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_ice_load() {
+        const ret = wasm.__wbg_get_livelevel_m_ice_load(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {boolean}
+     */
+    get m_optimal_exact() {
+        const ret = wasm.__wbg_get_livelevel_m_optimal_exact(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_optimal() {
+        const ret = wasm.__wbg_get_livelevel_m_optimal(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get m_two_star_max() {
+        const ret = wasm.__wbg_get_livelevel_m_two_star_max(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get min_moves() {
+        const ret = wasm.__wbg_get_livelevel_min_moves(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get optimal() {
+        const ret = wasm.__wbg_get_livelevel_optimal(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @returns {number}
+     */
+    get par() {
+        const ret = wasm.__wbg_get_livelevel_par(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * The fine composite score the board was selected at (LiveProvenance).
+     * @returns {number}
+     */
+    get score() {
+        const ret = wasm.__wbg_get_livelevel_score(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * The pool seed the chosen board came from (salt-adjusted).
+     * @returns {number}
+     */
+    get seed() {
+        const ret = wasm.__wbg_get_livelevel_seed(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * `(from, to, count, color)` per move of the stored full-information solution.
+     * @returns {Uint8Array}
+     */
+    get solution() {
+        const ret = wasm.__wbg_get_livelevel_solution(this.__wbg_ptr);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {number}
+     */
+    get two_star_max() {
+        const ret = wasm.__wbg_get_livelevel_two_star_max(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * @param {number} arg0
+     */
+    set bottles(arg0) {
+        wasm.__wbg_set_livelevel_bottles(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set capacity(arg0) {
+        wasm.__wbg_set_livelevel_capacity(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {Uint8Array} arg0
+     */
+    set cells(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_livelevel_cells(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint8Array} arg0
+     */
+    set funnels(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_livelevel_funnels(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {Uint16Array} arg0
+     */
+    set hidden(arg0) {
+        const ptr0 = passArray16ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_livelevel_hidden(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * `(trigger, height)` per tube.
+     * @param {Uint8Array} arg0
+     */
+    set ice_pairs(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_livelevel_ice_pairs(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_colors(arg0) {
+        wasm.__wbg_set_livelevel_m_colors(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_dead_end_density(arg0) {
+        wasm.__wbg_set_livelevel_m_dead_end_density(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_dig_depth(arg0) {
+        wasm.__wbg_set_livelevel_m_dig_depth(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_empties(arg0) {
+        wasm.__wbg_set_livelevel_m_empties(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_forced_move_ratio(arg0) {
+        wasm.__wbg_set_livelevel_m_forced_move_ratio(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_funnel_load(arg0) {
+        wasm.__wbg_set_livelevel_m_funnel_load(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_ice_load(arg0) {
+        wasm.__wbg_set_livelevel_m_ice_load(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {boolean} arg0
+     */
+    set m_optimal_exact(arg0) {
+        wasm.__wbg_set_livelevel_m_optimal_exact(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_optimal(arg0) {
+        wasm.__wbg_set_livelevel_m_optimal(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set m_two_star_max(arg0) {
+        wasm.__wbg_set_livelevel_m_two_star_max(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set min_moves(arg0) {
+        wasm.__wbg_set_livelevel_min_moves(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set optimal(arg0) {
+        wasm.__wbg_set_livelevel_optimal(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set par(arg0) {
+        wasm.__wbg_set_livelevel_par(this.__wbg_ptr, arg0);
+    }
+    /**
+     * The fine composite score the board was selected at (LiveProvenance).
+     * @param {number} arg0
+     */
+    set score(arg0) {
+        wasm.__wbg_set_livelevel_score(this.__wbg_ptr, arg0);
+    }
+    /**
+     * The pool seed the chosen board came from (salt-adjusted).
+     * @param {number} arg0
+     */
+    set seed(arg0) {
+        wasm.__wbg_set_livelevel_seed(this.__wbg_ptr, arg0);
+    }
+    /**
+     * `(from, to, count, color)` per move of the stored full-information solution.
+     * @param {Uint8Array} arg0
+     */
+    set solution(arg0) {
+        const ptr0 = passArray8ToWasm0(arg0, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.__wbg_set_livelevel_solution(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set two_star_max(arg0) {
+        wasm.__wbg_set_livelevel_two_star_max(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) LiveLevel.prototype[Symbol.dispose] = LiveLevel.prototype.free;
+
+/**
  * Core build version, for the diagnostics readout (E9/F5: "show core: wasm/js").
  * @returns {string}
  */
@@ -15,6 +366,30 @@ export function core_version() {
     } finally {
         wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
     }
+}
+
+/**
+ * Run the live selection loop (`pickBest`) core-side. `mechanics_mask`: 1 = hidden,
+ * 2 = funnel, 4 = ice (registry order is fixed internally). Returns `undefined` when every
+ * salted pool comes up empty — the JS side then falls back to its light generator.
+ * @param {number} level
+ * @param {number} colors
+ * @param {number} bottles
+ * @param {number} capacity
+ * @param {number} seed
+ * @param {number} mechanics_mask
+ * @param {number} density_hidden
+ * @param {number} density_funnel
+ * @param {number} density_ice
+ * @param {number} target
+ * @param {number} pool_size
+ * @param {number} finalists
+ * @param {number} fine_dead_end_samples
+ * @returns {LiveLevel | undefined}
+ */
+export function generate_live(level, colors, bottles, capacity, seed, mechanics_mask, density_hidden, density_funnel, density_ice, target, pool_size, finalists, fine_dead_end_samples) {
+    const ret = wasm.generate_live(level, colors, bottles, capacity, seed, mechanics_mask, density_hidden, density_funnel, density_ice, target, pool_size, finalists, fine_dead_end_samples);
+    return ret === 0 ? undefined : LiveLevel.__wrap(ret);
 }
 
 /**
@@ -113,6 +488,9 @@ export function stuck_visited_count() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
+        __wbg___wbindgen_throw_344f42d3211c4765: function(arg0, arg1) {
+            throw new Error(getStringFromWasm0(arg0, arg1));
+        },
         __wbindgen_init_externref_table: function() {
             const table = wasm.__wbindgen_externrefs;
             const offset = table.grow(4);
@@ -129,9 +507,23 @@ function __wbg_get_imports() {
     };
 }
 
+const LiveLevelFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_livelevel_free(ptr, 1));
+
 function getArrayF64FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
+
+function getArrayU16FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint16ArrayMemory0().subarray(ptr / 2, ptr / 2 + len);
+}
+
+function getArrayU8FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 let cachedFloat64ArrayMemory0 = null;

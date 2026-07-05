@@ -14,6 +14,7 @@ pub mod generator;
 pub mod hidden;
 pub mod ice;
 pub mod jsnum;
+pub mod live;
 pub mod mechanics;
 pub mod progression;
 pub mod rng;

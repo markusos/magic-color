@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { previewSound, useSettings } from '../../store/settings';
 import { hapticsSupported } from '../../audio/haptics';
 import { navigate } from '../../useHashRoute';
 import { useInstall } from '../../install/useInstall';
+import { coreWasmVersion, initCoreWasm } from '../../game/coreWasm';
 import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
 import { GENERATOR_VERSION } from '../../game/levels.meta';
 import { InstallInstructions } from '../InstallBanner/InstallInstructions';
@@ -113,6 +114,18 @@ export function Settings() {
   const toggleInspector = useSettings((s) => s.toggleInspector);
   const wasmCore = useSettings((s) => s.wasmCore);
   const toggleWasmCore = useSettings((s) => s.toggleWasmCore);
+  // E9 slice: the active core + wasm build version, resolved once the module finishes loading.
+  const [coreVersion, setCoreVersion] = useState<string | null>(coreWasmVersion());
+  useEffect(() => {
+    if (!wasmCore) return;
+    let cancelled = false;
+    void initCoreWasm().then(() => {
+      if (!cancelled) setCoreVersion(coreWasmVersion());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [wasmCore]);
   // Surface the same install affordance as the home banner, but always (no dismissal) when the app
   // isn't already installed and the platform can offer it.
   const { platform, install } = useInstall();
@@ -255,8 +268,9 @@ export function Settings() {
             </p>
             <ToggleRow label="WASM Core" checked={wasmCore} onToggle={toggleWasmCore} />
             <p className={styles.hint}>
-              Route hints, auto-solve, and stuck detection through the Rust core (Track F3 A/B). Falls
-              back to the JS solver until the module loads.
+              Route hints, auto-solve, stuck detection, and live generation through the Rust core
+              (Track F3 A/B). Falls back to the JS solver until the module loads. Active core:{' '}
+              {wasmCore ? (coreVersion ? `wasm ${coreVersion}` : 'wasm (loading…)') : 'js'}
             </p>
 
             <h2 className={styles.adminTitle}>Admin · Navigate</h2>

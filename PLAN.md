@@ -162,8 +162,18 @@ runtime call-sites that will target the WASM worker: `hintMove` (hints + auto-so
   injected `stuckCheck`. Differential adapter tests load the real committed `.wasm` in vitest (hint
   agreement incl. tie-breaks, registry-vs-Set agreement). **Verified in-browser**: flag on → wasm fetched
   on the main thread, hint computed by `coreHintWorker`, pour committed through the wasm stuck path, no
-  console errors. **Remaining for F3:** live gen via the core (pickBest/generateDailyLevel seams) + the
-  JS-vs-WASM live-gen differential + the E9 diagnostics readout (core: wasm/js, version, timings).
+  console errors.
+  **F3 COMPLETE 2026-07-04 — live gen shipped too.** The whole coarse-to-fine `pickBest` loop is ported
+  (`core/src/live.rs` + the `generate_live` wasm export): plan/target/budget are INPUTS (so `pow` never
+  runs core-side and `LiveGenConfig` stays JS-tunable), and `levelLoader.pickBest` routes through
+  `wasmPickBest` when active (`setLiveCoreEnabled` injected from the store — `game/` never imports
+  `store/`), JS path as fallback. **The live-gen differential is green and exact**: daily and random
+  boards are IDENTICAL on both cores — boards, overlays, star data, provenance (`coreLive.test.ts`,
+  wired into the gate's G5 leg). Daily cross-device determinism now rests on fixed-order arithmetic
+  rather than JS float luck. Minimal E9 slice: the Settings admin hint shows the active core + wasm
+  version (full diagnostics readout stays an F5 item). Committed wasm is 104 kB. What F4 needs now:
+  flip the flag default, re-bake→commit via the Rust bake (byte-identical, so a no-op for players),
+  keep the JS core as the flagged fallback for one release.
 - **F4 — Cutover.** Native bake → overwrite committed `levels.data.ts` with the accepted new levels;
   archive its provenance as the new baseline. Flip the runtime flag default to WASM. The full **`exe/test`
   gate (G1–G5) must pass** before deploying. Keep the JS core as a flagged fallback for one release.

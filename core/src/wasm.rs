@@ -15,6 +15,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::funnels::Funnels;
 use crate::ice::{Ice, IceTube};
+use crate::live::{pick_best, LiveConfig, LivePlan};
+use crate::progression::{Mechanic, MechanicDensity};
 use crate::rng::Mulberry32;
 use crate::search::{hint_move, Overlays};
 use crate::solver::{canonical, is_stuck_in_loop};
@@ -142,4 +144,139 @@ pub fn stuck_check(cells: &[u8], bottles: u8, capacity: u8, funnels: &[u8], max_
 #[wasm_bindgen]
 pub fn stuck_visited_count() -> u32 {
     VISITED.with(|v| v.borrow().len() as u32)
+}
+
+// ------------------------------------------------------------------------------------------
+// Live generation (F3): the whole coarse-to-fine pickBest loop runs core-side; the JS adapter
+// passes the plan + curve target + budget and assembles the LoadedLevel from this result.
+// ------------------------------------------------------------------------------------------
+
+/// A chosen live board, flat-encoded for the boundary. Vec fields are exposed through
+/// `getter_with_clone` (one copy per level load — negligible).
+#[wasm_bindgen(getter_with_clone)]
+pub struct LiveLevel {
+    pub cells: Vec<u8>,
+    pub bottles: u8,
+    pub capacity: u8,
+    /// `(from, to, count, color)` per move of the stored full-information solution.
+    pub solution: Vec<u8>,
+    pub hidden: Vec<u16>,
+    pub funnels: Vec<u8>,
+    /// `(trigger, height)` per tube.
+    pub ice_pairs: Vec<u8>,
+    pub optimal: u32,
+    pub two_star_max: u32,
+    pub par: u32,
+    pub min_moves: u32,
+    /// The pool seed the chosen board came from (salt-adjusted).
+    pub seed: u32,
+    /// The fine composite score the board was selected at (LiveProvenance).
+    pub score: f64,
+    // The chosen board's fine-pass metrics (LiveProvenance.metrics).
+    pub m_optimal: u32,
+    pub m_optimal_exact: bool,
+    pub m_two_star_max: u32,
+    pub m_forced_move_ratio: f64,
+    pub m_dead_end_density: f64,
+    pub m_dig_depth: f64,
+    pub m_funnel_load: f64,
+    pub m_ice_load: f64,
+    pub m_colors: u32,
+    pub m_empties: u32,
+}
+
+/// Run the live selection loop (`pickBest`) core-side. `mechanics_mask`: 1 = hidden,
+/// 2 = funnel, 4 = ice (registry order is fixed internally). Returns `undefined` when every
+/// salted pool comes up empty — the JS side then falls back to its light generator.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn generate_live(
+    level: u32,
+    colors: u8,
+    bottles: u8,
+    capacity: u8,
+    seed: u32,
+    mechanics_mask: u8,
+    density_hidden: f64,
+    density_funnel: f64,
+    density_ice: f64,
+    target: f64,
+    pool_size: u32,
+    finalists: u32,
+    fine_dead_end_samples: u32,
+) -> Option<LiveLevel> {
+    let mut mechanics = Vec::new();
+    if mechanics_mask & 1 != 0 {
+        mechanics.push(Mechanic::Hidden);
+    }
+    if mechanics_mask & 2 != 0 {
+        mechanics.push(Mechanic::Funnel);
+    }
+    if mechanics_mask & 4 != 0 {
+        mechanics.push(Mechanic::Ice);
+    }
+    let plan = LivePlan {
+        level: level as usize,
+        colors: colors as usize,
+        bottles: bottles as usize,
+        capacity,
+        seed,
+        mechanics,
+        density: MechanicDensity {
+            hidden: density_hidden,
+            funnel: density_funnel,
+            ice: density_ice,
+        },
+    };
+    let config = LiveConfig {
+        pool_size: pool_size as usize,
+        finalists: finalists as usize,
+        fine_dead_end_samples: fine_dead_end_samples as usize,
+    };
+
+    let pick = pick_best(&plan, target, &config)?;
+    let state = &pick.level.state;
+    let cap = state.capacity as usize;
+    let mut cells = vec![NO_COLOR; state.tubes.len() * cap];
+    for (b, t) in state.tubes.iter().enumerate() {
+        for (i, &c) in t.cells().iter().enumerate() {
+            cells[b * cap + i] = c;
+        }
+    }
+    let mut solution = Vec::with_capacity(pick.level.solution.len() * 4);
+    for m in &pick.level.solution {
+        solution.extend_from_slice(&[m.from, m.to, m.count, m.color]);
+    }
+    let mut ice_pairs = vec![0u8; state.tubes.len() * 2];
+    for (b, it) in pick.overlays.ice.iter().enumerate() {
+        ice_pairs[b * 2] = it.trigger;
+        ice_pairs[b * 2 + 1] = it.height;
+    }
+
+    let m = &pick.metrics;
+    Some(LiveLevel {
+        cells,
+        bottles: state.tubes.len() as u8,
+        capacity: state.capacity,
+        solution,
+        hidden: pick.overlays.hidden.clone(),
+        funnels: pick.overlays.funnels.clone(),
+        ice_pairs,
+        optimal: pick.optimal,
+        two_star_max: pick.two_star_max,
+        par: pick.level.par,
+        min_moves: pick.level.min_moves as u32,
+        seed: pick.level.seed,
+        score: pick.score,
+        m_optimal: m.optimal,
+        m_optimal_exact: m.optimal_exact,
+        m_two_star_max: m.two_star_max,
+        m_forced_move_ratio: m.forced_move_ratio,
+        m_dead_end_density: m.dead_end_density,
+        m_dig_depth: m.dig_depth,
+        m_funnel_load: m.funnel_load,
+        m_ice_load: m.ice_load,
+        m_colors: m.colors as u32,
+        m_empties: m.empties as u32,
+    })
 }

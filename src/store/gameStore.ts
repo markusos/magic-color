@@ -27,6 +27,7 @@ import {
   hasBakedLevel,
   type LoadedLevel,
   resetLiveGenerator,
+  setLiveCoreEnabled,
 } from '../game/levelLoader';
 import type { LiveProvenance } from '../game/provenance';
 import { type DailyRecord, todayKey } from '../game/daily';
@@ -322,7 +323,9 @@ const getHintWorker = (): Worker | null => {
  * resolves, every wasm entry point reports "not ready" and the JS path serves.
  */
 if (useSettings.getState().wasmCore) void initCoreWasm();
+setLiveCoreEnabled(useSettings.getState().wasmCore);
 useSettings.subscribe((s, prev) => {
+  if (s.wasmCore !== prev.wasmCore) setLiveCoreEnabled(s.wasmCore);
   if (s.wasmCore && !prev.wasmCore) void initCoreWasm();
 });
 
