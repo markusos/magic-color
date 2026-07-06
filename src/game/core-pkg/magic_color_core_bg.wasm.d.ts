@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const __wbg_board_free: (a: number, b: number) => void;
 export const __wbg_boardview_free: (a: number, b: number) => void;
 export const __wbg_get_boardview_blocked: (a: number) => [number, number];
 export const __wbg_get_boardview_capped: (a: number) => [number, number];
@@ -72,17 +73,18 @@ export const __wbg_set_tapresult_next_cells: (a: number, b: number, c: number) =
 export const __wbg_set_tapresult_select_index: (a: number, b: number) => void;
 export const __wbg_set_tapresult_thawed: (a: number, b: number) => void;
 export const __wbg_tapresult_free: (a: number, b: number) => void;
-export const board_view: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => number;
-export const cheat_force_pour: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
+export const board_force_pour: (a: number, b: number, c: number) => number;
+export const board_hint: (a: number, b: number) => number;
+export const board_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => number;
+export const board_tap: (a: number, b: number, c: number) => number;
+export const board_view: (a: number, b: number, c: number) => number;
 export const core_version: () => [number, number];
 export const generate_live: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
-export const hint: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
 export const rng_sample: (a: number, b: number) => [number, number];
 export const stuck_check: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
 export const stuck_reset: (a: number, b: number, c: number, d: number) => void;
 export const stuck_visit: (a: number, b: number, c: number, d: number) => void;
 export const stuck_visited_count: () => number;
-export const tap: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => number;
 export const __wbg_set_tapresult_next_hidden: (a: number, b: number, c: number) => void;
 export const __wbg_set_tapresult_mv: (a: number, b: number, c: number) => void;
 export const __wbg_get_tapresult_mv: (a: number) => [number, number];

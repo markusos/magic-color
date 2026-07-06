@@ -76,25 +76,38 @@ fn decode(
     (state, hidden, funnels, ice)
 }
 
-/// First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
-/// there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
-/// `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
+/// A decoded board + its overlays — the boundary handle for the per-action gameplay calls
+/// (F6). The JS adapter constructs one from the flat arrays (decode happens ONCE, in the
+/// constructor), calls the cohesive `hint`/`view`/`tap`/`force_pour` methods, then frees it.
+/// This replaced four free functions that each repeated the same 6-arg board+overlay prefix.
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
-pub fn hint(
-    cells: &[u8],
-    bottles: u8,
-    capacity: u8,
-    hidden: &[u16],
-    funnels: &[u8],
-    ice_pairs: &[u8],
-    max_nodes: u32,
-) -> i32 {
-    let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
-    let overlays = Overlays { funnels: Some(&funnels), ice: Some(&ice) };
-    match hint_move(&state, &hidden, overlays, max_nodes as usize) {
-        Some((from, to)) => ((from as i32) << 8) | to as i32,
-        None => -1,
+pub struct Board {
+    state: State,
+    hidden: Hidden,
+    funnels: Funnels,
+    ice: Ice,
+}
+
+#[wasm_bindgen]
+impl Board {
+    #[wasm_bindgen(constructor)]
+    pub fn new(cells: &[u8], bottles: u8, capacity: u8, hidden: &[u16], funnels: &[u8], ice_pairs: &[u8]) -> Board {
+        let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
+        Board { state, hidden, funnels, ice }
+    }
+
+    fn overlays(&self) -> Overlays<'_> {
+        Overlays { funnels: Some(&self.funnels), ice: Some(&self.ice) }
+    }
+
+    /// First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
+    /// there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
+    /// `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
+    pub fn hint(&self, max_nodes: u32) -> i32 {
+        match hint_move(&self.state, &self.hidden, self.overlays(), max_nodes as usize) {
+            Some((from, to)) => ((from as i32) << 8) | to as i32,
+            None => -1,
+        }
     }
 }
 
@@ -165,45 +178,37 @@ pub struct BoardView {
     pub pour_targets: Vec<u8>,
 }
 
-/// The board snapshot (F6). `selected` is `-1` for none; `stuck_max_nodes` bounds the
-/// loop check (it runs only when the board is otherwise in play).
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
-pub fn board_view(
-    cells: &[u8],
-    bottles: u8,
-    capacity: u8,
-    hidden: &[u16],
-    funnels: &[u8],
-    ice_pairs: &[u8],
-    selected: i32,
-    stuck_max_nodes: u32,
-) -> BoardView {
-    let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
-    let v = view(
-        &state,
-        &hidden,
-        &funnels,
-        &ice,
-        usize::try_from(selected).ok(),
-        || {
-            VISITED.with(|vis| {
-                is_stuck_in_loop(&state, &vis.borrow(), Some(&funnels), stuck_max_nodes as usize)
-            })
-        },
-    );
-    BoardView {
-        status: match v.status {
-            Status::Playing => 0,
-            Status::Won => 1,
-            Status::Deadlocked => 2,
-            Status::Stuck => 3,
-        },
-        blocked: v.blocked,
-        frozen: v.frozen,
-        selectable: v.selectable.iter().map(|&b| b as u8).collect(),
-        capped: v.capped.iter().map(|&b| b as u8).collect(),
-        pour_targets: v.pour_targets.iter().map(|&b| b as u8).collect(),
+impl Board {
+    /// The board snapshot (F6): status + per-tube masks/flags the UI renders and gates on.
+    /// `selected` is `-1` for none; `stuck_max_nodes` bounds the loop check (which runs only
+    /// when the board is otherwise in play — pass 0 on render paths to skip it entirely).
+    pub fn view(&self, selected: i32, stuck_max_nodes: u32) -> BoardView {
+        let v = view(
+            &self.state,
+            &self.hidden,
+            &self.funnels,
+            &self.ice,
+            usize::try_from(selected).ok(),
+            || {
+                VISITED.with(|vis| {
+                    is_stuck_in_loop(&self.state, &vis.borrow(), Some(&self.funnels), stuck_max_nodes as usize)
+                })
+            },
+        );
+        BoardView {
+            status: match v.status {
+                Status::Playing => 0,
+                Status::Won => 1,
+                Status::Deadlocked => 2,
+                Status::Stuck => 3,
+            },
+            blocked: v.blocked,
+            frozen: v.frozen,
+            selectable: v.selectable.iter().map(|&b| b as u8).collect(),
+            capped: v.capped.iter().map(|&b| b as u8).collect(),
+            pour_targets: v.pour_targets.iter().map(|&b| b as u8).collect(),
+        }
     }
 }
 
@@ -234,63 +239,45 @@ fn empty_tap(kind: u8) -> TapResult {
     }
 }
 
-/// Decide what tapping tube `i` does (F6) — the core-side `planTap`.
 #[wasm_bindgen]
-#[allow(clippy::too_many_arguments)]
-pub fn tap(
-    cells: &[u8],
-    bottles: u8,
-    capacity: u8,
-    hidden: &[u16],
-    funnels: &[u8],
-    ice_pairs: &[u8],
-    selected: i32,
-    i: u8,
-) -> TapResult {
-    let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
-    match plan_tap(&state, &hidden, &funnels, &ice, usize::try_from(selected).ok(), i as usize) {
-        TapOutcome::Ignore => empty_tap(0),
-        TapOutcome::Select { index } => {
-            let mut t = empty_tap(1);
-            t.select_index = index as u8;
-            t
+impl Board {
+    /// Decide what tapping tube `i` does (F6) — the core-side `planTap`.
+    pub fn tap(&self, selected: i32, i: u8) -> TapResult {
+        match plan_tap(&self.state, &self.hidden, &self.funnels, &self.ice, usize::try_from(selected).ok(), i as usize) {
+            TapOutcome::Ignore => empty_tap(0),
+            TapOutcome::Select { index } => {
+                let mut t = empty_tap(1);
+                t.select_index = index as u8;
+                t
+            }
+            TapOutcome::Deselect => empty_tap(2),
+            TapOutcome::Pour { next, next_hidden, mv, thawed, newly_capped } => TapResult {
+                kind: 3,
+                select_index: 0,
+                next_cells: encode_cells(&next),
+                next_hidden,
+                mv: vec![mv.from, mv.to, mv.count, mv.color],
+                thawed,
+                newly_capped,
+            },
         }
-        TapOutcome::Deselect => empty_tap(2),
-        TapOutcome::Pour { next, next_hidden, mv, thawed, newly_capped } => TapResult {
-            kind: 3,
-            select_index: 0,
-            next_cells: encode_cells(&next),
-            next_hidden,
-            mv: vec![mv.from, mv.to, mv.count, mv.color],
-            thawed,
-            newly_capped,
-        },
     }
-}
 
-/// The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
-/// pour-kind TapResult, or ignore-kind when nothing can move.
-#[wasm_bindgen]
-pub fn cheat_force_pour(
-    cells: &[u8],
-    bottles: u8,
-    capacity: u8,
-    hidden: &[u16],
-    from: u8,
-    to: u8,
-) -> TapResult {
-    let (state, hidden, ..) = decode(cells, bottles, capacity, hidden, &[], &[]);
-    match force_pour(&state, &hidden, from as usize, to as usize) {
-        None => empty_tap(0),
-        Some((next, revealed, mv)) => TapResult {
-            kind: 3,
-            select_index: 0,
-            next_cells: encode_cells(&next),
-            next_hidden: revealed,
-            mv: vec![mv.from, mv.to, mv.count, mv.color],
-            thawed: false,
-            newly_capped: false,
-        },
+    /// The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
+    /// pour-kind TapResult, or ignore-kind when nothing can move.
+    pub fn force_pour(&self, from: u8, to: u8) -> TapResult {
+        match force_pour(&self.state, &self.hidden, from as usize, to as usize) {
+            None => empty_tap(0),
+            Some((next, revealed, mv)) => TapResult {
+                kind: 3,
+                select_index: 0,
+                next_cells: encode_cells(&next),
+                next_hidden: revealed,
+                mv: vec![mv.from, mv.to, mv.count, mv.color],
+                thawed: false,
+                newly_capped: false,
+            },
+        }
     }
 }
 

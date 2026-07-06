@@ -129,7 +129,7 @@ pub fn ice_eligible_lines(state: &State, solution: &[Move], hidden: &Hidden) -> 
                     drop_time[b][i] = time;
                 }
             }
-            if !capped_tube[b] && t.len() > 0 && is_capped(t, cur.capacity, hide[b]) {
+            if !capped_tube[b] && !t.is_empty() && is_capped(t, cur.capacity, hide[b]) {
                 capped_tube[b] = true;
                 cap_events.push((t.cell(0), b, time));
             }
@@ -171,8 +171,7 @@ pub fn ice_eligible_lines(state: &State, solution: &[Move], hidden: &Hidden) -> 
     (0..state.tubes.len())
         .map(|b| {
             let mut options = Vec::new();
-            for line in 0..initial_len[b] {
-                let deadline = drop_time[b][line];
+            for (line, &deadline) in drop_time[b].iter().enumerate() {
                 let triggers: Vec<u8> =
                     distinct.iter().copied().filter(|&c| earliest_other_cap(c, b) < deadline).collect();
                 if !triggers.is_empty() {

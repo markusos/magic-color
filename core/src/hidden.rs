@@ -58,7 +58,7 @@ pub fn known_top_run(t: &Tube, blocked: u16) -> usize {
 pub fn reveal_exposed(state: &State, hidden: &Hidden) -> Hidden {
     let mut next = hidden.clone();
     for (b, t) in state.tubes.iter().enumerate() {
-        if t.len() > 0 {
+        if !t.is_empty() {
             next[b] &= !(1 << (t.len() - 1));
         }
     }

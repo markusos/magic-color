@@ -43,12 +43,11 @@ pub struct View {
 /// blocked-topped tube is no source; a mechanic-rejected destination is no escape.
 fn no_player_move(state: &State, blocked: &[u16], funnels: &Funnels) -> bool {
     let n = state.tubes.len();
-    for from in 0..n {
-        let src = &state.tubes[from];
-        if src.is_empty() || is_capped(src, state.capacity, blocked[from]) {
+    for (from, (src, &mask)) in state.tubes.iter().zip(blocked).enumerate() {
+        if src.is_empty() || is_capped(src, state.capacity, mask) {
             continue;
         }
-        if known_top_run(src, blocked[from]) == 0 {
+        if known_top_run(src, mask) == 0 {
             continue;
         }
         let color = src.top().unwrap();

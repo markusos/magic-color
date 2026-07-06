@@ -1,6 +1,92 @@
 /* @ts-self-types="./magic_color_core.d.ts" */
 
 /**
+ * A decoded board + its overlays — the boundary handle for the per-action gameplay calls
+ * (F6). The JS adapter constructs one from the flat arrays (decode happens ONCE, in the
+ * constructor), calls the cohesive `hint`/`view`/`tap`/`force_pour` methods, then frees it.
+ * This replaced four free functions that each repeated the same 6-arg board+overlay prefix.
+ */
+export class Board {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        BoardFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_board_free(ptr, 0);
+    }
+    /**
+     * The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
+     * pour-kind TapResult, or ignore-kind when nothing can move.
+     * @param {number} from
+     * @param {number} to
+     * @returns {TapResult}
+     */
+    force_pour(from, to) {
+        const ret = wasm.board_force_pour(this.__wbg_ptr, from, to);
+        return TapResult.__wrap(ret);
+    }
+    /**
+     * First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
+     * there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
+     * `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
+     * @param {number} max_nodes
+     * @returns {number}
+     */
+    hint(max_nodes) {
+        const ret = wasm.board_hint(this.__wbg_ptr, max_nodes);
+        return ret;
+    }
+    /**
+     * @param {Uint8Array} cells
+     * @param {number} bottles
+     * @param {number} capacity
+     * @param {Uint16Array} hidden
+     * @param {Uint8Array} funnels
+     * @param {Uint8Array} ice_pairs
+     */
+    constructor(cells, bottles, capacity, hidden, funnels, ice_pairs) {
+        const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passArray8ToWasm0(funnels, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passArray8ToWasm0(ice_pairs, wasm.__wbindgen_malloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.board_new(ptr0, len0, bottles, capacity, ptr1, len1, ptr2, len2, ptr3, len3);
+        this.__wbg_ptr = ret;
+        BoardFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Decide what tapping tube `i` does (F6) — the core-side `planTap`.
+     * @param {number} selected
+     * @param {number} i
+     * @returns {TapResult}
+     */
+    tap(selected, i) {
+        const ret = wasm.board_tap(this.__wbg_ptr, selected, i);
+        return TapResult.__wrap(ret);
+    }
+    /**
+     * The board snapshot (F6): status + per-tube masks/flags the UI renders and gates on.
+     * `selected` is `-1` for none; `stuck_max_nodes` bounds the loop check (which runs only
+     * when the board is otherwise in play — pass 0 on render paths to skip it entirely).
+     * @param {number} selected
+     * @param {number} stuck_max_nodes
+     * @returns {BoardView}
+     */
+    view(selected, stuck_max_nodes) {
+        const ret = wasm.board_view(this.__wbg_ptr, selected, stuck_max_nodes);
+        return BoardView.__wrap(ret);
+    }
+}
+if (Symbol.dispose) Board.prototype[Symbol.dispose] = Board.prototype.free;
+
+/**
  * Flat `View` for the boundary: per-tube masks/flags + the status byte
  * (0 playing / 1 won / 2 deadlocked / 3 stuck).
  */
@@ -605,52 +691,6 @@ export class TapResult {
 if (Symbol.dispose) TapResult.prototype[Symbol.dispose] = TapResult.prototype.free;
 
 /**
- * The board snapshot (F6). `selected` is `-1` for none; `stuck_max_nodes` bounds the
- * loop check (it runs only when the board is otherwise in play).
- * @param {Uint8Array} cells
- * @param {number} bottles
- * @param {number} capacity
- * @param {Uint16Array} hidden
- * @param {Uint8Array} funnels
- * @param {Uint8Array} ice_pairs
- * @param {number} selected
- * @param {number} stuck_max_nodes
- * @returns {BoardView}
- */
-export function board_view(cells, bottles, capacity, hidden, funnels, ice_pairs, selected, stuck_max_nodes) {
-    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArray8ToWasm0(funnels, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArray8ToWasm0(ice_pairs, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ret = wasm.board_view(ptr0, len0, bottles, capacity, ptr1, len1, ptr2, len2, ptr3, len3, selected, stuck_max_nodes);
-    return BoardView.__wrap(ret);
-}
-
-/**
- * The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
- * pour-kind TapResult, or ignore-kind when nothing can move.
- * @param {Uint8Array} cells
- * @param {number} bottles
- * @param {number} capacity
- * @param {Uint16Array} hidden
- * @param {number} from
- * @param {number} to
- * @returns {TapResult}
- */
-export function cheat_force_pour(cells, bottles, capacity, hidden, from, to) {
-    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.cheat_force_pour(ptr0, len0, bottles, capacity, ptr1, len1, from, to);
-    return TapResult.__wrap(ret);
-}
-
-/**
  * Core build version, for the diagnostics readout (E9/F5: "show core: wasm/js").
  * @returns {string}
  */
@@ -689,32 +729,6 @@ export function core_version() {
 export function generate_live(level, colors, bottles, capacity, seed, mechanics_mask, density_hidden, density_funnel, density_ice, target, pool_size, finalists, fine_dead_end_samples) {
     const ret = wasm.generate_live(level, colors, bottles, capacity, seed, mechanics_mask, density_hidden, density_funnel, density_ice, target, pool_size, finalists, fine_dead_end_samples);
     return ret === 0 ? undefined : LiveLevel.__wrap(ret);
-}
-
-/**
- * First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
- * there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
- * `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
- * @param {Uint8Array} cells
- * @param {number} bottles
- * @param {number} capacity
- * @param {Uint16Array} hidden
- * @param {Uint8Array} funnels
- * @param {Uint8Array} ice_pairs
- * @param {number} max_nodes
- * @returns {number}
- */
-export function hint(cells, bottles, capacity, hidden, funnels, ice_pairs, max_nodes) {
-    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArray8ToWasm0(funnels, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArray8ToWasm0(ice_pairs, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ret = wasm.hint(ptr0, len0, bottles, capacity, ptr1, len1, ptr2, len2, ptr3, len3, max_nodes);
-    return ret;
 }
 
 /**
@@ -784,31 +798,6 @@ export function stuck_visited_count() {
     const ret = wasm.stuck_visited_count();
     return ret >>> 0;
 }
-
-/**
- * Decide what tapping tube `i` does (F6) — the core-side `planTap`.
- * @param {Uint8Array} cells
- * @param {number} bottles
- * @param {number} capacity
- * @param {Uint16Array} hidden
- * @param {Uint8Array} funnels
- * @param {Uint8Array} ice_pairs
- * @param {number} selected
- * @param {number} i
- * @returns {TapResult}
- */
-export function tap(cells, bottles, capacity, hidden, funnels, ice_pairs, selected, i) {
-    const ptr0 = passArray8ToWasm0(cells, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray16ToWasm0(hidden, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArray8ToWasm0(funnels, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArray8ToWasm0(ice_pairs, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ret = wasm.tap(ptr0, len0, bottles, capacity, ptr1, len1, ptr2, len2, ptr3, len3, selected, i);
-    return TapResult.__wrap(ret);
-}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
@@ -831,6 +820,9 @@ function __wbg_get_imports() {
     };
 }
 
+const BoardFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_board_free(ptr, 1));
 const BoardViewFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_boardview_free(ptr, 1));

@@ -16,17 +16,14 @@
  * checks are microseconds) and inside the wasm hint worker (long solves stay off-thread).
  */
 import initWasm, {
-  board_view,
-  cheat_force_pour,
+  Board,
   core_version,
   generate_live,
-  hint,
   rng_sample,
   stuck_check,
   stuck_reset,
   stuck_visit,
   stuck_visited_count,
-  tap,
   initSync,
 } from './core-pkg/magic_color_core';
 import type { FunnelGrid } from './funnels';
@@ -143,6 +140,55 @@ function encodeIce(ice: Overlays['ice'], bottles: number): Uint8Array {
 }
 
 /**
+ * Construct a wasm {@link Board} handle from a JS board + overlays, run `fn` against it, and
+ * free it — the single place the 6-part board+overlay encode happens (the four per-action
+ * gameplay calls all funnel through here). Callers must not retain the handle past `fn`.
+ */
+function withBoard<T>(
+  state: GameState,
+  hidden: HiddenGrid,
+  overlays: Overlays | undefined,
+  fn: (board: Board) => T,
+): T {
+  const n = state.bottles.length;
+  const board = new Board(
+    encodeCells(state),
+    n,
+    state.capacity,
+    encodeHidden(hidden),
+    encodeFunnels(overlays?.funnels, n),
+    encodeIce(overlays?.ice, n),
+  );
+  try {
+    return fn(board);
+  } finally {
+    board.free();
+  }
+}
+
+// --- Boundary DECODE helpers (bytes → JS), shared by every result assembler below. ---
+
+/** Flat cell bytes → bottles (bottom-first, `NO_COLOR` ends a tube). */
+function decodeCells(cells: Uint8Array, bottles: number, capacity: number): Color[][] {
+  const out: Color[][] = [];
+  for (let b = 0; b < bottles; b++) {
+    const col: Color[] = [];
+    for (let i = 0; i < capacity; i++) {
+      const c = cells[b * capacity + i]!;
+      if (c === NO_COLOR) break;
+      col.push(toColor(PALETTE[c]!));
+    }
+    out.push(col);
+  }
+  return out;
+}
+
+/** Per-tube u16 masks → a per-cell boolean grid shaped to `bottles`. */
+function masksToGrid(bottles: readonly { length: number }[], masks: Uint16Array): boolean[][] {
+  return bottles.map((col, b) => Array.from({ length: col.length }, (_, i) => (masks[b]! & (1 << i)) !== 0));
+}
+
+/**
  * The first move of an optimal continuation, via the Rust core (`null` = solved / stuck /
  * budget exhausted / core not ready — or a board the boundary can't encode, e.g. an
  * admin-injected test board with non-palette color ids).
@@ -156,16 +202,7 @@ export function wasmHintMove(
   if (!ready) return null;
   let encoded: number;
   try {
-    const n = state.bottles.length;
-    encoded = hint(
-      encodeCells(state),
-      n,
-      state.capacity,
-      encodeHidden(hidden),
-      encodeFunnels(overlays?.funnels, n),
-      encodeIce(overlays?.ice, n),
-      maxNodes,
-    );
+    encoded = withBoard(state, hidden, overlays, (board) => board.hint(maxNodes));
   } catch {
     return null; // unencodable board — "no hint" beats a crash
   }
@@ -233,17 +270,7 @@ export function wasmPickBest(
   if (!picked) return null;
 
   const { bottles: n, capacity: cap } = picked;
-  const cells = picked.cells;
-  const bottles: Color[][] = [];
-  for (let b = 0; b < n; b++) {
-    const col: Color[] = [];
-    for (let i = 0; i < cap; i++) {
-      const c = cells[b * cap + i]!;
-      if (c === NO_COLOR) break;
-      col.push(toColor(PALETTE[c]!));
-    }
-    bottles.push(col);
-  }
+  const bottles = decodeCells(picked.cells, n, cap);
   const state: GameState = { bottles, capacity: cap };
 
   const solution: Move[] = [];
@@ -256,7 +283,7 @@ export function wasmPickBest(
     });
   }
 
-  const hidden: HiddenGrid = bottles.map((col, b) => col.map((_, i) => (picked.hidden[b]! & (1 << i)) !== 0));
+  const hidden: HiddenGrid = masksToGrid(bottles, picked.hidden);
   const funnels: FunnelGrid = Array.from(picked.funnels, (f) => (f === NO_COLOR ? null : toColor(PALETTE[f]!)));
   const ice: IceGrid = bottles.map((col, b) => {
     const trigger = picked.ice_pairs[b * 2]!;
@@ -320,9 +347,6 @@ const STATUS_NAMES = ['playing', 'won', 'deadlocked', 'stuck'] as const;
 /** Node budget for the stuck-loop leg of a status derivation (matches the old JS default). */
 const STUCK_NODE_BUDGET = 20_000;
 
-const masksToGrid = (state: GameState, masks: Uint16Array): boolean[][] =>
-  state.bottles.map((col, b) => col.map((_, i) => (masks[b]! & (1 << i)) !== 0));
-
 /**
  * The full board snapshot (F6). `checkStuck` gates the loop-check leg: the STORE passes true
  * when deriving a committed status (the check consults the core-side visited registry);
@@ -336,27 +360,19 @@ export function wasmBoardView(
   checkStuck: boolean,
 ): BoardViewSnapshot {
   if (!ready) throw new Error('[core-wasm] not initialized');
-  const n = state.bottles.length;
-  const v = board_view(
-    encodeCells(state),
-    n,
-    state.capacity,
-    encodeHidden(hidden),
-    encodeFunnels(overlays?.funnels, n),
-    encodeIce(overlays?.ice, n),
-    selected ?? -1,
-    checkStuck ? STUCK_NODE_BUDGET : 0,
-  );
-  const snapshot: BoardViewSnapshot = {
-    status: STATUS_NAMES[v.status]!,
-    blocked: masksToGrid(state, v.blocked),
-    frozen: masksToGrid(state, v.frozen),
-    selectable: Array.from(v.selectable, (x) => x !== 0),
-    capped: Array.from(v.capped, (x) => x !== 0),
-    pourTargets: Array.from(v.pour_targets, (x) => x !== 0),
-  };
-  v.free();
-  return snapshot;
+  return withBoard(state, hidden, overlays, (board) => {
+    const v = board.view(selected ?? -1, checkStuck ? STUCK_NODE_BUDGET : 0);
+    const snapshot: BoardViewSnapshot = {
+      status: STATUS_NAMES[v.status]!,
+      blocked: masksToGrid(state.bottles, v.blocked),
+      frozen: masksToGrid(state.bottles, v.frozen),
+      selectable: Array.from(v.selectable, (x) => x !== 0),
+      capped: Array.from(v.capped, (x) => x !== 0),
+      pourTargets: Array.from(v.pour_targets, (x) => x !== 0),
+    };
+    v.free();
+    return snapshot;
+  });
 }
 
 /** A tap's decided outcome — decoded `core::session::TapOutcome` (mirrors the old TapPlan). */
@@ -379,26 +395,16 @@ const decodeTapPour = (
   capacity: number,
   bottles: number,
 ): { next: GameState; move: Move; revealedHidden: HiddenGrid } => {
-  const cols: Color[][] = [];
-  for (let b = 0; b < bottles; b++) {
-    const col: Color[] = [];
-    for (let i = 0; i < capacity; i++) {
-      const c = r.next_cells[b * capacity + i]!;
-      if (c === NO_COLOR) break;
-      col.push(toColor(PALETTE[c]!));
-    }
-    cols.push(col);
-  }
-  const next: GameState = { bottles: cols, capacity };
+  const cols = decodeCells(r.next_cells, bottles, capacity);
   return {
-    next,
+    next: { bottles: cols, capacity },
     move: {
       from: r.mv[0]!,
       to: r.mv[1]!,
       count: r.mv[2]!,
       color: toColor(PALETTE[r.mv[3]!]!),
     },
-    revealedHidden: cols.map((col, b) => col.map((_, i) => (r.next_hidden[b]! & (1 << i)) !== 0)),
+    revealedHidden: masksToGrid(cols, r.next_hidden),
   };
 };
 
@@ -412,31 +418,24 @@ export function wasmPlanTap(
 ): WasmTapPlan {
   if (!ready) throw new Error('[core-wasm] not initialized');
   const n = state.bottles.length;
-  const r = tap(
-    encodeCells(state),
-    n,
-    state.capacity,
-    encodeHidden(hidden),
-    encodeFunnels(overlays?.funnels, n),
-    encodeIce(overlays?.ice, n),
-    selected ?? -1,
-    i,
-  );
-  const out: WasmTapPlan =
-    r.kind === 0
-      ? { kind: 'ignore' }
-      : r.kind === 1
-        ? { kind: 'select', selected: r.select_index }
-        : r.kind === 2
-          ? { kind: 'deselect' }
-          : {
-              kind: 'pour',
-              ...decodeTapPour(r, state.capacity, n),
-              thawed: r.thawed,
-              newlyCapped: r.newly_capped,
-            };
-  r.free();
-  return out;
+  return withBoard(state, hidden, overlays, (board) => {
+    const r = board.tap(selected ?? -1, i);
+    const out: WasmTapPlan =
+      r.kind === 0
+        ? { kind: 'ignore' }
+        : r.kind === 1
+          ? { kind: 'select', selected: r.select_index }
+          : r.kind === 2
+            ? { kind: 'deselect' }
+            : {
+                kind: 'pour',
+                ...decodeTapPour(r, state.capacity, n),
+                thawed: r.thawed,
+                newlyCapped: r.newly_capped,
+              };
+    r.free();
+    return out;
+  });
 }
 
 /** The free-pour cheat (F6): engine geometry only, mechanics ignored. `null` = nothing moves. */
@@ -448,10 +447,12 @@ export function wasmForcePour(
 ): { next: GameState; move: Move; revealedHidden: HiddenGrid } | null {
   if (!ready) throw new Error('[core-wasm] not initialized');
   const n = state.bottles.length;
-  const r = cheat_force_pour(encodeCells(state), n, state.capacity, encodeHidden(hidden), from, to);
-  const out = r.kind === 3 ? decodeTapPour(r, state.capacity, n) : null;
-  r.free();
-  return out;
+  return withBoard(state, hidden, undefined, (board) => {
+    const r = board.force_pour(from, to);
+    const out = r.kind === 3 ? decodeTapPour(r, state.capacity, n) : null;
+    r.free();
+    return out;
+  });
 }
 
 /**

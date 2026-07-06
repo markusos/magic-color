@@ -38,6 +38,18 @@ pub const NO_COLOR: u8 = 255;
 /// Standard water-sort capacity (`DEFAULT_CAPACITY` in `generator.ts`).
 pub const DEFAULT_CAPACITY: u8 = 4;
 
+/// Palette id for a color byte — the id↔index mapping, one home for the whole crate (bins that
+/// (de)serialize the JSON board format go through here rather than re-deriving it).
+pub fn color_name(id: u8) -> &'static str {
+    PALETTE[id as usize]
+}
+
+/// Color byte for a palette id, or `None` if it isn't a palette color. The JS adapter mirrors
+/// this over the wasm boundary (palette ORDER is the shared contract — see the module docs).
+pub fn color_index(name: &str) -> Option<u8> {
+    PALETTE.iter().position(|p| *p == name).map(|i| i as u8)
+}
+
 /// A single pour, mirroring the TS `Move`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {

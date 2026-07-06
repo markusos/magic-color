@@ -23,7 +23,7 @@ use magic_color_core::hidden::any_hidden;
 use magic_color_core::ice::{any_frozen, IceTube};
 use magic_color_core::session::{plan_tap, view, Status, TapOutcome};
 use magic_color_core::state::{state_key, Hidden, State, Tube};
-use magic_color_core::types::{NO_COLOR, PALETTE};
+use magic_color_core::types::{color_index, NO_COLOR};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,7 +47,7 @@ struct Golden {
 }
 
 fn color_idx(name: &str) -> u8 {
-    PALETTE.iter().position(|p| *p == name).unwrap_or_else(|| panic!("unknown palette id {name}")) as u8
+    color_index(name).unwrap_or_else(|| panic!("unknown palette id {name}"))
 }
 
 fn fail(level: usize, msg: &str) -> ! {

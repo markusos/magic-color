@@ -38,6 +38,45 @@ Track F port preserve it (the Rust core reimplements the same derived-overlay ru
 
 ---
 
+## F′. Track F post-completion code review  (ACTIVE 2026-07-05 — SOLID / best-practice cleanup)
+
+> Track F shipped F0–F6 (see below). A review of the landed Rust core + wasm boundary + JS adapter for
+> SOLID/DRY/idioms surfaced the items below. Correctness is solid (full gate + 325 tests); these are
+> **quality** fixes. **ALL PHASES COMPLETE 2026-07-05** — gate PASS + 325 tests + 0 clippy warnings after
+> each; bake byte-identical throughout (pure refactors). `[x]` = done.
+>
+> **Phase 1 — idiom (clippy), zero risk. `[x]`** The 6 lib warnings fixed: `generator.rs`
+> (`!(2..=MAX).contains` + `bottles > colors`), `hidden.rs`/`ice.rs` (`is_empty()`), `ice.rs`
+> (iterate `drop_time[b]` by value), `session.rs` (`.zip(blocked).enumerate()`). Clippy now clean
+> across all targets.
+>
+> **Phase 2 — DRY palette codec. `[x]` R-1**: added `types::color_name(u8)` / `types::color_index(&str)
+> -> Option<u8>`; `bin/verify.rs` + `bin/bake.rs` now delegate (deleted their local `color_name` and the
+> inline `position`). JS keeps its own (cross-language) `colorIndex` with the palette-order contract note.
+>
+> **Phase 3 — SOLID boundary: a `Board` handle. `[x]` R-2**: replaced the four `#[wasm_bindgen]` fns
+> (`hint`/`board_view`/`tap`/`cheat_force_pour`) — each with `#[allow(too_many_arguments)]` and the
+> repeated 6-arg board prefix — with a `#[wasm_bindgen] Board` opaque handle: constructor decodes once,
+> methods `hint`/`view`/`tap`/`force_pour` are cohesive and short. All four `too_many_arguments` allows on
+> those are gone. JS got one `withBoard(state,hidden,overlays, fn)` helper (encode → `new Board` → run →
+> `free()`), collapsing the three repeated encode prefixes. `stuck_*` stayed free (global registry, short
+> sigs). *`generate_live` kept its single `#[allow(too_many_arguments)]`: it's one generation entry point
+> with no shared prefix, and a `LiveParams` wasm struct would just relocate the arg list to a data
+> constructor — net churn for no cohesion gain, so accepted.*
+>
+> **Phase 4 — JS decode DRY. `[x]` J-1**: extracted `decodeCells(cells,bottles,capacity)` + a
+> bottles-based `masksToGrid`; `wasmPickBest`, `decodeTapPour`, and `wasmBoardView` all reuse them (was
+> three inline copies of the NO_COLOR-break loop and the mask→grid map).
+>
+> **Accepted / won't-fix (documented, not changed):** **R-3** `wasm.rs` is one module mixing
+> smoke/stuck/session(Board)/live — splitting is cosmetic under wasm-bindgen (exports must be in the
+> crate); the `Board` handle already improved cohesion. **R-5** `LiveLevel`'s flat `m_*` metric fields are
+> FFI-forced (wasm-bindgen structs don't nest); the grouping lives in JS `WasmLivePick`. **R-4** the
+> mechanics-mask bits (1/2/4) are mirrored in Rust `generate_live` + JS `wasmPickBest` — genuinely
+> cross-language, so not dedupable beyond a shared comment.
+
+---
+
 ## F. Native + WASM core port  (ACTIVE — top priority; supersedes E5 and the JS hot-loop watch-list)
 
 > Decided 2026-07-01. Port the pure level-generation/evaluation core (engine rules, the three mechanics,

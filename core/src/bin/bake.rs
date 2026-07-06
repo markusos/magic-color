@@ -30,7 +30,7 @@ use magic_color_core::progression::{
 };
 use magic_color_core::search::{optimal_capped_line, Overlays};
 use magic_color_core::state::State;
-use magic_color_core::types::{NO_COLOR, PALETTE};
+use magic_color_core::types::{color_index, color_name, NO_COLOR};
 use magic_color_core::CORE_VERSION;
 
 const DEFAULT_PER_SHAPE: usize = 80;
@@ -146,9 +146,6 @@ fn mechanic_name(m: Mechanic) -> &'static str {
     }
 }
 
-fn color_name(id: u8) -> &'static str {
-    PALETTE[id as usize]
-}
 
 /// JS `Number(x.toFixed(3))` for the provenance display fields.
 fn to_fixed3(x: f64) -> f64 {
@@ -389,9 +386,7 @@ fn main() {
             .iter()
             .map(|col| {
                 magic_color_core::state::Tube::from_cells(
-                    &col.iter()
-                        .map(|c| PALETTE.iter().position(|p| p == c).unwrap() as u8)
-                        .collect::<Vec<_>>(),
+                    &col.iter().map(|c| color_index(c).unwrap()).collect::<Vec<_>>(),
                 )
             })
             .collect();

@@ -49,10 +49,10 @@ pub fn is_valid_combo(colors: usize, bottles: usize, capacity: u8) -> bool {
     if capacity < 2 {
         return false;
     }
-    if colors < 2 || colors > MAX_COLORS {
+    if !(2..=MAX_COLORS).contains(&colors) {
         return false;
     }
-    bottles >= colors + 1 // at least one empty tube
+    bottles > colors // at least one empty tube
 }
 
 /// Fisher–Yates shuffle, one draw per swap from the back — identical to the JS helper.

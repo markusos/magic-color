@@ -2,6 +2,39 @@
 /* eslint-disable */
 
 /**
+ * A decoded board + its overlays — the boundary handle for the per-action gameplay calls
+ * (F6). The JS adapter constructs one from the flat arrays (decode happens ONCE, in the
+ * constructor), calls the cohesive `hint`/`view`/`tap`/`force_pour` methods, then frees it.
+ * This replaced four free functions that each repeated the same 6-arg board+overlay prefix.
+ */
+export class Board {
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
+     * pour-kind TapResult, or ignore-kind when nothing can move.
+     */
+    force_pour(from: number, to: number): TapResult;
+    /**
+     * First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
+     * there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
+     * `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
+     */
+    hint(max_nodes: number): number;
+    constructor(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, funnels: Uint8Array, ice_pairs: Uint8Array);
+    /**
+     * Decide what tapping tube `i` does (F6) — the core-side `planTap`.
+     */
+    tap(selected: number, i: number): TapResult;
+    /**
+     * The board snapshot (F6): status + per-tube masks/flags the UI renders and gates on.
+     * `selected` is `-1` for none; `stuck_max_nodes` bounds the loop check (which runs only
+     * when the board is otherwise in play — pass 0 on render paths to skip it entirely).
+     */
+    view(selected: number, stuck_max_nodes: number): BoardView;
+}
+
+/**
  * Flat `View` for the boundary: per-tube masks/flags + the status byte
  * (0 playing / 1 won / 2 deadlocked / 3 stuck).
  */
@@ -86,18 +119,6 @@ export class TapResult {
 }
 
 /**
- * The board snapshot (F6). `selected` is `-1` for none; `stuck_max_nodes` bounds the
- * loop check (it runs only when the board is otherwise in play).
- */
-export function board_view(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, funnels: Uint8Array, ice_pairs: Uint8Array, selected: number, stuck_max_nodes: number): BoardView;
-
-/**
- * The free-pour debug cheat (F6): engine-geometry-only move, mechanics ignored. Returns a
- * pour-kind TapResult, or ignore-kind when nothing can move.
- */
-export function cheat_force_pour(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, from: number, to: number): TapResult;
-
-/**
  * Core build version, for the diagnostics readout (E9/F5: "show core: wasm/js").
  */
 export function core_version(): string;
@@ -108,13 +129,6 @@ export function core_version(): string;
  * salted pool comes up empty — the JS side then falls back to its light generator.
  */
 export function generate_live(level: number, colors: number, bottles: number, capacity: number, seed: number, mechanics_mask: number, density_hidden: number, density_funnel: number, density_ice: number, target: number, pool_size: number, finalists: number, fine_dead_end_samples: number): LiveLevel | undefined;
-
-/**
- * First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
- * there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
- * `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
- */
-export function hint(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, funnels: Uint8Array, ice_pairs: Uint8Array, max_nodes: number): number;
 
 /**
  * First `n` draws of `mulberry32(seed)` — the F0 boundary smoke test, kept as a cheap
@@ -145,15 +159,11 @@ export function stuck_visit(cells: Uint8Array, bottles: number, capacity: number
  */
 export function stuck_visited_count(): number;
 
-/**
- * Decide what tapping tube `i` does (F6) — the core-side `planTap`.
- */
-export function tap(cells: Uint8Array, bottles: number, capacity: number, hidden: Uint16Array, funnels: Uint8Array, ice_pairs: Uint8Array, selected: number, i: number): TapResult;
-
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_board_free: (a: number, b: number) => void;
     readonly __wbg_boardview_free: (a: number, b: number) => void;
     readonly __wbg_get_boardview_blocked: (a: number) => [number, number];
     readonly __wbg_get_boardview_capped: (a: number) => [number, number];
@@ -225,17 +235,18 @@ export interface InitOutput {
     readonly __wbg_set_tapresult_select_index: (a: number, b: number) => void;
     readonly __wbg_set_tapresult_thawed: (a: number, b: number) => void;
     readonly __wbg_tapresult_free: (a: number, b: number) => void;
-    readonly board_view: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => number;
-    readonly cheat_force_pour: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => number;
+    readonly board_force_pour: (a: number, b: number, c: number) => number;
+    readonly board_hint: (a: number, b: number) => number;
+    readonly board_new: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => number;
+    readonly board_tap: (a: number, b: number, c: number) => number;
+    readonly board_view: (a: number, b: number, c: number) => number;
     readonly core_version: () => [number, number];
     readonly generate_live: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number) => number;
-    readonly hint: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
     readonly rng_sample: (a: number, b: number) => [number, number];
     readonly stuck_check: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
     readonly stuck_reset: (a: number, b: number, c: number, d: number) => void;
     readonly stuck_visit: (a: number, b: number, c: number, d: number) => void;
     readonly stuck_visited_count: () => number;
-    readonly tap: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => number;
     readonly __wbg_set_tapresult_next_hidden: (a: number, b: number, c: number) => void;
     readonly __wbg_set_tapresult_mv: (a: number, b: number, c: number) => void;
     readonly __wbg_get_tapresult_mv: (a: number) => [number, number];
