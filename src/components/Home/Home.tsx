@@ -14,6 +14,7 @@ import styles from './Home.module.css';
  */
 export function Home() {
   const level = useGameStore((s) => s.level);
+  const mode = useGameStore((s) => s.mode);
   const furthest = useGameStore((s) => s.furthest);
   const loadLevel = useGameStore((s) => s.loadLevel);
   const playRandom = useGameStore((s) => s.playRandom);
@@ -37,10 +38,11 @@ export function Home() {
     }
   };
 
-  // Resume the campaign frontier; only reload if we're not already on it (preserves an
-  // in-progress board when continuing the furthest level).
+  // Resume the campaign frontier. Only preserve the in-progress board when we're already in
+  // campaign mode on the furthest level; otherwise (e.g. after playing the daily or a random
+  // board) the mounted board belongs to a different mode and must be reloaded.
   const onPlay = () => {
-    if (level !== furthest) loadLevel(furthest);
+    if (mode !== 'campaign' || level !== furthest) loadLevel(furthest);
     navigate('play');
   };
 
