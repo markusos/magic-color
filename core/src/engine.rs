@@ -78,7 +78,15 @@ pub fn pour(state: &State, from: usize, to: usize, max_count: usize) -> (State, 
     next.tubes[from].pop_n(count);
     next.tubes[to].push_n(color, count);
 
-    (next, Move { from: from as u8, to: to as u8, count: count as u8, color })
+    (
+        next,
+        Move {
+            from: from as u8,
+            to: to as u8,
+            count: count as u8,
+            color,
+        },
+    )
 }
 
 /// Won when every tube is complete (empty or a single full color).
@@ -111,7 +119,10 @@ mod tests {
     use super::*;
 
     fn state(tubes: Vec<&[u8]>, capacity: u8) -> State {
-        State { tubes: tubes.into_iter().map(Tube::from_cells).collect(), capacity }
+        State {
+            tubes: tubes.into_iter().map(Tube::from_cells).collect(),
+            capacity,
+        }
     }
 
     #[test]
@@ -119,7 +130,15 @@ mod tests {
         let s = state(vec![&[0, 1, 1], &[1], &[]], 4);
         assert_eq!(pour_amount(&s, 0, 1), 2);
         let (next, mv) = pour(&s, 0, 1, usize::MAX);
-        assert_eq!(mv, Move { from: 0, to: 1, count: 2, color: 1 });
+        assert_eq!(
+            mv,
+            Move {
+                from: 0,
+                to: 1,
+                count: 2,
+                color: 1
+            }
+        );
         assert_eq!(next.tubes[0].cells(), &[0]);
         assert_eq!(next.tubes[1].cells(), &[1, 1, 1]);
     }

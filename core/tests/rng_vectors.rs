@@ -1,5 +1,5 @@
-//! G1 shared-vector conformance for the PRNG: replay `vectors/rng.json` (emitted from the JS
-//! oracle by `scripts/emit-vectors.ts`) and require exact agreement on the raw u32 draws.
+//! PRNG pinning: replay `vectors/rng.json` — FROZEN golden vectors from the JS implementation
+//! this PRNG must match bit-for-bit — and require exact agreement on the raw u32 draws.
 //! Divergence here would silently skew every seeded stream downstream. The vectors store u32,
 //! not the JS-visible float: serde_json's default float parse is off-by-1-ulp (correct
 //! rounding is the opt-in `float_roundtrip` feature), so floats in vectors are a trap.
@@ -22,7 +22,7 @@ struct RngCase {
 fn mulberry32_matches_js_vectors() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../vectors/rng.json");
     let raw = std::fs::read_to_string(path)
-        .expect("vectors/rng.json missing — run `npm run vectors:emit`");
+        .expect("vectors/rng.json missing — the committed golden vectors were deleted?");
     let vectors: RngVectors = serde_json::from_str(&raw).unwrap();
     assert!(!vectors.mulberry32.is_empty());
 

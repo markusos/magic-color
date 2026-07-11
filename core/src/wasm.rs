@@ -60,8 +60,16 @@ fn decode(
         })
         .collect();
     let state = State { tubes, capacity };
-    let hidden: Hidden = if hidden.is_empty() { vec![0; n] } else { hidden.to_vec() };
-    let funnels: Funnels = if funnels.is_empty() { vec![NO_COLOR; n] } else { funnels.to_vec() };
+    let hidden: Hidden = if hidden.is_empty() {
+        vec![0; n]
+    } else {
+        hidden.to_vec()
+    };
+    let funnels: Funnels = if funnels.is_empty() {
+        vec![NO_COLOR; n]
+    } else {
+        funnels.to_vec()
+    };
     let ice: Ice = if ice_pairs.is_empty() {
         vec![IceTube::NONE; n]
     } else {
@@ -69,7 +77,11 @@ fn decode(
             .map(|b| {
                 let trigger = ice_pairs[b * 2];
                 let height = ice_pairs[b * 2 + 1];
-                if trigger == NO_COLOR || height == 0 { IceTube::NONE } else { IceTube { trigger, height } }
+                if trigger == NO_COLOR || height == 0 {
+                    IceTube::NONE
+                } else {
+                    IceTube { trigger, height }
+                }
             })
             .collect()
     };
@@ -91,20 +103,41 @@ pub struct Board {
 #[wasm_bindgen]
 impl Board {
     #[wasm_bindgen(constructor)]
-    pub fn new(cells: &[u8], bottles: u8, capacity: u8, hidden: &[u16], funnels: &[u8], ice_pairs: &[u8]) -> Board {
-        let (state, hidden, funnels, ice) = decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
-        Board { state, hidden, funnels, ice }
+    pub fn new(
+        cells: &[u8],
+        bottles: u8,
+        capacity: u8,
+        hidden: &[u16],
+        funnels: &[u8],
+        ice_pairs: &[u8],
+    ) -> Board {
+        let (state, hidden, funnels, ice) =
+            decode(cells, bottles, capacity, hidden, funnels, ice_pairs);
+        Board {
+            state,
+            hidden,
+            funnels,
+            ice,
+        }
     }
 
     fn overlays(&self) -> Overlays<'_> {
-        Overlays { funnels: Some(&self.funnels), ice: Some(&self.ice) }
+        Overlays {
+            funnels: Some(&self.funnels),
+            ice: Some(&self.ice),
+        }
     }
 
     /// First move of an optimal continuation (the in-game hint / auto-solve step), or `-1` when
     /// there is nothing to suggest (solved, stuck, or node budget exhausted). Encoded as
     /// `(from << 8) | to` — bottle counts are ≤ 15, so a byte each is generous.
     pub fn hint(&self, max_nodes: u32) -> i32 {
-        match hint_move(&self.state, &self.hidden, self.overlays(), max_nodes as usize) {
+        match hint_move(
+            &self.state,
+            &self.hidden,
+            self.overlays(),
+            max_nodes as usize,
+        ) {
             Some((from, to)) => ((from as i32) << 8) | to as i32,
             None => -1,
         }
@@ -149,7 +182,13 @@ pub fn stuck_visit(cells: &[u8], bottles: u8, capacity: u8) {
 /// attempt) — the core-side `isStuckInLoop`, same conservative semantics (budget-inconclusive
 /// ⇒ false).
 #[wasm_bindgen]
-pub fn stuck_check(cells: &[u8], bottles: u8, capacity: u8, funnels: &[u8], max_nodes: u32) -> bool {
+pub fn stuck_check(
+    cells: &[u8],
+    bottles: u8,
+    capacity: u8,
+    funnels: &[u8],
+    max_nodes: u32,
+) -> bool {
     let (state, _, funnels, _) = decode(cells, bottles, capacity, &[], funnels, &[]);
     VISITED.with(|v| is_stuck_in_loop(&state, &v.borrow(), Some(&funnels), max_nodes as usize))
 }
@@ -192,7 +231,12 @@ impl Board {
             usize::try_from(selected).ok(),
             || {
                 VISITED.with(|vis| {
-                    is_stuck_in_loop(&self.state, &vis.borrow(), Some(&self.funnels), stuck_max_nodes as usize)
+                    is_stuck_in_loop(
+                        &self.state,
+                        &vis.borrow(),
+                        Some(&self.funnels),
+                        stuck_max_nodes as usize,
+                    )
                 })
             },
         );
@@ -243,7 +287,14 @@ fn empty_tap(kind: u8) -> TapResult {
 impl Board {
     /// Decide what tapping tube `i` does (F6) — the core-side `planTap`.
     pub fn tap(&self, selected: i32, i: u8) -> TapResult {
-        match plan_tap(&self.state, &self.hidden, &self.funnels, &self.ice, usize::try_from(selected).ok(), i as usize) {
+        match plan_tap(
+            &self.state,
+            &self.hidden,
+            &self.funnels,
+            &self.ice,
+            usize::try_from(selected).ok(),
+            i as usize,
+        ) {
             TapOutcome::Ignore => empty_tap(0),
             TapOutcome::Select { index } => {
                 let mut t = empty_tap(1);
@@ -251,7 +302,13 @@ impl Board {
                 t
             }
             TapOutcome::Deselect => empty_tap(2),
-            TapOutcome::Pour { next, next_hidden, mv, thawed, newly_capped } => TapResult {
+            TapOutcome::Pour {
+                next,
+                next_hidden,
+                mv,
+                thawed,
+                newly_capped,
+            } => TapResult {
                 kind: 3,
                 select_index: 0,
                 next_cells: encode_cells(&next),

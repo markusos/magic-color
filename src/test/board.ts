@@ -22,9 +22,8 @@ const SHORTHAND: Record<string, string> = {
   m: 'magenta',
 };
 
-// Unknown ids pass through untouched: oracle-only specs (engine/mechanic modules) use free-form
-// ids on purpose, and a boundary-crossing spec that sneaks one in fails loudly at the adapter
-// ("unknown color id") rather than here.
+// Unknown ids pass through untouched: a spec that sneaks a non-palette id across the wasm
+// boundary fails loudly at the adapter ("unknown color id") rather than here.
 const canonicalId = (id: string): string => SHORTHAND[id] ?? id;
 
 /** Brand a raw string as a Color (shorthand-mapped to a real palette id). */

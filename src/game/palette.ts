@@ -1,6 +1,6 @@
 /**
  * The shared color palette and standard capacity — the runtime home since Track F5 (these
- * lived in `generator.ts`, which is now a test-only oracle outside the app graph). Palette
+ * lived in the retired JS `generator.ts`). Palette
  * ORDER is load-bearing: the wasm boundary encodes a color as its index here, and the Rust
  * core's `types::PALETTE` must match exactly (gate G5's shared-constants contract).
  */

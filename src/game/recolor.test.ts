@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { applyColorMap, pickSpreadSubset, randomColorMap, recolor } from './recolor';
-import { PALETTE, mulberry32 } from './generator';
+import { PALETTE } from './palette';
+import { mulberry32 } from './rng';
 import { colorDistance } from '../theme/colors';
 import { board as makeBoard, color } from '../test/board';
 

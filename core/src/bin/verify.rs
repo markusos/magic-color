@@ -69,14 +69,25 @@ fn decode(l: &Level) -> (State, Hidden, Vec<u8>, Vec<IceTube>) {
             Tube::from_cells(&col.iter().map(|c| color_idx(c)).collect::<Vec<_>>())
         })
         .collect();
-    let state = State { tubes, capacity: l.capacity };
+    let state = State {
+        tubes,
+        capacity: l.capacity,
+    };
 
     let hidden: Hidden = l
         .hidden
         .iter()
-        .map(|col| col.iter().enumerate().fold(0u16, |m, (i, &h)| if h { m | (1 << i) } else { m }))
+        .map(|col| {
+            col.iter()
+                .enumerate()
+                .fold(0u16, |m, (i, &h)| if h { m | (1 << i) } else { m })
+        })
         .collect();
-    let funnels: Vec<u8> = l.funnels.iter().map(|f| f.as_deref().map_or(NO_COLOR, color_idx)).collect();
+    let funnels: Vec<u8> = l
+        .funnels
+        .iter()
+        .map(|f| f.as_deref().map_or(NO_COLOR, color_idx))
+        .collect();
     let ice: Vec<IceTube> = l
         .ice
         .iter()
@@ -91,7 +102,10 @@ fn decode(l: &Level) -> (State, Hidden, Vec<u8>, Vec<IceTube>) {
             if height == 0 {
                 IceTube::NONE
             } else {
-                IceTube { trigger: color_idx(col[0].as_deref().unwrap()), height: height as u8 }
+                IceTube {
+                    trigger: color_idx(col[0].as_deref().unwrap()),
+                    height: height as u8,
+                }
             }
         })
         .collect();
@@ -104,12 +118,14 @@ fn main() {
         std::process::exit(2);
     });
 
-    let levels: Vec<Level> =
-        serde_json::from_str(&std::fs::read_to_string(format!("{dir}/levels.json")).expect("read levels.json"))
-            .expect("parse levels.json");
+    let levels: Vec<Level> = serde_json::from_str(
+        &std::fs::read_to_string(format!("{dir}/levels.json")).expect("read levels.json"),
+    )
+    .expect("parse levels.json");
     let golden: std::collections::HashMap<usize, Option<Vec<(u8, u8)>>> =
         serde_json::from_str::<Vec<Golden>>(
-            &std::fs::read_to_string(format!("{dir}/golden-lines.json")).expect("read golden-lines.json"),
+            &std::fs::read_to_string(format!("{dir}/golden-lines.json"))
+                .expect("read golden-lines.json"),
         )
         .expect("parse golden-lines.json")
         .into_iter()
@@ -126,14 +142,21 @@ fn main() {
         if state.tubes.iter().all(|t| is_complete(t, state.capacity)) {
             fail(l.level, "board already won");
         }
-        if state.tubes.iter().any(|t| !t.is_empty() && is_complete(t, state.capacity)) {
+        if state
+            .tubes
+            .iter()
+            .any(|t| !t.is_empty() && is_complete(t, state.capacity))
+        {
             fail(l.level, "degenerate: a tube is pre-completed at start");
         }
         if l.par < 1 {
             fail(l.level, "par < 1");
         }
         if l.two_star_max <= l.optimal {
-            fail(l.level, &format!("twoStarMax {} <= optimal {}", l.two_star_max, l.optimal));
+            fail(
+                l.level,
+                &format!("twoStarMax {} <= optimal {}", l.two_star_max, l.optimal),
+            );
         }
         if l.mechanics.iter().any(|m| m == "funnel") && funnels.iter().all(|&f| f == NO_COLOR) {
             fail(l.level, "funnel chapter level shows no funnel");
@@ -151,13 +174,25 @@ fn main() {
         let mut hide = hidden.clone();
         let mut pours = 0u32;
         for (step, &(from, to)) in line.iter().enumerate() {
-            match plan_tap(&cur, &hide, &funnels, &ice, Some(from as usize), to as usize) {
-                TapOutcome::Pour { next, next_hidden, .. } => {
+            match plan_tap(
+                &cur,
+                &hide,
+                &funnels,
+                &ice,
+                Some(from as usize),
+                to as usize,
+            ) {
+                TapOutcome::Pour {
+                    next, next_hidden, ..
+                } => {
                     cur = next;
                     hide = next_hidden;
                     pours += 1;
                 }
-                other => fail(l.level, &format!("golden move {step} ({from}->{to}) not a legal pour: {other:?}")),
+                other => fail(
+                    l.level,
+                    &format!("golden move {step} ({from}->{to}) not a legal pour: {other:?}"),
+                ),
             }
         }
         // A fully solved board reports Won only when nothing is concealed or frozen — ask the
@@ -173,7 +208,10 @@ fn main() {
             fail(l.level, "golden line leaves frozen cells");
         }
         if pours != l.optimal {
-            fail(l.level, &format!("golden line wins in {pours}, optimal says {}", l.optimal));
+            fail(
+                l.level,
+                &format!("golden line wins in {pours}, optimal says {}", l.optimal),
+            );
         }
         replayed += 1;
     }

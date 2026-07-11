@@ -48,7 +48,8 @@ export default defineConfig({
   // baseline — years old by now and well within any device that can run this PWA.
   build: { target: ['chrome89', 'edge89', 'firefox89', 'safari15'] },
   // Bind to 0.0.0.0 so the dev/preview server is reachable from other devices on the LAN.
-  server: { host: true },
+  // Honor a PORT env override (used by preview tooling) so an assigned port is actually bound.
+  server: { host: true, port: process.env.PORT ? Number(process.env.PORT) : undefined },
   preview: { host: true },
   test: {
     globals: true,

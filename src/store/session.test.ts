@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { cueForTap, deriveStatus, planTap } from './session';
 import { emptyOverlays, type OverlaySet } from '../game/mechanics';
-import { canonical } from '../game/solver';
+import { stateKey } from '../test/core';
 import { board, color } from '../test/board';
 import type { GameState } from '../game/types';
 
@@ -128,7 +128,7 @@ describe('planTap', () => {
     const state = board([['r', 'r'], ['r'], []], 4);
     const plan = planTap(state, overlays(state), 0, 1);
     if (plan.kind !== 'pour') throw new Error('expected a pour');
-    expect(canonical(plan.next)).not.toBe(canonical(state));
+    expect(stateKey(plan.next)).not.toBe(stateKey(state));
   });
 });
 

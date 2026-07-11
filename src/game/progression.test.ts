@@ -11,12 +11,7 @@ import {
   targetPercentile,
 } from './progression';
 import { generateForLevel } from './levelLoader';
-import { isWon, pour } from './engine';
-import type { GameState, Move } from './types';
-
-function replay(start: GameState, moves: Move[]): GameState {
-  return moves.reduce((s, m) => pour(s, m.from, m.to).state, start);
-}
+import { isWonState, replaySolution } from '../test/core';
 
 describe('seedForLevel', () => {
   it('is deterministic and decorrelates adjacent levels', () => {
@@ -106,7 +101,11 @@ describe('generateForLevel (live generation)', () => {
       expect(lvl.bottles).toBe(plan.bottles);
       expect(lvl.phase).toBe(plan.phase);
       expect(lvl.level).toBe(level);
-      expect(isWon(replay(lvl.state, lvl.solution))).toBe(true);
+      const end = replaySolution(lvl.state, lvl.solution, lvl.hidden, {
+        funnels: lvl.funnels,
+        ice: lvl.ice,
+      });
+      expect(isWonState(end.state, end.hidden, { funnels: lvl.funnels, ice: lvl.ice })).toBe(true);
     }
   });
 

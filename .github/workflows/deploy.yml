@@ -30,9 +30,14 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      # Rust toolchain for the core crate's gate (clippy/fmt/tests), cached across runs.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      - run: npm run lint
-      - run: npm test
+      # One gate for both sides: JS lint/typecheck/tests + Rust fmt/clippy/tests.
+      - run: npm run check
       - run: npm run build
       - uses: actions/configure-pages@v5
         # Turn Pages on (and set the source to Actions) automatically on first run,

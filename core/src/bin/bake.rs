@@ -146,7 +146,6 @@ fn mechanic_name(m: Mechanic) -> &'static str {
     }
 }
 
-
 /// JS `Number(x.toFixed(3))` for the provenance display fields.
 fn to_fixed3(x: f64) -> f64 {
     (x * 1000.0).round() / 1000.0
@@ -167,16 +166,25 @@ fn main() {
     while let Some(arg) = it.next() {
         match arg.as_str() {
             "--out" => out_dir = it.next().expect("--out needs a directory"),
-            "--chapter" => only_chapter = Some(it.next().expect("--chapter needs N").parse().unwrap()),
+            "--chapter" => {
+                only_chapter = Some(it.next().expect("--chapter needs N").parse().unwrap())
+            }
             "--level" => only_level = Some(it.next().expect("--level needs N").parse().unwrap()),
             other => positional.push(other.to_string()),
         }
     }
-    let count: usize = positional.first().map_or(CAMPAIGN_LENGTH, |s| s.parse().unwrap());
-    let per_shape: usize = positional.get(1).map_or(DEFAULT_PER_SHAPE, |s| s.parse().unwrap());
-    let node_budget: usize = positional.get(2).map_or(DEFAULT_NODE_BUDGET, |s| s.parse().unwrap());
-    let dead_end_samples: usize =
-        positional.get(3).map_or(DEFAULT_DEAD_END_SAMPLES, |s| s.parse().unwrap());
+    let count: usize = positional
+        .first()
+        .map_or(CAMPAIGN_LENGTH, |s| s.parse().unwrap());
+    let per_shape: usize = positional
+        .get(1)
+        .map_or(DEFAULT_PER_SHAPE, |s| s.parse().unwrap());
+    let node_budget: usize = positional
+        .get(2)
+        .map_or(DEFAULT_NODE_BUDGET, |s| s.parse().unwrap());
+    let dead_end_samples: usize = positional
+        .get(3)
+        .map_or(DEFAULT_DEAD_END_SAMPLES, |s| s.parse().unwrap());
 
     if let Some(level) = only_level {
         only_chapter = Some(chapter_for_level(level));
@@ -196,8 +204,10 @@ fn main() {
 
     // One job per (chapter, shape) — same seeding scheme as build-levels.worker.ts, so the
     // candidate STREAMS match the JS bake even though selection may differ (float scoring).
-    let jobs: Vec<(usize, usize)> =
-        chapters.iter().flat_map(|&c| (0..SHAPES.len()).map(move |si| (c, si))).collect();
+    let jobs: Vec<(usize, usize)> = chapters
+        .iter()
+        .flat_map(|&c| (0..SHAPES.len()).map(move |si| (c, si)))
+        .collect();
 
     let pools: Vec<Vec<Candidate>> = jobs
         .par_iter()
@@ -238,7 +248,10 @@ fn main() {
                             dead_end_node_budget: 50_000,
                             dead_end_seed: tag as u32,
                         },
-                        Overlays { funnels: Some(&overlays.funnels), ice: Some(&overlays.ice) },
+                        Overlays {
+                            funnels: Some(&overlays.funnels),
+                            ice: Some(&overlays.ice),
+                        },
                     );
                     Candidate {
                         level,
@@ -270,15 +283,20 @@ fn main() {
                 pool.extend(pools[ji].iter());
             }
         }
-        let pool: Vec<&Candidate> =
-            pool.into_iter().filter(|c| presence_ok(&c.overlays, mechanics)).collect();
+        let pool: Vec<&Candidate> = pool
+            .into_iter()
+            .filter(|c| presence_ok(&c.overlays, mechanics))
+            .collect();
 
         let scores = composite_scores(&pool.iter().map(|c| c.metrics.clone()).collect::<Vec<_>>());
         let targets: Vec<f64> = levels.iter().map(|&l| target_percentile(l)).collect();
         let slotables: Vec<Slotable> = pool
             .iter()
             .zip(&scores)
-            .map(|(c, &score)| Slotable { score, family: c.family })
+            .map(|(c, &score)| Slotable {
+                score,
+                family: c.family,
+            })
             .collect();
         let picks = assign_slots(&slotables, &targets);
 
@@ -308,13 +326,23 @@ fn main() {
                     .tubes
                     .iter()
                     .enumerate()
-                    .map(|(b, t)| (0..t.len()).map(|i| chosen.overlays.hidden[b] & (1 << i) != 0).collect())
+                    .map(|(b, t)| {
+                        (0..t.len())
+                            .map(|i| chosen.overlays.hidden[b] & (1 << i) != 0)
+                            .collect()
+                    })
                     .collect(),
                 funnels: chosen
                     .overlays
                     .funnels
                     .iter()
-                    .map(|&f| if f == NO_COLOR { None } else { Some(color_name(f)) })
+                    .map(|&f| {
+                        if f == NO_COLOR {
+                            None
+                        } else {
+                            Some(color_name(f))
+                        }
+                    })
                     .collect(),
                 ice: state
                     .tubes
@@ -366,15 +394,25 @@ fn main() {
                     state,
                     &chosen.overlays.hidden,
                     GOLDEN_LINE_BUDGET,
-                    Overlays { funnels: Some(&chosen.overlays.funnels), ice: Some(&chosen.overlays.ice) },
+                    Overlays {
+                        funnels: Some(&chosen.overlays.funnels),
+                        ice: Some(&chosen.overlays.ice),
+                    },
                 )
             } else {
                 None
             };
             if let Some(l) = &line {
-                assert_eq!(l.len() as u32, m.optimal, "golden line length != optimal (L{level_no})");
+                assert_eq!(
+                    l.len() as u32,
+                    m.optimal,
+                    "golden line length != optimal (L{level_no})"
+                );
             }
-            golden.push(GoldenLineOut { level: level_no, line });
+            golden.push(GoldenLineOut {
+                level: level_no,
+                line,
+            });
         }
     }
 
@@ -386,11 +424,19 @@ fn main() {
             .iter()
             .map(|col| {
                 magic_color_core::state::Tube::from_cells(
-                    &col.iter().map(|c| color_index(c).unwrap()).collect::<Vec<_>>(),
+                    &col.iter()
+                        .map(|c| color_index(c).unwrap())
+                        .collect::<Vec<_>>(),
                 )
             })
             .collect();
-        let key = magic_color_core::state::state_key(&State { tubes, capacity: b.capacity }, None);
+        let key = magic_color_core::state::state_key(
+            &State {
+                tubes,
+                capacity: b.capacity,
+            },
+            None,
+        );
         if !seen.insert(key) {
             println!("warning: duplicate board at L{}", b.level);
         }
@@ -414,7 +460,14 @@ fn main() {
         })
         .unwrap(),
     );
-    write("golden-lines.json", serde_json::to_string_pretty(&golden).unwrap());
+    write(
+        "golden-lines.json",
+        serde_json::to_string_pretty(&golden).unwrap(),
+    );
 
-    println!("baked {} level(s) in {:.1}s", baked.len(), wall.elapsed().as_secs_f64());
+    println!(
+        "baked {} level(s) in {:.1}s",
+        baked.len(),
+        wall.elapsed().as_secs_f64()
+    );
 }

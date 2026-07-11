@@ -47,8 +47,8 @@ export type LoadedLevel = PlayableLevel & { liveProvenance?: LiveProvenance };
  */
 const { BAKED_LEVELS } = await import('./levels.data');
 
-// Live generation runs in the Rust core (Track F5 — the JS generator/solver are test-only
-// oracles now), so instantiate the wasm before any `getLevel` can need it. Module evaluation
+// Live generation runs in the Rust core — the ONLY rules implementation (the JS twin was
+// retired) — so instantiate the wasm before any `getLevel` can need it. Module evaluation
 // already awaits the baked-data import above, so this adds one small parallel-ish await to
 // boot. In tests the setup file has already `initCoreWasmSync`'d, making this a no-op; if it
 // ever genuinely fails (blocked fetch), baked levels still load and the live path throws a

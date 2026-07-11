@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { shuffleBottles } from './shuffle';
 import { noFunnels } from './funnels';
 import { noIce } from './ice';
+import { emptyGrid } from './hidden';
 import { mulberry32 } from './rng';
-import { generateLevel } from './generator';
-import { isSolvable } from './solver';
+import { getLevel } from './levelLoader';
 import { board } from '../test/board';
+import { solveViaHints } from '../test/core';
 import type { Color } from './types';
 
 describe('shuffleBottles', () => {
@@ -32,15 +33,16 @@ describe('shuffleBottles', () => {
   });
 
   it('leaves solvability intact (it is a pure presentation transform)', () => {
-    for (let seed = 0; seed < 25; seed++) {
-      const level = generateLevel({ colors: 5, bottles: 7, seed });
-      const empty = level.state.bottles.map((b) => b.map(() => false));
+    // Committed baked boards are solvable by construction; a shuffled one must stay winnable
+    // under the shipping rules (solved by following the core's own hints).
+    for (const level of [1, 5, 12]) {
+      const state = getLevel(level).state;
       const out = shuffleBottles(
-        level.state,
-        { hidden: empty, funnels: noFunnels(level.state), ice: noIce(level.state) },
-        mulberry32(seed * 31 + 1),
+        state,
+        { hidden: emptyGrid(state), funnels: noFunnels(state), ice: noIce(state) },
+        mulberry32(level * 31 + 1),
       );
-      expect(isSolvable(out.state)).toBe(true);
+      expect(solveViaHints(out.state)).not.toBeNull();
     }
   });
 

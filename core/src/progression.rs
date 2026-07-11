@@ -37,16 +37,66 @@ pub struct Shape {
 /// The shape menu — must stay in the exact order of `SHAPES` in `progression.ts` (bake pool
 /// assembly order depends on it).
 pub const SHAPES: [Shape; 10] = [
-    Shape { family: Family::Small, bottles: 5, colors: 3, capacity: 4 },
-    Shape { family: Family::Small, bottles: 5, colors: 4, capacity: 4 },
-    Shape { family: Family::Tall, bottles: 5, colors: 3, capacity: 6 },
-    Shape { family: Family::Tall, bottles: 5, colors: 4, capacity: 6 },
-    Shape { family: Family::Tall, bottles: 5, colors: 4, capacity: 8 },
-    Shape { family: Family::Tall, bottles: 5, colors: 4, capacity: 10 },
-    Shape { family: Family::Medium, bottles: 10, colors: 7, capacity: 4 },
-    Shape { family: Family::Medium, bottles: 10, colors: 8, capacity: 4 },
-    Shape { family: Family::Large, bottles: 15, colors: 11, capacity: 4 },
-    Shape { family: Family::Large, bottles: 15, colors: 12, capacity: 4 },
+    Shape {
+        family: Family::Small,
+        bottles: 5,
+        colors: 3,
+        capacity: 4,
+    },
+    Shape {
+        family: Family::Small,
+        bottles: 5,
+        colors: 4,
+        capacity: 4,
+    },
+    Shape {
+        family: Family::Tall,
+        bottles: 5,
+        colors: 3,
+        capacity: 6,
+    },
+    Shape {
+        family: Family::Tall,
+        bottles: 5,
+        colors: 4,
+        capacity: 6,
+    },
+    Shape {
+        family: Family::Tall,
+        bottles: 5,
+        colors: 4,
+        capacity: 8,
+    },
+    Shape {
+        family: Family::Tall,
+        bottles: 5,
+        colors: 4,
+        capacity: 10,
+    },
+    Shape {
+        family: Family::Medium,
+        bottles: 10,
+        colors: 7,
+        capacity: 4,
+    },
+    Shape {
+        family: Family::Medium,
+        bottles: 10,
+        colors: 8,
+        capacity: 4,
+    },
+    Shape {
+        family: Family::Large,
+        bottles: 15,
+        colors: 11,
+        capacity: 4,
+    },
+    Shape {
+        family: Family::Large,
+        bottles: 15,
+        colors: 12,
+        capacity: 4,
+    },
 ];
 
 pub const CHAPTER_LEN: usize = 60;
@@ -86,21 +136,47 @@ pub struct MechanicDensity {
     pub ice: f64,
 }
 
-const SIGNATURE_DENSITY: MechanicDensity = MechanicDensity { hidden: 0.7, funnel: 0.62, ice: 0.8 };
-const INHERITED_DENSITY: MechanicDensity = MechanicDensity { hidden: 0.15, funnel: 0.3, ice: 0.3 };
-const BALANCED_DENSITY: MechanicDensity = MechanicDensity { hidden: 0.3, funnel: 0.5, ice: 0.5 };
+const SIGNATURE_DENSITY: MechanicDensity = MechanicDensity {
+    hidden: 0.7,
+    funnel: 0.62,
+    ice: 0.8,
+};
+const INHERITED_DENSITY: MechanicDensity = MechanicDensity {
+    hidden: 0.15,
+    funnel: 0.3,
+    ice: 0.3,
+};
+const BALANCED_DENSITY: MechanicDensity = MechanicDensity {
+    hidden: 0.3,
+    funnel: 0.5,
+    ice: 0.5,
+};
 
 /// The mechanic a chapter INTRODUCES (last in its cumulative set).
 pub fn signature_mechanic(chapter: usize) -> Option<Mechanic> {
-    MECHANIC_SETS[chapter.min(DEFINED_CHAPTERS - 1)].last().copied()
+    MECHANIC_SETS[chapter.min(DEFINED_CHAPTERS - 1)]
+        .last()
+        .copied()
 }
 
 pub fn campaign_density(chapter: usize) -> MechanicDensity {
     let sig = signature_mechanic(chapter);
     MechanicDensity {
-        hidden: if sig == Some(Mechanic::Hidden) { SIGNATURE_DENSITY.hidden } else { INHERITED_DENSITY.hidden },
-        funnel: if sig == Some(Mechanic::Funnel) { SIGNATURE_DENSITY.funnel } else { INHERITED_DENSITY.funnel },
-        ice: if sig == Some(Mechanic::Ice) { SIGNATURE_DENSITY.ice } else { INHERITED_DENSITY.ice },
+        hidden: if sig == Some(Mechanic::Hidden) {
+            SIGNATURE_DENSITY.hidden
+        } else {
+            INHERITED_DENSITY.hidden
+        },
+        funnel: if sig == Some(Mechanic::Funnel) {
+            SIGNATURE_DENSITY.funnel
+        } else {
+            INHERITED_DENSITY.funnel
+        },
+        ice: if sig == Some(Mechanic::Ice) {
+            SIGNATURE_DENSITY.ice
+        } else {
+            INHERITED_DENSITY.ice
+        },
     }
 }
 
@@ -154,7 +230,11 @@ const EASE_EXP: f64 = 1.6;
 /// Goes through `pow` — tolerance-compare cross-language (see module docs).
 pub fn target_percentile(level: usize) -> f64 {
     let (chapter, pos) = chapter_pos(level);
-    let t = if CHAPTER_LEN <= 1 { 0.0 } else { pos as f64 / (CHAPTER_LEN - 1) as f64 };
+    let t = if CHAPTER_LEN <= 1 {
+        0.0
+    } else {
+        pos as f64 / (CHAPTER_LEN - 1) as f64
+    };
     let eased = pow(t, EASE_EXP);
     let p = BASE_FLOOR + chapter as f64 * CHAPTER_FLOOR_STEP + eased * SPAN;
     p.clamp(0.0, 1.0)

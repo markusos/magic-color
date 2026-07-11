@@ -4,10 +4,9 @@
  * (color = palette INDEX, `255` = none; boards as `bottles × capacity` cell bytes; concealment
  * as per-tube bitmasks; ice as per-tube `(trigger, height)` pairs) and exposes:
  *
- *   - `wasmHintMove` — drop-in for `search.hintMove`, used by the wasm hint worker;
+ *   - `wasmHintMove` — the hint seam, used by the wasm hint worker;
  *   - `wasmStuck` — the stuck-loop check with the visited set held CORE-SIDE (the F3 design
- *     point resolved per F6: canonical keys never cross the boundary, so the JS
- *     `stateKey`/`canonical` can eventually be deleted);
+ *     point resolved per F6: canonical keys never cross the boundary — the core owns them);
  *   - `initCoreWasm` — idempotent async init, safe to fire-and-forget on flag enable; every
  *     entry point no-ops (returns the "unavailable" value) until the module is ready, so
  *     callers keep their JS fallback until then.

@@ -67,7 +67,11 @@ fn forced_move_ratio(state: &State, solution: &[Move], overlays: Overlays) -> f6
         total += 1;
         current = pour(&current, m.from as usize, m.to as usize, usize::MAX).0;
     }
-    if total == 0 { 1.0 } else { forced as f64 / total as f64 }
+    if total == 0 {
+        1.0
+    } else {
+        forced as f64 / total as f64
+    }
 }
 
 /// Fraction of random useful-move playouts that land in a provably unsolvable state.
@@ -120,7 +124,11 @@ pub fn dig_depth(state: &State, hidden: &Hidden) -> f64 {
             }
         }
     }
-    if total == 0 { 0.0 } else { sum / total as f64 }
+    if total == 0 {
+        0.0
+    } else {
+        sum / total as f64
+    }
 }
 
 /// Distinct colors on the board.
@@ -191,15 +199,38 @@ pub fn composite_scores(pool: &[Metrics]) -> Vec<f64> {
     if pool.is_empty() {
         return Vec::new();
     }
-    let moves_per_color: Vec<f64> =
-        pool.iter().map(|m| if m.colors > 0 { m.optimal as f64 / m.colors as f64 } else { 0.0 }).collect();
-    let lo = moves_per_color.iter().copied().fold(f64::INFINITY, f64::min);
-    let hi = moves_per_color.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let moves_per_color: Vec<f64> = pool
+        .iter()
+        .map(|m| {
+            if m.colors > 0 {
+                m.optimal as f64 / m.colors as f64
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let lo = moves_per_color
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    let hi = moves_per_color
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
     let norm_mpc = |x: f64| if hi > lo { (x - lo) / (hi - lo) } else { 0.5 };
 
-    let w_funnel = if pool.iter().any(|m| m.funnel_load > 0.0) { W_FUNNEL_LOAD } else { 0.0 };
-    let w_ice = if pool.iter().any(|m| m.ice_load > 0.0) { W_ICE_LOAD } else { 0.0 };
-    let w_sum = W_DEAD_END + W_FORCED + W_MOVES_PER_COLOR + W_TIGHTNESS + W_DIG_DEPTH + w_funnel + w_ice;
+    let w_funnel = if pool.iter().any(|m| m.funnel_load > 0.0) {
+        W_FUNNEL_LOAD
+    } else {
+        0.0
+    };
+    let w_ice = if pool.iter().any(|m| m.ice_load > 0.0) {
+        W_ICE_LOAD
+    } else {
+        0.0
+    };
+    let w_sum =
+        W_DEAD_END + W_FORCED + W_MOVES_PER_COLOR + W_TIGHTNESS + W_DIG_DEPTH + w_funnel + w_ice;
 
     pool.iter()
         .enumerate()
@@ -318,10 +349,22 @@ mod tests {
     #[test]
     fn slots_prefer_family_rotation_and_monotonicity() {
         let pool = vec![
-            Slotable { score: 0.30, family: "small" },
-            Slotable { score: 0.31, family: "small" },
-            Slotable { score: 0.32, family: "tall" },
-            Slotable { score: 0.70, family: "small" },
+            Slotable {
+                score: 0.30,
+                family: "small",
+            },
+            Slotable {
+                score: 0.31,
+                family: "small",
+            },
+            Slotable {
+                score: 0.32,
+                family: "tall",
+            },
+            Slotable {
+                score: 0.70,
+                family: "small",
+            },
         ];
         let picks = assign_slots(&pool, &[0.0, 0.33, 1.0]);
         assert_eq!(picks.len(), 3);

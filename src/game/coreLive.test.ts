@@ -5,7 +5,7 @@
  * cross-device contract), memoization, and the shape of what reaches the store.
  */
 import { describe, expect, it } from 'vitest';
-import { isWon, pour } from './engine';
+import { isWonState, replaySolution } from '../test/core';
 import {
   generateDailyLevel,
   generateRandomLevel,
@@ -42,9 +42,8 @@ describe('live generation (Rust core)', () => {
       const b = generateRandomLevel(seed);
       expect(comparable(b)).toEqual(comparable(a));
 
-      let cur = a.state;
-      for (const m of a.solution) cur = pour(cur, m.from, m.to).state;
-      expect(isWon(cur)).toBe(true);
+      const end = replaySolution(a.state, a.solution, a.hidden, { funnels: a.funnels, ice: a.ice });
+      expect(isWonState(end.state, end.hidden, { funnels: a.funnels, ice: a.ice })).toBe(true);
       expect(a.twoStarMax).toBeGreaterThan(a.optimal);
       expect(a.liveProvenance?.metrics.colors).toBe(a.colors);
     }

@@ -55,14 +55,22 @@ pub fn compute_funnels(state: &State, seed: u32, eligible: &[u8], prob: f64) -> 
     let mut grid: Funnels = (0..state.tubes.len())
         .map(|t| {
             let lock = rng.next_f64() < prob;
-            if lock { eligible[t] } else { NO_COLOR }
+            if lock {
+                eligible[t]
+            } else {
+                NO_COLOR
+            }
         })
         .collect();
     if grid.iter().any(|&t| t != NO_COLOR) {
         return grid;
     }
-    let eligible_idx: Vec<usize> =
-        eligible.iter().enumerate().filter(|(_, &c)| c != NO_COLOR).map(|(t, _)| t).collect();
+    let eligible_idx: Vec<usize> = eligible
+        .iter()
+        .enumerate()
+        .filter(|(_, &c)| c != NO_COLOR)
+        .map(|(t, _)| t)
+        .collect();
     if eligible_idx.is_empty() {
         return grid; // nothing we can safely lock
     }
@@ -93,10 +101,30 @@ mod tests {
             capacity: 4,
         };
         let solution = [
-            Move { from: 2, to: 0, count: 1, color: 3 },
-            Move { from: 2, to: 0, count: 1, color: 3 },
-            Move { from: 0, to: 1, count: 1, color: 3 },
-            Move { from: 2, to: 1, count: 1, color: 5 }, // mixed inflow for tube 1
+            Move {
+                from: 2,
+                to: 0,
+                count: 1,
+                color: 3,
+            },
+            Move {
+                from: 2,
+                to: 0,
+                count: 1,
+                color: 3,
+            },
+            Move {
+                from: 0,
+                to: 1,
+                count: 1,
+                color: 3,
+            },
+            Move {
+                from: 2,
+                to: 1,
+                count: 1,
+                color: 5,
+            }, // mixed inflow for tube 1
         ];
         assert_eq!(eligible_tubes(&s, &solution), vec![3, NO_COLOR, NO_COLOR]);
     }

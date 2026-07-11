@@ -1,6 +1,6 @@
-//! F1 differential conformance: replay `vectors/solver.json` (emitted from the JS oracle by
-//! `scripts/emit-vectors.ts`) and require exact agreement on everything the port claims to
-//! reproduce — generated boards + DFS solutions (generator/solver/rng parity in one), the
+//! Conformance pinning: replay `vectors/solver.json` — FROZEN golden vectors, emitted from the
+//! (since-retired) JS implementation at the port cutover — and require exact agreement on
+//! everything the port claims to reproduce — generated boards + DFS solutions (generator/solver/rng parity in one), the
 //! three mechanic overlays (RNG draw alignment), capped-search results including budget
 //! exhaustion (`null` must match `None`: budgets must bite at the same node), and per-step
 //! useful-move sets along the solution replay (the G2 seed).
@@ -10,9 +10,7 @@ use magic_color_core::funnels::{compute_funnels, eligible_tubes, FUNNEL_PROB};
 use magic_color_core::generator::{generate_level, GenerateOptions, ParMode};
 use magic_color_core::hidden::{capped_solve_moves, compute_hidden, exposable_cells, HIDDEN_PROB};
 use magic_color_core::ice::{build_ice, IceTube, ICE_PROB};
-use magic_color_core::search::{
-    hint_move, near_optimal_cutoffs, optimal_capped_moves, Overlays,
-};
+use magic_color_core::search::{hint_move, near_optimal_cutoffs, optimal_capped_moves, Overlays};
 use magic_color_core::solver::{bfs_optimal, useful_moves, DEFAULT_MAX_NODES};
 use magic_color_core::state::{State, Tube};
 use magic_color_core::types::{Move, NO_COLOR};
@@ -87,24 +85,38 @@ struct TraceStep {
 }
 
 fn state_of(cells: &[Vec<u8>], capacity: u8) -> State {
-    State { tubes: cells.iter().map(|c| Tube::from_cells(c)).collect(), capacity }
+    State {
+        tubes: cells.iter().map(|c| Tube::from_cells(c)).collect(),
+        capacity,
+    }
 }
 
 fn moves_of(moves: &[JsMove]) -> Vec<Move> {
-    moves.iter().map(|m| Move { from: m.from, to: m.to, count: m.count, color: m.color }).collect()
+    moves
+        .iter()
+        .map(|m| Move {
+            from: m.from,
+            to: m.to,
+            count: m.count,
+            color: m.color,
+        })
+        .collect()
 }
 
 #[test]
 fn solver_vectors_replay_exactly() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../vectors/solver.json");
     let raw = std::fs::read_to_string(path)
-        .expect("vectors/solver.json missing — run `npm run vectors:emit`");
+        .expect("vectors/solver.json missing — the committed golden vectors were deleted?");
     let vectors: Vectors = serde_json::from_str(&raw).unwrap();
     assert!(!vectors.cases.is_empty());
 
     for case in &vectors.cases {
         let o = &case.options;
-        let tag = format!("case {}c/{}b/cap{} seed {}", o.colors, o.bottles, o.capacity, o.seed);
+        let tag = format!(
+            "case {}c/{}b/cap{} seed {}",
+            o.colors, o.bottles, o.capacity, o.seed
+        );
 
         // Generator + solver + rng parity: the seed must reproduce the identical board,
         // solution, par, and minMoves.
@@ -114,14 +126,24 @@ fn solver_vectors_replay_exactly() {
             capacity: o.capacity,
             seed: o.seed,
             min_par: o.min_par,
-            par_mode: if o.par_mode == "optimal" { ParMode::Optimal } else { ParMode::Proxy },
+            par_mode: if o.par_mode == "optimal" {
+                ParMode::Optimal
+            } else {
+                ParMode::Proxy
+            },
         })
         .unwrap_or_else(|e| panic!("{tag}: generation failed: {e}"));
 
         let expected_state = state_of(&case.state, o.capacity);
-        assert_eq!(level.state, expected_state, "{tag}: generated board differs");
+        assert_eq!(
+            level.state, expected_state,
+            "{tag}: generated board differs"
+        );
         let expected_solution = moves_of(&case.solution);
-        assert_eq!(level.solution, expected_solution, "{tag}: DFS solution differs");
+        assert_eq!(
+            level.solution, expected_solution,
+            "{tag}: DFS solution differs"
+        );
         assert_eq!(level.par, case.par, "{tag}: par differs");
         assert_eq!(level.min_moves, case.min_moves, "{tag}: minMoves differs");
 
@@ -135,7 +157,12 @@ fn solver_vectors_replay_exactly() {
         );
 
         // Mechanic overlays: draw-for-draw RNG alignment.
-        let hidden = compute_hidden(state, o.seed, &exposable_cells(state, solution), HIDDEN_PROB);
+        let hidden = compute_hidden(
+            state,
+            o.seed,
+            &exposable_cells(state, solution),
+            HIDDEN_PROB,
+        );
         assert_eq!(hidden, case.hidden, "{tag}: hidden grid differs");
         assert_eq!(
             capped_solve_moves(state, solution, &hidden),
@@ -154,13 +181,19 @@ fn solver_vectors_replay_exactly() {
             .iter()
             .map(|t| match t.trigger {
                 None => IceTube::NONE,
-                Some(trigger) => IceTube { trigger, height: t.height },
+                Some(trigger) => IceTube {
+                    trigger,
+                    height: t.height,
+                },
             })
             .collect();
         assert_eq!(ice, expected_ice, "{tag}: ice differs");
 
         // Capped searches, including budget-exhaustion parity (None must match null).
-        let overlays = Overlays { funnels: Some(&funnels), ice: Some(&ice) };
+        let overlays = Overlays {
+            funnels: Some(&funnels),
+            ice: Some(&ice),
+        };
         assert_eq!(
             optimal_capped_moves(state, &hidden, case.capped_budget, overlays),
             case.optimal_capped,
@@ -183,7 +216,12 @@ fn solver_vectors_replay_exactly() {
         let mut cur = state.clone();
         for step in &case.trace {
             if let Some(cells) = &step.cells {
-                assert_eq!(cur, state_of(cells, o.capacity), "{tag}: trace board differs at step {}", step.step);
+                assert_eq!(
+                    cur,
+                    state_of(cells, o.capacity),
+                    "{tag}: trace board differs at step {}",
+                    step.step
+                );
             }
             assert_eq!(
                 useful_moves(&cur, Some(&funnels)),
@@ -194,6 +232,10 @@ fn solver_vectors_replay_exactly() {
             let m = &solution[step.step];
             cur = pour(&cur, m.from as usize, m.to as usize, usize::MAX).0;
         }
-        assert_eq!(cur, state_of(&case.final_cells, o.capacity), "{tag}: final board differs");
+        assert_eq!(
+            cur,
+            state_of(&case.final_cells, o.capacity),
+            "{tag}: final board differs"
+        );
     }
 }

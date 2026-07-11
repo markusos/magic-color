@@ -6,7 +6,9 @@
 //! float arithmetic). The tunable budget (`LiveConfig`) stays a parameter, so re-tuning the
 //! live path is a JS-side change, same as today.
 
-use crate::difficulty::{assign_slots, composite_scores, measure_metrics, MetricOptions, Metrics, Slotable};
+use crate::difficulty::{
+    assign_slots, composite_scores, measure_metrics, MetricOptions, Metrics, Slotable,
+};
 use crate::generator::{generate_candidates, GeneratedLevel, DEFAULT_CAPACITY};
 use crate::hidden::capped_solve_moves;
 use crate::jsnum::js_round;
@@ -75,7 +77,10 @@ fn percentile_score(scores: &[f64], p: f64) -> f64 {
 /// The live star cutoffs (`cutoffsFor`): exact A* + tier sweep on small standard boards,
 /// capped-replay proxy + `+2` band elsewhere.
 fn cutoffs_for(level: &GeneratedLevel, overlays: &OverlaySet) -> (u32, u32) {
-    let stat = Overlays { funnels: Some(&overlays.funnels), ice: Some(&overlays.ice) };
+    let stat = Overlays {
+        funnels: Some(&overlays.funnels),
+        ice: Some(&overlays.ice),
+    };
     let small = level.bottles <= EXACT_OPTIMAL_MAX_BOTTLES && level.capacity <= DEFAULT_CAPACITY;
     let optimal = if small {
         optimal_capped_moves(&level.state, &overlays.hidden, RUNTIME_OPTIMAL_BUDGET, stat)
@@ -84,7 +89,9 @@ fn cutoffs_for(level: &GeneratedLevel, overlays: &OverlaySet) -> (u32, u32) {
     }
     .unwrap_or_else(|| capped_solve_moves(&level.state, &level.solution, &overlays.hidden) as u32);
     if small {
-        if let Some(tiers) = near_optimal_cutoffs(&level.state, &overlays.hidden, RUNTIME_TIER_BUDGET, stat) {
+        if let Some(tiers) =
+            near_optimal_cutoffs(&level.state, &overlays.hidden, RUNTIME_TIER_BUDGET, stat)
+        {
             if tiers.optimal == optimal {
                 return (optimal, tiers.two_star_max);
             }
@@ -98,7 +105,11 @@ fn cutoffs_for(level: &GeneratedLevel, overlays: &OverlaySet) -> (u32, u32) {
 /// (the JS side then falls back to its light generator).
 pub fn pick_best(plan: &LivePlan, target: f64, config: &LiveConfig) -> Option<LivePick> {
     for salt in 0..8u32 {
-        let pool_seed = if salt == 0 { plan.seed } else { seed_for_level(plan.level, salt) };
+        let pool_seed = if salt == 0 {
+            plan.seed
+        } else {
+            seed_for_level(plan.level, salt)
+        };
         let candidates = generate_candidates(
             plan.colors,
             plan.bottles,
@@ -117,7 +128,13 @@ pub fn pick_best(plan: &LivePlan, target: f64, config: &LiveConfig) -> Option<Li
         let built: Vec<(GeneratedLevel, OverlaySet)> = candidates
             .into_iter()
             .map(|g| {
-                let overlays = build_overlays(&plan.mechanics, &g.state, &g.solution, plan.seed, plan.density);
+                let overlays = build_overlays(
+                    &plan.mechanics,
+                    &g.state,
+                    &g.solution,
+                    plan.seed,
+                    plan.density,
+                );
                 (g, overlays)
             })
             .collect();
@@ -126,7 +143,10 @@ pub fn pick_best(plan: &LivePlan, target: f64, config: &LiveConfig) -> Option<Li
         let coarse_metrics: Vec<Metrics> = built
             .iter()
             .map(|(g, o)| {
-                let stat = Overlays { funnels: Some(&o.funnels), ice: Some(&o.ice) };
+                let stat = Overlays {
+                    funnels: Some(&o.funnels),
+                    ice: Some(&o.ice),
+                };
                 measure_metrics(&g.state, &o.hidden, &g.solution, &CHEAP_METRICS, stat)
             })
             .collect();
@@ -153,12 +173,21 @@ pub fn pick_best(plan: &LivePlan, target: f64, config: &LiveConfig) -> Option<Li
             .iter()
             .map(|&i| {
                 let (g, o) = &built[i];
-                let stat = Overlays { funnels: Some(&o.funnels), ice: Some(&o.ice) };
+                let stat = Overlays {
+                    funnels: Some(&o.funnels),
+                    ice: Some(&o.ice),
+                };
                 measure_metrics(&g.state, &o.hidden, &g.solution, &fine_opts, stat)
             })
             .collect();
         let fine = composite_scores(&fine_measured);
-        let slotables: Vec<Slotable> = fine.iter().map(|&score| Slotable { score, family: "live" }).collect();
+        let slotables: Vec<Slotable> = fine
+            .iter()
+            .map(|&score| Slotable {
+                score,
+                family: "live",
+            })
+            .collect();
         let idx = assign_slots(&slotables, &[target])[0];
 
         let (level, overlays) = built[order[idx]].clone();
@@ -192,7 +221,11 @@ mod tests {
             mechanics: vec![Mechanic::Hidden, Mechanic::Funnel, Mechanic::Ice],
             density: balanced_density(),
         };
-        let config = LiveConfig { pool_size: 24, finalists: 6, fine_dead_end_samples: 6 };
+        let config = LiveConfig {
+            pool_size: 24,
+            finalists: 6,
+            fine_dead_end_samples: 6,
+        };
         let a = pick_best(&plan, 0.7, &config).expect("pick");
         let b = pick_best(&plan, 0.7, &config).expect("pick");
         assert_eq!(a.level.state, b.level.state);

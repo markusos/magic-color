@@ -107,20 +107,31 @@ pub fn view(
         Some(from) if from < state.tubes.len() && selectable[from] => {
             let color = state.tubes[from].top().unwrap();
             (0..state.tubes.len())
-                .map(|to| from != to && can_pour(state, from, to) && accepts(Some(funnels), to, color))
+                .map(|to| {
+                    from != to && can_pour(state, from, to) && accepts(Some(funnels), to, color)
+                })
                 .collect()
         }
         _ => vec![false; state.tubes.len()],
     };
 
-    View { status, blocked, frozen, selectable, capped, pour_targets }
+    View {
+        status,
+        blocked,
+        frozen,
+        selectable,
+        capped,
+        pour_targets,
+    }
 }
 
 /// A tap's decided outcome — mirrors `TapPlan` plus the cue facts a pour produces.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TapOutcome {
     Ignore,
-    Select { index: usize },
+    Select {
+        index: usize,
+    },
     Deselect,
     Pour {
         next: State,
@@ -153,7 +164,11 @@ pub fn plan_tap(
     };
 
     let Some(from) = selected else {
-        return if is_selectable(i) { TapOutcome::Select { index: i } } else { TapOutcome::Ignore };
+        return if is_selectable(i) {
+            TapOutcome::Select { index: i }
+        } else {
+            TapOutcome::Ignore
+        };
     };
     if from == i {
         return TapOutcome::Deselect;
@@ -165,8 +180,10 @@ pub fn plan_tap(
         let next_hidden = reveal_exposed(&next, hidden);
         // Cue facts against the post-pour, post-reveal board (same inputs as `cueForTap`).
         let frozen_before: u32 = frozen.iter().map(|m| m.count_ones()).sum();
-        let frozen_after: u32 =
-            frozen_masks(&next, &next_hidden, ice).iter().map(|m| m.count_ones()).sum();
+        let frozen_after: u32 = frozen_masks(&next, &next_hidden, ice)
+            .iter()
+            .map(|m| m.count_ones())
+            .sum();
         let capped_before = capped_colors(state, hidden, ice).count_ones();
         let capped_after = capped_colors(&next, &next_hidden, ice).count_ones();
         return TapOutcome::Pour {
@@ -178,7 +195,11 @@ pub fn plan_tap(
         };
     }
 
-    if is_selectable(i) { TapOutcome::Select { index: i } } else { TapOutcome::Deselect }
+    if is_selectable(i) {
+        TapOutcome::Select { index: i }
+    } else {
+        TapOutcome::Deselect
+    }
 }
 
 /// The free-pour debug cheat: move the top run onto any tube with room, ignoring color and
@@ -207,7 +228,12 @@ pub fn force_pour(
     let mut next = state.clone();
     next.tubes[from].pop_n(count);
     next.tubes[to].push_n(color, count);
-    let mv = Move { from: from as u8, to: to as u8, count: count as u8, color };
+    let mv = Move {
+        from: from as u8,
+        to: to as u8,
+        count: count as u8,
+        color,
+    };
     let revealed = reveal_exposed(&next, hidden);
     Some((next, revealed, mv))
 }
@@ -220,7 +246,10 @@ mod tests {
     use crate::types::NO_COLOR;
 
     fn state(tubes: Vec<&[u8]>, capacity: u8) -> State {
-        State { tubes: tubes.into_iter().map(Tube::from_cells).collect(), capacity }
+        State {
+            tubes: tubes.into_iter().map(Tube::from_cells).collect(),
+            capacity,
+        }
     }
     fn clear(state: &State) -> (Hidden, Funnels, Ice) {
         let n = state.tubes.len();
@@ -236,18 +265,30 @@ mod tests {
 
         // Sorted but concealed ⇒ still playing.
         let h2 = vec![0b0010u16, 0];
-        assert_eq!(view(&s, &h2, &f, &i, None, || false).status, Status::Playing);
+        assert_eq!(
+            view(&s, &h2, &f, &i, None, || false).status,
+            Status::Playing
+        );
 
         // No legal move ⇒ deadlocked.
         let s3 = state(vec![&[1, 2, 1, 2], &[2, 1, 2, 1]], 4);
         let (h3, f3, i3) = clear(&s3);
-        assert_eq!(view(&s3, &h3, &f3, &i3, None, || false).status, Status::Deadlocked);
+        assert_eq!(
+            view(&s3, &h3, &f3, &i3, None, || false).status,
+            Status::Deadlocked
+        );
 
         // Playing board flips to stuck only via the injected check.
         let s4 = state(vec![&[1, 2], &[2, 1], &[]], 4);
         let (h4, f4, i4) = clear(&s4);
-        assert_eq!(view(&s4, &h4, &f4, &i4, None, || true).status, Status::Stuck);
-        assert_eq!(view(&s4, &h4, &f4, &i4, None, || false).status, Status::Playing);
+        assert_eq!(
+            view(&s4, &h4, &f4, &i4, None, || true).status,
+            Status::Stuck
+        );
+        assert_eq!(
+            view(&s4, &h4, &f4, &i4, None, || false).status,
+            Status::Playing
+        );
     }
 
     #[test]
@@ -266,7 +307,12 @@ mod tests {
         let hidden = vec![0b0001u16, 0, 0]; // floor of tube 0 concealed
         let (_, f, i) = clear(&s);
         match plan_tap(&s, &hidden, &f, &i, Some(0), 1) {
-            TapOutcome::Pour { next, next_hidden, mv, .. } => {
+            TapOutcome::Pour {
+                next,
+                next_hidden,
+                mv,
+                ..
+            } => {
                 assert_eq!(mv.count, 2); // the visible run of 1s, not the whole tube
                 assert_eq!(next.tubes[0].cells(), &[2]);
                 assert_eq!(next_hidden[0], 0); // surfacing revealed the floor cell
@@ -280,10 +326,16 @@ mod tests {
         let s = state(vec![&[1], &[2], &[]], 4);
         let (h, f, i) = clear(&s);
         assert_eq!(plan_tap(&s, &h, &f, &i, None, 2), TapOutcome::Ignore); // empty tube
-        assert_eq!(plan_tap(&s, &h, &f, &i, None, 0), TapOutcome::Select { index: 0 });
+        assert_eq!(
+            plan_tap(&s, &h, &f, &i, None, 0),
+            TapOutcome::Select { index: 0 }
+        );
         assert_eq!(plan_tap(&s, &h, &f, &i, Some(0), 0), TapOutcome::Deselect);
         // Illegal pour onto a selectable tube switches the selection.
-        assert_eq!(plan_tap(&s, &h, &f, &i, Some(0), 1), TapOutcome::Select { index: 1 });
+        assert_eq!(
+            plan_tap(&s, &h, &f, &i, Some(0), 1),
+            TapOutcome::Select { index: 1 }
+        );
     }
 
     #[test]

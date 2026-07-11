@@ -1,12 +1,12 @@
 /**
- * Maps palette color ids (used by the engine/generator) to CSS values for rendering.
- * Keep these ids in sync with PALETTE in ../game/generator.ts.
+ * Maps palette color ids to CSS values for rendering.
+ * Keep these ids in sync with PALETTE in ../game/palette.ts.
  */
 // Tuned for maximum perceptual separation (min pairwise ΔE ~27, up from ~11): the blue-purple
 // band (sapphire/cobalt/violet/amethyst) and red-pink band (ruby/magenta/rose) are spread apart
 // using both hue and lightness so a full 12-color (hard) board has no near-identical pair. Lower
 // tiers pick a distinct subset on top of this (see recolor.ts). Keep ids in sync with PALETTE in
-// ../game/generator.ts.
+// ../game/palette.ts.
 export const COLOR_VALUES: Record<string, string> = {
   ruby: '#e02438',
   amethyst: '#c33ad0',

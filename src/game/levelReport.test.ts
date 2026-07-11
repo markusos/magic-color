@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LevelProvenance } from './provenance';
-import type { Metrics } from './difficulty';
+import type { Metrics } from './provenance';
 import {
   buildReport,
   diffProvenance,

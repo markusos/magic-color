@@ -2,23 +2,23 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGameStore } from './gameStore';
 import { useSettings } from './settings';
 import { BAKED_LEVEL_COUNT, getLevel } from '../game/levelLoader';
-import { canonical, isSolvable, solve, usefulMoves } from '../game/solver';
 import { wasmStuck } from '../game/coreWasm';
-import { pour } from '../game/engine';
-import { optimalCappedMoves } from '../game/search';
 import { board, color } from '../test/board';
+import { legalPours, reachableClosure, solveViaHints } from '../test/core';
 import { todayKey } from '../game/daily';
 
 const store = () => useGameStore.getState();
 
 // The store loads levels through `getLevel`, so the reference board comes from there too (a baked
-// board for level 1, not a fresh generation). Baked levels carry no stored solution, so we solve the
-// board independently to get a winning line. The displayed colors are randomized per load (see
-// recolor.ts), so board comparisons go through `sameLayout`, which checks equality up to a consistent
-// color renaming rather than exact ids.
+// board for level 1, not a fresh generation). Baked levels carry no stored solution, so we derive a
+// winning line by following the core's own hints; the moves are tube indices, so the line replays
+// cleanly on the store's recolored copy of the same layout. The displayed colors are randomized per
+// load (see recolor.ts), so board comparisons go through `sameLayout`, which checks equality up to a
+// consistent color renaming rather than exact ids.
 const LEVEL = 1;
 const reference = getLevel(LEVEL);
-const referenceSolution = solve(reference.state)!;
+const referenceSolution = solveViaHints(reference.state)!;
+if (referenceSolution == null) throw new Error('expected the level-1 board to be hint-solvable');
 
 /**
  * Live (un-baked) levels generate asynchronously: `loadLevel` flips on `loading` and defers the
@@ -529,9 +529,10 @@ describe('undo / restart', () => {
     expect(store().status).toBe('playing');
     expect(store().history).toHaveLength(0);
     // The board is recolored AND its tubes reordered, so positions/ids differ — but it's the same
-    // puzzle: solvable, with an identical optimal solution length (both are permutation-invariant).
-    expect(isSolvable(store().current)).toBe(true);
-    expect(optimalCappedMoves(store().current, store().hidden)).toBe(reference.optimal);
+    // puzzle and stays winnable (recolor is a color bijection and shuffle a tube permutation —
+    // structure preservation is pinned by recolor.test/shuffle.test; the store's `optimal`
+    // metadata is untouched by restart, asserted above via loadLevel).
+    expect(solveViaHints(store().current, store().hidden)).not.toBeNull();
   });
 });
 
@@ -610,26 +611,6 @@ describe('deadlock detection (genuine walls only)', () => {
 });
 
 describe('"going in circles" detection (soft loop)', () => {
-  /** Every board reachable from `start` under the (oracle) useful-move pruning. */
-  const closureOf = (start: ReturnType<typeof board>): ReturnType<typeof board>[] => {
-    const seen = new Set<string>([canonical(start)]);
-    const states = [start];
-    const stack = [start];
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      for (const { from, to } of usefulMoves(current)) {
-        const { state: next } = pour(current, from, to);
-        const key = canonical(next);
-        if (!seen.has(key)) {
-          seen.add(key);
-          states.push(next);
-          stack.push(next);
-        }
-      }
-    }
-    return states;
-  };
-
   /** Seed the CORE-SIDE visited registry (where the stuck check lives since F5) with a closure. */
   const visitAll = (states: ReturnType<typeof board>[]) => {
     wasmStuck.reset(states[0]!);
@@ -666,14 +647,15 @@ describe('"going in circles" detection (soft loop)', () => {
 
   it('flags "stuck" once every reachable board has already been visited', () => {
     const A = loop();
-    const { from, to } = usefulMoves(A)[0]!;
-    const { state: B, move } = pour(A, from, to);
+    const first = legalPours(A)[0]!;
+    const B = first.next;
+    const move = first.move;
     const gridA = A.bottles.map((b) => b.map(() => false));
     const gridB = B.bottles.map((b) => b.map(() => false));
     // Sit on B with A as the prior board and the WHOLE closure already in the core-side
     // registry; undoing back to A recomputes status — every board reachable from A has been
     // visited and none wins → going in circles.
-    visitAll(closureOf(A));
+    visitAll(reachableClosure(A));
     useGameStore.setState({
       current: B,
       initial: A,

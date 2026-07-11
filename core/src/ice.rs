@@ -24,7 +24,10 @@ pub struct IceTube {
 }
 
 impl IceTube {
-    pub const NONE: IceTube = IceTube { trigger: NO_COLOR, height: 0 };
+    pub const NONE: IceTube = IceTube {
+        trigger: NO_COLOR,
+        height: 0,
+    };
 
     #[inline]
     fn active(&self) -> bool {
@@ -62,8 +65,9 @@ pub fn capped_colors(state: &State, hidden: &Hidden, ice: &Ice) -> u16 {
                 continue;
             }
             let it = ice[b];
-            let frozen_self =
-                it.trigger != NO_COLOR && (it.height as usize).min(t.len()) > 0 && capped & (1 << it.trigger) == 0;
+            let frozen_self = it.trigger != NO_COLOR
+                && (it.height as usize).min(t.len()) > 0
+                && capped & (1 << it.trigger) == 0;
             if frozen_self {
                 continue;
             }
@@ -111,7 +115,11 @@ pub struct IceLineOption {
 /// then admit `(line, trigger)` iff some OTHER tube caps the trigger strictly before the
 /// line's drop time. Trigger lists preserve first-cap-event order (the RNG pick in
 /// `compute_ice` indexes into them, so order is load-bearing).
-pub fn ice_eligible_lines(state: &State, solution: &[Move], hidden: &Hidden) -> Vec<Vec<IceLineOption>> {
+pub fn ice_eligible_lines(
+    state: &State,
+    solution: &[Move],
+    hidden: &Hidden,
+) -> Vec<Vec<IceLineOption>> {
     const NEVER: u32 = u32::MAX;
     let initial_len: Vec<usize> = state.tubes.iter().map(|t| t.len()).collect();
     let mut drop_time: Vec<Vec<u32>> = initial_len.iter().map(|&l| vec![NEVER; l]).collect();
@@ -172,8 +180,11 @@ pub fn ice_eligible_lines(state: &State, solution: &[Move], hidden: &Hidden) -> 
         .map(|b| {
             let mut options = Vec::new();
             for (line, &deadline) in drop_time[b].iter().enumerate() {
-                let triggers: Vec<u8> =
-                    distinct.iter().copied().filter(|&c| earliest_other_cap(c, b) < deadline).collect();
+                let triggers: Vec<u8> = distinct
+                    .iter()
+                    .copied()
+                    .filter(|&c| earliest_other_cap(c, b) < deadline)
+                    .collect();
                 if !triggers.is_empty() {
                     options.push(IceLineOption { line, triggers });
                 }
@@ -193,10 +204,15 @@ pub fn compute_ice(state: &State, seed: u32, eligible: &[Vec<IceLineOption>], pr
         let options = &eligible[b];
         if roll && !options.is_empty() {
             let r = rng.next_f64();
-            let idx = (options.len() - 1).min(((1.0 - r * r) * options.len() as f64).floor() as usize);
+            let idx =
+                (options.len() - 1).min(((1.0 - r * r) * options.len() as f64).floor() as usize);
             let opt = &options[idx];
-            let trigger = opt.triggers[(rng.next_f64() * opt.triggers.len() as f64).floor() as usize];
-            grid[b] = IceTube { trigger, height: (opt.line + 1) as u8 };
+            let trigger =
+                opt.triggers[(rng.next_f64() * opt.triggers.len() as f64).floor() as usize];
+            grid[b] = IceTube {
+                trigger,
+                height: (opt.line + 1) as u8,
+            };
         }
     }
     grid
@@ -257,8 +273,12 @@ pub fn build_ice(state: &State, solution: &[Move], hidden: &Hidden, seed: u32, p
     if any_ice(&grid) {
         return grid;
     }
-    let eligible_tubes: Vec<usize> =
-        eligible.iter().enumerate().filter(|(_, o)| !o.is_empty()).map(|(b, _)| b).collect();
+    let eligible_tubes: Vec<usize> = eligible
+        .iter()
+        .enumerate()
+        .filter(|(_, o)| !o.is_empty())
+        .map(|(b, _)| b)
+        .collect();
     if eligible_tubes.is_empty() {
         return grid; // nothing we can safely freeze
     }
@@ -267,7 +287,10 @@ pub fn build_ice(state: &State, solution: &[Move], hidden: &Hidden, seed: u32, p
     let opts = &eligible[b];
     let opt = &opts[(rng.next_f64() * opts.len() as f64).floor() as usize];
     let trigger = opt.triggers[(rng.next_f64() * opt.triggers.len() as f64).floor() as usize];
-    grid[b] = IceTube { trigger, height: (opt.line + 1) as u8 };
+    grid[b] = IceTube {
+        trigger,
+        height: (opt.line + 1) as u8,
+    };
     grid
 }
 
@@ -278,7 +301,16 @@ pub fn ice_load(ice: &Ice, state: &State) -> f64 {
     if total == 0 {
         return 0.0;
     }
-    let iced: usize = ice.iter().map(|t| if t.trigger != NO_COLOR { t.height as usize } else { 0 }).sum();
+    let iced: usize = ice
+        .iter()
+        .map(|t| {
+            if t.trigger != NO_COLOR {
+                t.height as usize
+            } else {
+                0
+            }
+        })
+        .sum();
     iced as f64 / total as f64
 }
 
@@ -292,11 +324,20 @@ mod tests {
         // Tube 0: capped color 1. Tube 1: full of color 2 but frozen on trigger 1 → thaws
         // once 1 caps, then 2 caps too (one extra fixpoint round).
         let s = State {
-            tubes: vec![Tube::from_cells(&[1, 1, 1, 1]), Tube::from_cells(&[2, 2, 2, 2])],
+            tubes: vec![
+                Tube::from_cells(&[1, 1, 1, 1]),
+                Tube::from_cells(&[2, 2, 2, 2]),
+            ],
             capacity: 4,
         };
         let hidden = vec![0u16, 0];
-        let ice = vec![IceTube::NONE, IceTube { trigger: 1, height: 2 }];
+        let ice = vec![
+            IceTube::NONE,
+            IceTube {
+                trigger: 1,
+                height: 2,
+            },
+        ];
         let capped = capped_colors(&s, &hidden, &ice);
         assert_eq!(capped, (1 << 1) | (1 << 2));
         assert!(!any_frozen(&s, &hidden, &ice));
@@ -305,11 +346,20 @@ mod tests {
     #[test]
     fn frozen_blocks_until_trigger_caps() {
         let s = State {
-            tubes: vec![Tube::from_cells(&[1, 1, 1]), Tube::from_cells(&[2, 2, 2, 2])],
+            tubes: vec![
+                Tube::from_cells(&[1, 1, 1]),
+                Tube::from_cells(&[2, 2, 2, 2]),
+            ],
             capacity: 4,
         };
         let hidden = vec![0u16, 0];
-        let ice = vec![IceTube::NONE, IceTube { trigger: 1, height: 2 }];
+        let ice = vec![
+            IceTube::NONE,
+            IceTube {
+                trigger: 1,
+                height: 2,
+            },
+        ];
         // Color 1 not capped (tube 0 not full) ⇒ tube 1's bottom two cells frozen.
         assert_eq!(frozen_masks(&s, &hidden, &ice), vec![0, 0b0011]);
     }

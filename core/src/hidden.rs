@@ -163,7 +163,10 @@ mod tests {
 
     #[test]
     fn reveal_clears_only_the_top_bit() {
-        let s = State { tubes: vec![Tube::from_cells(&[1, 2])], capacity: 4 };
+        let s = State {
+            tubes: vec![Tube::from_cells(&[1, 2])],
+            capacity: 4,
+        };
         let revealed = reveal_exposed(&s, &vec![0b0011]);
         assert_eq!(revealed, vec![0b0001]);
     }

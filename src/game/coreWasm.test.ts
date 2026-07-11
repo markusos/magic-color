@@ -1,82 +1,82 @@
 /**
- * Differential tests for the wasm runtime adapter (Track F3): the committed `.wasm`, loaded
- * for real (initSync from bytes — no mocks), must agree with the JS implementations at the
- * exact seams the store swaps: `hintMove` and the stuck-loop check. This is the on-device A/B
- * contract, asserted in CI-shape.
+ * Smoke tests for the wasm runtime adapter: the committed `.wasm`, loaded for real (initSync
+ * from bytes — no mocks), must expose working seams at exactly the points the store calls.
+ * Rule CORRECTNESS is pinned Rust-side (the crate's tests + the committed conformance
+ * vectors); what's asserted here is that the committed artifact + adapter marshalling work
+ * end-to-end on real boards.
  */
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
-import { coreWasmReady, initCoreWasmSync, wasmHintMove, wasmStuck } from './coreWasm';
-import { computeFunnels, funnelEligibleTubes } from './funnels';
-import { generateLevel } from './generator';
-import { cappedSolveMoves, computeHidden, exposableCells } from './hidden';
-import { buildIce } from './ice';
-import { pour } from './engine';
-import { hintMove } from './search';
-import { canonical, isStuckInLoop, usefulMoves } from './solver';
-
-const wasmPath = join(dirname(fileURLToPath(import.meta.url)), 'core-pkg/magic_color_core_bg.wasm');
+import { describe, expect, it } from 'vitest';
+import { coreWasmReady, coreWasmVersion, wasmHintMove, wasmPlanTap, wasmStuck } from './coreWasm';
+import { emptyGrid } from './hidden';
+import { board } from '../test/board';
+import { isWonState, legalPours, reachableClosure, solveViaHints, stateKey } from '../test/core';
 
 const HINT_BUDGET = 200_000;
 const STUCK_BUDGET = 20_000;
 
-beforeAll(() => {
-  initCoreWasmSync(readFileSync(wasmPath));
-});
+// A small solvable board: one pour (1 → 0) finishes it.
+const solvable = () => board([['r', 'r', 'r'], ['r'], []], 4);
 
-describe('coreWasm adapter (differential vs JS)', () => {
-  it('is ready after byte init', () => {
+// Unsolvable loop board: moves remain forever but it can never be won.
+const loop = () =>
+  board(
+    [
+      ['r', 'g', 'r', 'g'],
+      ['g', 'r', 'g', 'r'],
+      ['r', 'g'],
+    ],
+    4,
+  );
+
+describe('coreWasm adapter (committed artifact smoke)', () => {
+  it('loads the committed wasm and reports a crate version', () => {
+    // Source-hash freshness (crate ↔ committed .wasm) is coreVersion.test.ts's job; here we just
+    // prove the loaded module answers through the boundary.
     expect(coreWasmReady()).toBe(true);
+    expect(coreWasmVersion()).toBeTruthy();
   });
 
-  it('hint agrees with JS hintMove across mechanics and seeds', () => {
-    for (const seed of [11, 22, 33, 44]) {
-      const level = generateLevel({ colors: 4, bottles: 5, capacity: 4, seed });
-      const { state, solution } = level;
-      const hidden = computeHidden(state, seed, exposableCells(state, solution));
-      const funnels = computeFunnels(state, seed, funnelEligibleTubes(state, solution));
-      const ice = buildIce(state, solution, hidden, seed);
-      const overlays = { funnels, ice };
-
-      const js = hintMove(state, hidden, overlays, HINT_BUDGET);
-      const wasm = wasmHintMove(state, hidden, overlays, HINT_BUDGET);
-      expect(wasm).toEqual(js);
-      // Sanity: the run replayed under capped rules is solvable, so a hint must exist.
-      expect(cappedSolveMoves(state, solution, hidden)).toBeGreaterThan(0);
-      expect(js).not.toBeNull();
-    }
+  it('hints a legal pour on a solvable board and follows through to the win', () => {
+    const state = solvable();
+    const hint = wasmHintMove(state, emptyGrid(state), undefined, HINT_BUDGET);
+    expect(hint).not.toBeNull();
+    const plan = wasmPlanTap(state, emptyGrid(state), undefined, hint!.from, hint!.to);
+    expect(plan.kind).toBe('pour');
+    expect(solveViaHints(state)).not.toBeNull();
   });
 
-  it('stuck registry mirrors the JS visited-set semantics through a play sequence', () => {
-    const level = generateLevel({ colors: 3, bottles: 5, capacity: 4, seed: 77 });
-    let state = level.state;
-    const visited = new Set([canonical(state)]);
-    wasmStuck.reset(state);
+  it('returns no hint for a provably unsolvable board', () => {
+    const state = loop();
+    expect(wasmHintMove(state, emptyGrid(state), undefined, HINT_BUDGET)).toBeNull();
+  });
+
+  it('stuck registry: fresh boards are not stuck, a fully-visited closure is', () => {
+    const start = loop();
+    wasmStuck.reset(start);
     expect(wasmStuck.visitedCount()).toBe(1);
+    // Only the start is visited — reachable fresh boards remain, so not "going in circles".
+    expect(wasmStuck.check(start, undefined, STUCK_BUDGET)).toBe(false);
 
-    // Walk a few useful moves, mirroring both book-keepings, asserting agreement at each step.
-    for (let step = 0; step < 4; step++) {
-      const moves = usefulMoves(state);
-      if (moves.length === 0) break;
-      state = pour(state, moves[0]!.from, moves[0]!.to).state;
-      visited.add(canonical(state));
-      wasmStuck.visit(state);
-
-      const js = isStuckInLoop(state, visited, { maxNodes: STUCK_BUDGET });
-      const wasm = wasmStuck.check(state, undefined, STUCK_BUDGET);
-      expect(wasm).toBe(js);
-    }
+    // Visit the whole reachable closure: every continuation has been seen and none wins.
+    const closure = reachableClosure(start);
+    expect(closure.length).toBeGreaterThan(1);
+    for (const s of closure) wasmStuck.visit(s);
+    expect(wasmStuck.check(start, undefined, STUCK_BUDGET)).toBe(true);
   });
 
   it('reset clears the registry between boards', () => {
-    const a = generateLevel({ colors: 3, bottles: 5, capacity: 4, seed: 1 }).state;
-    const b = generateLevel({ colors: 3, bottles: 5, capacity: 4, seed: 2 }).state;
+    const a = loop();
     wasmStuck.reset(a);
-    wasmStuck.visit(pour(a, usefulMoves(a)[0]!.from, usefulMoves(a)[0]!.to).state);
+    const { next } = legalPours(a)[0]!;
+    expect(stateKey(next)).not.toBe(stateKey(a));
+    wasmStuck.visit(next);
     expect(wasmStuck.visitedCount()).toBe(2);
-    wasmStuck.reset(b);
+    wasmStuck.reset(solvable());
     expect(wasmStuck.visitedCount()).toBe(1);
+  });
+
+  it('a won board reads as won through the view seam', () => {
+    const state = board([['r', 'r', 'r', 'r'], []], 4);
+    expect(isWonState(state)).toBe(true);
   });
 });

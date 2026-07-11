@@ -15,7 +15,7 @@ export type Color = string & { readonly __color: unique symbol };
 /**
  * The audited boundary where an *external* raw string (deserialized baked data, a test fixture)
  * becomes a branded {@link Color}, instead of scattering `as Color` casts across those call sites.
- * (The in-code origin is the `PALETTE` literal in `generator.ts` — one definition, one cast; every
+ * (The in-code origin is the `PALETTE` literal in `palette.ts` — one definition, one cast; every
  * other color is a remap of those ids, so this and `PALETTE` are the brand's only trust points.) The
  * brand is purely compile-time, so this is a no-op at runtime.
  */

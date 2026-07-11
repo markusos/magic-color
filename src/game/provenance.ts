@@ -15,7 +15,7 @@ import type { Difficulty } from './types';
 /**
  * Per-board difficulty measurements — the committed/live provenance schema. This is the
  * RUNTIME home of the type since Track F5 (the measuring code lives in the Rust core;
- * `difficulty.ts` is a test-only oracle that re-imports this shape).
+ * the retired JS `difficulty.ts` used to re-import this shape).
  */
 export interface Metrics {
   /** Exact hidden-aware optimal player pours, or a proxy upper bound if the A* overflowed. */

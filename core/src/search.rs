@@ -29,7 +29,10 @@ struct MinHeap<T> {
 
 impl<T> MinHeap<T> {
     fn new(cmp: fn(&T, &T) -> i64) -> Self {
-        MinHeap { items: Vec::new(), cmp }
+        MinHeap {
+            items: Vec::new(),
+            cmp,
+        }
     }
 
     fn len(&self) -> usize {
@@ -154,7 +157,11 @@ fn capped_successors(state: &State, hidden: &Hidden, overlays: Overlays) -> Vec<
             }
             let (next, _) = pour(state, from, to, cap);
             let next_hidden = reveal_exposed(&next, hidden);
-            out.push(CappedSuccessor { state: next, hidden: next_hidden, mv: (from as u8, to as u8) });
+            out.push(CappedSuccessor {
+                state: next,
+                hidden: next_hidden,
+                mv: (from as u8, to as u8),
+            });
         }
     }
     out
@@ -163,7 +170,10 @@ fn capped_successors(state: &State, hidden: &Hidden, overlays: Overlays) -> Vec<
 /// The capped-successor move set at a state, in canonical order — the G2 trace's payload:
 /// exactly the moves the player-rule searches consider.
 pub fn capped_move_set(state: &State, hidden: &Hidden, overlays: Overlays) -> Vec<(u8, u8)> {
-    capped_successors(state, hidden, overlays).iter().map(|s| s.mv).collect()
+    capped_successors(state, hidden, overlays)
+        .iter()
+        .map(|s| s.mv)
+        .collect()
 }
 
 /// Apply one capped player move (as the searches would), or `None` if it isn't in the
@@ -184,7 +194,9 @@ pub fn apply_capped_move(
 fn is_solved(state: &State, hidden: &Hidden, overlays: Overlays) -> bool {
     is_won(state)
         && !any_hidden(hidden)
-        && !overlays.ice.is_some_and(|ice| any_frozen(state, hidden, ice))
+        && !overlays
+            .ice
+            .is_some_and(|ice| any_frozen(state, hidden, ice))
 }
 
 struct AStarNode {
@@ -363,7 +375,10 @@ pub fn near_optimal_cutoffs(
         state: State,
         hidden: Hidden,
     }
-    let mut layer: Vec<Entry> = vec![Entry { state: state0.clone(), hidden: hidden0.clone() }];
+    let mut layer: Vec<Entry> = vec![Entry {
+        state: state0.clone(),
+        hidden: hidden0.clone(),
+    }];
     let mut goal_depths: Vec<u32> = Vec::new();
     let mut depth: u32 = 0;
     let mut nodes = 0usize;
@@ -375,11 +390,17 @@ pub fn near_optimal_cutoffs(
             .or_else(|| goal_depths.get(1))
             .copied()
             .unwrap_or(optimal + 2);
-        Some(StarCutoffs { optimal, two_star_max })
+        Some(StarCutoffs {
+            optimal,
+            two_star_max,
+        })
     };
 
     while !layer.is_empty() {
-        if layer.iter().any(|e| is_solved(&e.state, &e.hidden, overlays)) {
+        if layer
+            .iter()
+            .any(|e| is_solved(&e.state, &e.hidden, overlays))
+        {
             goal_depths.push(depth);
             if goal_depths.len() >= 3 {
                 break;
@@ -399,7 +420,10 @@ pub fn near_optimal_cutoffs(
                 }
                 let key = state_key(&succ.state, Some(&succ.hidden));
                 if next_keys.insert(key) {
-                    next.push(Entry { state: succ.state, hidden: succ.hidden });
+                    next.push(Entry {
+                        state: succ.state,
+                        hidden: succ.hidden,
+                    });
                 }
             }
         }
@@ -416,7 +440,10 @@ mod tests {
     use crate::state::{empty_hidden, Tube};
 
     fn state(tubes: Vec<&[u8]>, capacity: u8) -> State {
-        State { tubes: tubes.into_iter().map(Tube::from_cells).collect(), capacity }
+        State {
+            tubes: tubes.into_iter().map(Tube::from_cells).collect(),
+            capacity,
+        }
     }
 
     #[test]
@@ -425,11 +452,17 @@ mod tests {
         // forces extra player pours.
         let s = state(vec![&[2, 1, 1, 1], &[1, 2, 2, 2], &[]], 4);
         let no_hidden = empty_hidden(&s);
-        assert_eq!(optimal_capped_moves(&s, &no_hidden, 10_000, Overlays::default()), Some(3));
+        assert_eq!(
+            optimal_capped_moves(&s, &no_hidden, 10_000, Overlays::default()),
+            Some(3)
+        );
 
         let hidden = vec![0b0010u16, 0, 0]; // conceal tube 0, cell 1
         let capped = optimal_capped_moves(&s, &hidden, 10_000, Overlays::default()).unwrap();
-        assert!(capped > 3, "concealment must cost extra pours, got {capped}");
+        assert!(
+            capped > 3,
+            "concealment must cost extra pours, got {capped}"
+        );
     }
 
     #[test]

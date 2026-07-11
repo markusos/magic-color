@@ -40,10 +40,20 @@ pub fn build_overlays(
 ) -> OverlaySet {
     let mut set = empty_overlays(state);
     if mechanics.contains(&Mechanic::Hidden) {
-        set.hidden = compute_hidden(state, seed, &exposable_cells(state, solution), density.hidden);
+        set.hidden = compute_hidden(
+            state,
+            seed,
+            &exposable_cells(state, solution),
+            density.hidden,
+        );
     }
     if mechanics.contains(&Mechanic::Funnel) {
-        set.funnels = compute_funnels(state, seed, &eligible_tubes(state, solution), density.funnel);
+        set.funnels = compute_funnels(
+            state,
+            seed,
+            &eligible_tubes(state, solution),
+            density.funnel,
+        );
     }
     if mechanics.contains(&Mechanic::Ice) {
         set.ice = build_ice(state, solution, &set.hidden, seed, density.ice);

@@ -73,7 +73,11 @@ pub struct Board {
 
 impl Board {
     pub fn new(bottles: u8, capacity: u8) -> Self {
-        Self { bottles, capacity, cells: vec![NO_COLOR; bottles as usize * capacity as usize] }
+        Self {
+            bottles,
+            capacity,
+            cells: vec![NO_COLOR; bottles as usize * capacity as usize],
+        }
     }
 
     /// Flat index of `(bottle, slot)`; slot 0 is the bottom.

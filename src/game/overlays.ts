@@ -15,10 +15,10 @@
  * doesn't use a mechanic behaves byte-identically (the basis for re-bakes reproducing earlier
  * chapters exactly).
  *
- * Note the two consumer scopes differ in what they read: the full-information solver (`solver.ts`)
- * consults only `funnels` (it is deliberately not ice-aware — see PLAN.md / the `ice-mechanic` memo),
- * while the capped search (`search.ts`) and the offline metrics (`difficulty.ts`) honor both. Each
- * consumer simply reads the field(s) it understands; a superset bundle is harmless to the rest.
+ * Note the consumer scopes (core-side) differ in what they read: the full-information solver
+ * consults only `funnels` (it is deliberately not ice-aware — see PLAN.md / the `ice-mechanic`
+ * memo), while the capped search and the offline metrics honor both. Each consumer simply reads
+ * the field(s) it understands; a superset bundle is harmless to the rest.
  */
 import type { FunnelGrid } from './funnels';
 import type { IceGrid } from './ice';

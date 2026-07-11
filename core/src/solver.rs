@@ -86,7 +86,12 @@ pub fn search(state: &State, funnels: Option<&Funnels>, max_nodes: usize) -> Sol
         Pushed,
     }
 
-    let enter = |current: State, stack: &mut Vec<Frame>, nodes: &mut usize, hit_cap: &mut bool, visited: &mut HashSet<Key>| -> Entered {
+    let enter = |current: State,
+                 stack: &mut Vec<Frame>,
+                 nodes: &mut usize,
+                 hit_cap: &mut bool,
+                 visited: &mut HashSet<Key>|
+     -> Entered {
         if is_won(&current) {
             return Entered::Won;
         }
@@ -100,12 +105,28 @@ pub fn search(state: &State, funnels: Option<&Funnels>, max_nodes: usize) -> Sol
             return Entered::Pruned;
         }
         let moves = useful_moves(&current, funnels);
-        stack.push(Frame { state: current, moves, next: 0 });
+        stack.push(Frame {
+            state: current,
+            moves,
+            next: 0,
+        });
         Entered::Pushed
     };
 
-    if matches!(enter(state.clone(), &mut stack, &mut nodes, &mut hit_cap, &mut visited), Entered::Won) {
-        return SolveResult { solution: Some(Vec::new()), exhausted: !hit_cap };
+    if matches!(
+        enter(
+            state.clone(),
+            &mut stack,
+            &mut nodes,
+            &mut hit_cap,
+            &mut visited
+        ),
+        Entered::Won
+    ) {
+        return SolveResult {
+            solution: Some(Vec::new()),
+            exhausted: !hit_cap,
+        };
     }
 
     while let Some(frame) = stack.last_mut() {
@@ -121,7 +142,12 @@ pub fn search(state: &State, funnels: Option<&Funnels>, max_nodes: usize) -> Sol
         let (next, mv) = pour(&frame.state, from as usize, to as usize, usize::MAX);
         path.push(mv);
         match enter(next, &mut stack, &mut nodes, &mut hit_cap, &mut visited) {
-            Entered::Won => return SolveResult { solution: Some(path), exhausted: !hit_cap },
+            Entered::Won => {
+                return SolveResult {
+                    solution: Some(path),
+                    exhausted: !hit_cap,
+                }
+            }
             Entered::Pruned => {
                 path.pop();
             }
@@ -129,7 +155,10 @@ pub fn search(state: &State, funnels: Option<&Funnels>, max_nodes: usize) -> Sol
         }
     }
 
-    SolveResult { solution: None, exhausted: !hit_cap }
+    SolveResult {
+        solution: None,
+        exhausted: !hit_cap,
+    }
 }
 
 pub fn solve(state: &State, funnels: Option<&Funnels>, max_nodes: usize) -> Option<Vec<Move>> {
@@ -228,7 +257,10 @@ mod tests {
     use crate::state::Tube;
 
     fn state(tubes: Vec<&[u8]>, capacity: u8) -> State {
-        State { tubes: tubes.into_iter().map(Tube::from_cells).collect(), capacity }
+        State {
+            tubes: tubes.into_iter().map(Tube::from_cells).collect(),
+            capacity,
+        }
     }
 
     #[test]

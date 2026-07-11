@@ -30,7 +30,10 @@ impl PartialEq for Tube {
 impl Eq for Tube {}
 
 impl Tube {
-    pub const EMPTY: Tube = Tube { cells: [0; MAX_CAP], len: 0 };
+    pub const EMPTY: Tube = Tube {
+        cells: [0; MAX_CAP],
+        len: 0,
+    };
 
     pub fn from_cells(cells: &[u8]) -> Tube {
         debug_assert!(cells.len() <= MAX_CAP);
@@ -63,7 +66,11 @@ impl Tube {
 
     #[inline]
     pub fn top(&self) -> Option<u8> {
-        if self.len == 0 { None } else { Some(self.cells[self.len as usize - 1]) }
+        if self.len == 0 {
+            None
+        } else {
+            Some(self.cells[self.len as usize - 1])
+        }
     }
 
     #[inline]
@@ -145,7 +152,10 @@ impl State {
                 Tube::from_cells(&col[..fill])
             })
             .collect();
-        State { tubes, capacity: board.capacity }
+        State {
+            tubes,
+            capacity: board.capacity,
+        }
     }
 
     pub fn to_board(&self) -> Board {
@@ -167,17 +177,29 @@ mod tests {
     #[test]
     fn key_is_order_independent_and_injective() {
         let a = State {
-            tubes: vec![Tube::from_cells(&[1, 2]), Tube::from_cells(&[3]), Tube::EMPTY],
+            tubes: vec![
+                Tube::from_cells(&[1, 2]),
+                Tube::from_cells(&[3]),
+                Tube::EMPTY,
+            ],
             capacity: 4,
         };
         let b = State {
-            tubes: vec![Tube::EMPTY, Tube::from_cells(&[3]), Tube::from_cells(&[1, 2])],
+            tubes: vec![
+                Tube::EMPTY,
+                Tube::from_cells(&[3]),
+                Tube::from_cells(&[1, 2]),
+            ],
             capacity: 4,
         };
         assert_eq!(state_key(&a, None), state_key(&b, None));
 
         let c = State {
-            tubes: vec![Tube::from_cells(&[2, 1]), Tube::from_cells(&[3]), Tube::EMPTY],
+            tubes: vec![
+                Tube::from_cells(&[2, 1]),
+                Tube::from_cells(&[3]),
+                Tube::EMPTY,
+            ],
             capacity: 4,
         };
         assert_ne!(state_key(&a, None), state_key(&c, None));
@@ -193,7 +215,11 @@ mod tests {
     #[test]
     fn board_round_trip() {
         let s = State {
-            tubes: vec![Tube::from_cells(&[0, 1, 1]), Tube::EMPTY, Tube::from_cells(&[2])],
+            tubes: vec![
+                Tube::from_cells(&[0, 1, 1]),
+                Tube::EMPTY,
+                Tube::from_cells(&[2]),
+            ],
             capacity: 4,
         };
         assert_eq!(State::from_board(&s.to_board()), s);

@@ -29,35 +29,6 @@ export default tseslint.config(
       'src/game/core-pkg',
     ],
   },
-  // Track F5: the JS solver/search/generator/difficulty are TEST-ONLY oracles — the runtime
-  // uses the Rust core (`coreWasm.ts`). This guard keeps them out of the app graph (and the
-  // bundle) for good; tests and scripts may still import them.
-  {
-    files: ['src/**/*.{ts,tsx}'],
-    ignores: [
-      'src/**/*.test.{ts,tsx}',
-      'src/test/**',
-      // The oracle modules themselves may import each other.
-      'src/game/solver.ts',
-      'src/game/search.ts',
-      'src/game/generator.ts',
-      'src/game/difficulty.ts',
-    ],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/solver', '**/search', '**/generator', '**/difficulty'],
-              message:
-                'Test-only oracle (Track F5): runtime code must use the Rust core via coreWasm.ts.',
-            },
-          ],
-        },
-      ],
-    },
-  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],

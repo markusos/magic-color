@@ -66,7 +66,12 @@ fn shuffle<T>(arr: &mut [T], rng: &mut Mulberry32) {
 /// Randomized fill profile — port of `randomFillProfile`, including the reserved-empties
 /// draw, the data-dependent sprinkle loop (a draw per iteration, applied only when the
 /// picked tube can still shrink), and the final shuffle.
-fn random_fill_profile(colors: usize, bottles: usize, capacity: u8, rng: &mut Mulberry32) -> Vec<usize> {
+fn random_fill_profile(
+    colors: usize,
+    bottles: usize,
+    capacity: u8,
+    rng: &mut Mulberry32,
+) -> Vec<usize> {
     let cap = capacity as usize;
     let empties = bottles - colors;
     let free_space = empties * cap;
@@ -107,7 +112,10 @@ fn is_degenerate(state: &State) -> bool {
     if is_won(state) {
         return true;
     }
-    state.tubes.iter().any(|t| !t.is_empty() && is_complete(t, state.capacity))
+    state
+        .tubes
+        .iter()
+        .any(|t| !t.is_empty() && is_complete(t, state.capacity))
 }
 
 /// `capacity` copies of each of the first `colors` ids (ids ARE palette indices here).
@@ -154,9 +162,18 @@ fn attempt_board(
 /// Generate a verified-solvable level — port of `generateLevel` (legacy first-solvable path
 /// and the best-of-N par-floor path).
 pub fn generate_level(options: &GenerateOptions) -> Result<GeneratedLevel, String> {
-    let GenerateOptions { colors, bottles, capacity, seed, min_par, par_mode } = *options;
+    let GenerateOptions {
+        colors,
+        bottles,
+        capacity,
+        seed,
+        min_par,
+        par_mode,
+    } = *options;
     if !is_valid_combo(colors, bottles, capacity) {
-        return Err(format!("invalid combo: {colors} colors / {bottles} bottles / cap {capacity}"));
+        return Err(format!(
+            "invalid combo: {colors} colors / {bottles} bottles / cap {capacity}"
+        ));
     }
 
     let mut rng = Mulberry32::new(seed);
@@ -180,7 +197,8 @@ pub fn generate_level(options: &GenerateOptions) -> Result<GeneratedLevel, Strin
     let mut solvable_seen = 0usize;
 
     for _ in 0..MAX_RETRIES {
-        let Some((state, solution)) = attempt_board(&template, colors, bottles, capacity, &mut rng) else {
+        let Some((state, solution)) = attempt_board(&template, colors, bottles, capacity, &mut rng)
+        else {
             continue;
         };
 
@@ -203,7 +221,11 @@ pub fn generate_level(options: &GenerateOptions) -> Result<GeneratedLevel, Strin
         }
     }
 
-    best.ok_or_else(|| format!("failed to generate a solvable {colors}/{bottles} level after {MAX_RETRIES} attempts"))
+    best.ok_or_else(|| {
+        format!(
+            "failed to generate a solvable {colors}/{bottles} level after {MAX_RETRIES} attempts"
+        )
+    })
 }
 
 /// Up to `count` distinct solvable boards for the bake's candidate pool — port of
@@ -217,7 +239,9 @@ pub fn generate_candidates(
     max_attempts: usize,
 ) -> Result<Vec<GeneratedLevel>, String> {
     if !is_valid_combo(colors, bottles, capacity) {
-        return Err(format!("invalid combo: {colors} colors / {bottles} bottles / cap {capacity}"));
+        return Err(format!(
+            "invalid combo: {colors} colors / {bottles} bottles / cap {capacity}"
+        ));
     }
 
     let mut rng = Mulberry32::new(seed);
@@ -229,7 +253,8 @@ pub fn generate_candidates(
         if candidates.len() >= count {
             break;
         }
-        let Some((state, solution)) = attempt_board(&template, colors, bottles, capacity, &mut rng) else {
+        let Some((state, solution)) = attempt_board(&template, colors, bottles, capacity, &mut rng)
+        else {
             continue;
         };
         if !seen.insert(canonical(&state)) {
