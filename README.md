@@ -68,8 +68,10 @@ src/
     daily.ts, stars.ts, palette.ts, recolor.ts, overlays.ts, …   # runtime helpers
   store/                  # Zustand store + persisted campaign/daily progress (localStorage)
   components/             # Bottle, GameBoard, Toolbar, Overlay, Home, StatsScreen, Settings, …
-scripts/                  # bake pipeline glue + version stamps (see Tooling)
-exe/test                  # the quality gate (runs everything CI runs, and more)
+scripts/                  # bake pipeline glue + version stamps + the quality-gate orchestrator
+scripts/gate.ts           # the quality gate as a reusable module (run by exe/test AND CI)
+e2e/                      # Playwright browser smokes (run against a production build)
+exe/test                  # thin launcher for the gate (→ scripts/check.ts)
 ```
 
 ### Progression & mechanics
@@ -103,30 +105,37 @@ sampling). Every accepted board ships with a known solution and its optimal step
 generation reproducible, and the RNG is bit-identical (`libm`) between the native and wasm targets
 so a live board matches the bake.
 
-## The quality gate — `exe/test`
+## The quality gate — `scripts/gate.ts`
 
-`exe/test` is the single quality gate. `npm run check` runs it, and so does CI, so passing it
-locally means CI passes too. It runs each step with a clear name, streams the step's output, and
-prints a pass/fail summary:
+One quality gate, defined once in TypeScript (`scripts/gate.ts`) and run everywhere: `npm run check`
+locally, `exe/test` (a thin launcher for the same thing), and CI. `.github/workflows/ci.yml` runs it
+on every PR; `.github/workflows/deploy.yml` runs the identical gate before publishing from `main` —
+so passing locally means CI passes too. It runs each step with a clear name, streams the step's
+output, and prints a pass/fail summary:
 
 ```
-npm run check           # → exe/test
+npm run check                 # the full gate
+npm run check -- bake-out     # also self-check baked-level artifacts in ./bake-out
+npm run check -- --skip=e2e   # drop steps by id
 ```
 
 | Step | What it checks |
 | --- | --- |
 | eslint | app + scripts lint (type-aware flat config) |
 | typescript | strict `tsc --noEmit` typecheck |
-| vitest | app, store, live generation + wasm adapter (drives the committed `.wasm`) |
+| vitest | app, store, live generation + wasm adapter (drives the committed `.wasm`), with V8 coverage |
 | rustfmt | `cargo fmt --check` — the core crate must be formatted |
 | clippy | `cargo clippy --all-targets -- -D warnings` |
 | cargo test | engine, solver, generator + frozen golden-vector replays |
-| verify | baked levels: golden winning lines + static invariants — **only** when a bake output dir is present (`exe/test bake-out`); skipped otherwise |
+| verify | baked levels: golden winning lines + static invariants — **only** when a bake output dir is present (`npm run check -- bake-out`); skipped otherwise |
+| playwright | e2e critical-path smokes against a production build — **only** when a Chromium is installed (CI installs one; skipped otherwise) |
 
 The gameplay rules live only in the Rust core: `cargo test` covers rule correctness (crate unit
 tests + the frozen golden vectors in `vectors/`), and the vitest suite drives the committed
-`.wasm` for everything rule-shaped, including the freshness guard. `verify` is the one thing
-beyond CI: it independently re-checks the emitted level artifacts and runs only after a bake.
+`.wasm` for everything rule-shaped, including the freshness guard. Coverage is reported but not
+gated (visibility while UI coverage grows). Two steps are conditional on their inputs: `verify`
+re-checks emitted level artifacts (runs after a bake), and `playwright` drives the app in a real
+browser (runs when a Chromium is present — always in CI).
 
 Two **freshness guards** run inside the vitest/bake steps and fail loudly if a committed artifact
 goes stale against the crate sources: `coreVersion.test.ts` (the committed `.wasm` was built from
@@ -139,8 +148,9 @@ you change the crate, rebuild the affected artifact — `npm run core:wasm` and/
 | Command | Does |
 | --- | --- |
 | `npm run dev` / `build` / `preview` | Vite dev server / production build / preview |
-| `npm run check` | the full gate (`exe/test`) |
-| `npm test` / `test:watch` | Vitest (run-once / watch) |
+| `npm run check` | the full gate (`scripts/gate.ts`) |
+| `npm test` / `test:watch` / `test:coverage` | Vitest (run-once / watch / +coverage) |
+| `npm run test:e2e` / `test:e2e:ui` | Playwright browser smokes (headless / debug UI) |
 | `npm run lint` / `typecheck` | ESLint / `tsc --noEmit` |
 | `npm run core:test` | `cargo test` (the Rust core crate) |
 | `npm run core:lint` / `core:fmt` | `cargo clippy -D warnings` / `cargo fmt --check` |

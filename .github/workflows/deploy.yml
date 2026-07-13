@@ -20,6 +20,9 @@ concurrency:
 # and matching the runner default coming mid-2026.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # One path for both installing Playwright's browser and the gate's Chromium probe / config lookup,
+  # so the e2e step in `npm run check` runs here too (same gate as CI — test parity before publish).
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
 
 jobs:
   build:
@@ -36,7 +39,9 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      # One gate for both sides: JS lint/typecheck/tests + Rust fmt/clippy/tests.
+      # Browser for the Playwright step, so the deploy gate runs the e2e smokes too (parity w/ CI).
+      - run: npx playwright install --with-deps chromium
+      # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
       - run: npm run check
       - run: npm run build
       - uses: actions/configure-pages@v5

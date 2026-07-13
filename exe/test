@@ -1,95 +1,13 @@
-#!/bin/bash
-# The project's quality gate. Runs every check CI runs — the TypeScript app (lint, typecheck,
-# tests) and the Rust core crate (formatting, lints, tests) — and, when a bake output directory
-# is present, additionally self-checks the emitted levels. This is the superset of CI: `npm run
-# check` (what CI runs) is this same script.
+#!/usr/bin/env bash
+# Thin launcher for the quality gate. The orchestration now lives in TypeScript (scripts/gate.ts,
+# run via scripts/check.ts) so the SAME steps run locally and in CI (test parity) — see
+# .github/workflows/ci.yml. This shim just ensures cargo is on PATH and hands off; `npm run check`
+# runs the identical thing.
 #
-# Each step streams its own output under a header so you can watch progress; a per-step summary
-# prints at the end. Exits non-zero on the first failing step's account. The gameplay rules live
-# ONLY in the Rust core: cargo test replays the frozen golden vectors (vectors/*.json) alongside
-# the crate's unit tests, and the vitest suite drives the committed .wasm for everything
-# rule-shaped (adapter smoke, store, live generation) plus the freshness guards. The vitest step
-# runs with coverage (`test:coverage`): it prints a summary and writes coverage/ but enforces no
-# threshold, so it never fails the gate — the number is there for visibility while UI coverage
-# grows. A Playwright E2E step runs the browser-only critical-path smokes after the Rust checks,
-# guarded so it SKIPs (green) when no browser is installed.
-#
-# Usage: exe/test [bake-out-dir]   (level self-check runs only if that dir has levels.json;
-#                                    default ./bake-out — produce it with `npm run build:levels`)
-set -uo pipefail
+# Usage: exe/test [bake-out-dir] [--skip=id,id]
+#   The baked-level self-check runs only when the bake dir has levels.json (default ./bake-out —
+#   produce it with `npm run build:levels`). The e2e step runs only when a Chromium is installed.
+set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.cargo/bin:$PATH"
-
-BAKE_DIR="${1:-bake-out}"
-FAILED=0
-declare -a SUMMARY
-
-step() { # step <name> <command...>
-  local name="$1"; shift
-  echo ""
-  echo "──────── $name ────────"
-  if "$@"; then
-    SUMMARY+=("PASS  $name")
-  else
-    SUMMARY+=("FAIL  $name")
-    FAILED=1
-  fi
-}
-
-echo "== quality gate =="
-
-# TypeScript app
-step "eslint — lint app + scripts"                      npm run lint
-step "typescript — strict typecheck"                    npm run typecheck
-step "vitest — app, store, live generation + wasm adapter (drives the committed .wasm), with coverage" npm run test:coverage
-
-# Rust core crate
-step "rustfmt — core crate formatting"                  npm run core:fmt
-step "clippy — core crate lints"                        npm run core:lint
-step "cargo test — engine, solver, generator + frozen golden-vector replays" npm run core:test
-
-# Baked-level self-check — beyond CI, and only when a bake output directory is present.
-echo ""
-echo "──────── verify — baked levels: golden winning lines + static invariants ────────"
-if [ -d "$BAKE_DIR" ] && [ -f "$BAKE_DIR/levels.json" ]; then
-  if [ ! -x ./target/release/verify ]; then
-    echo "building verify binary…"
-    cargo build --release --bin verify
-  fi
-  if ./target/release/verify "$BAKE_DIR"; then
-    SUMMARY+=("PASS  verify — baked levels")
-  else
-    SUMMARY+=("FAIL  verify — baked levels")
-    FAILED=1
-  fi
-else
-  echo "SKIP (no artifacts at $BAKE_DIR — produce them with: npm run build:levels)"
-  SUMMARY+=("SKIP  verify — baked levels (no artifacts at $BAKE_DIR)")
-fi
-
-# Playwright E2E — the browser-only top of the pyramid (real Chromium against a production build).
-# Guarded like verify: it runs only when a Chromium is available, and SKIPs (green) otherwise, so a
-# browserless CI stays passing. Install a browser with `npx playwright install chromium`.
-echo ""
-echo "──────── playwright — e2e critical-path smokes (real browser) ────────"
-E2E_BROWSER="$(ls -d "${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"/chromium-*/chrome-linux/chrome 2>/dev/null | head -n1)"
-if [ -n "$E2E_BROWSER" ]; then
-  if npm run test:e2e; then
-    SUMMARY+=("PASS  playwright — e2e smokes")
-  else
-    SUMMARY+=("FAIL  playwright — e2e smokes")
-    FAILED=1
-  fi
-else
-  echo "SKIP (no Chromium under ${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers} — install with: npx playwright install chromium)"
-  SUMMARY+=("SKIP  playwright — e2e smokes (no browser)")
-fi
-
-echo ""
-echo "== summary =="
-for line in "${SUMMARY[@]}"; do echo "  $line"; done
-if [ "$FAILED" -ne 0 ]; then
-  echo "== GATE: FAIL =="
-  exit 1
-fi
-echo "== GATE: PASS =="
+exec npx tsx scripts/check.ts "$@"

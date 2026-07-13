@@ -1,0 +1,38 @@
+name: CI
+
+# Runs the SAME quality gate as `exe/test` / `npm run check` (scripts/gate.ts) on every PR and on
+# pushes to non-main branches, so CI and a local run mean exactly the same thing (test parity).
+# Pushes to main are gated by the deploy workflow, which runs the identical gate before publishing.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+# Run the (Node 20) first-party actions on Node 24, matching the deploy workflow.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Pin where Playwright installs its browser AND where the gate's Chromium probe / the Playwright
+  # config's executablePath look — one path so install and lookup always agree (mirrors the sandbox's
+  # /opt/pw-browsers). Without this they diverge (~/.cache/ms-playwright) and the e2e step would skip.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # Rust toolchain for the core crate's half of the gate (fmt/clippy/tests), cached across runs.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      # Install the browser (into PLAYWRIGHT_BROWSERS_PATH, set above) so the gate's Chromium probe
+      # finds it and the e2e step RUNS in CI (parity) instead of auto-skipping.
+      - run: npx playwright install --with-deps chromium
+      # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
+      - run: npm run check

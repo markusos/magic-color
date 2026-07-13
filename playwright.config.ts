@@ -1,6 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { existsSync } from 'node:fs';
-import { globSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 
 /**
  * E2E harness — the thin browser-only top of the test pyramid (see PLAN / the test-coverage memo).
@@ -17,8 +16,16 @@ import { globSync } from 'node:fs';
 function chromiumExecutable(): string | undefined {
   if (process.env.PLAYWRIGHT_CHROMIUM_PATH) return process.env.PLAYWRIGHT_CHROMIUM_PATH;
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers';
-  const found = globSync(`${root}/chromium-*/chrome-linux/chrome`).sort();
-  return found.length ? found[found.length - 1] : undefined;
+  if (!existsSync(root)) return undefined;
+  const revs = readdirSync(root)
+    .filter((name) => name.startsWith('chromium-'))
+    .sort()
+    .reverse();
+  for (const rev of revs) {
+    const bin = `${root}/${rev}/chrome-linux/chrome`;
+    if (existsSync(bin)) return bin;
+  }
+  return undefined;
 }
 
 const executablePath = chromiumExecutable();
