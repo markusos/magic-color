@@ -42,8 +42,10 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      # Install the browser (into PLAYWRIGHT_BROWSERS_PATH, set above) so the gate's Chromium probe
-      # finds it and the e2e step RUNS in CI (parity) instead of auto-skipping.
-      - run: npx playwright install --with-deps chromium
+      # Install Chromium (cached) into PLAYWRIGHT_BROWSERS_PATH so the gate's probe finds it and the
+      # e2e step RUNS in CI (parity) instead of auto-skipping.
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers-path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
       # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
       - run: npm run check

@@ -39,8 +39,11 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      # Browser for the Playwright step, so the deploy gate runs the e2e smokes too (parity w/ CI).
-      - run: npx playwright install --with-deps chromium
+      # Chromium (cached) for the Playwright step, so the deploy gate runs the e2e smokes too —
+      # we push directly to main often, so main gets the FULL gate before publishing (parity w/ CI).
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers-path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
       # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
       - run: npm run check
       - run: npm run build
