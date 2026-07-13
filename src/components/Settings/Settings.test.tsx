@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Settings } from './Settings';
 import { useGameStore } from '../../store/gameStore';
@@ -41,10 +41,12 @@ describe('preference toggles persist to the store', () => {
     expect(sw).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('the Sound Effects slider writes its value to the store', () => {
+  it('the Sound Effects slider writes its value to the store', async () => {
     render(<Settings />);
     fireEvent.change(screen.getByRole('slider', { name: 'Sound Effects' }), { target: { value: '0.5' } });
     expect(useSettings.getState().soundVolume).toBe(0.5);
+    // Flush the async core-version effect (initCoreWasm().then) so it settles inside act().
+    await act(async () => {});
   });
 });
 

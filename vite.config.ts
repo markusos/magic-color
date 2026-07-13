@@ -56,6 +56,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Vitest's default glob also matches `e2e/*.spec.ts` — but those are Playwright specs (run by
+    // `npm run test:e2e`), not vitest. Scope discovery to the app's own unit/component suites.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       // `npm run test:coverage` prints a terminal summary and writes an HTML report under

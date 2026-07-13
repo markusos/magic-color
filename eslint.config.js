@@ -22,6 +22,12 @@ export default tseslint.config(
       'dev-dist',
       'coverage',
       'scripts',
+      // Playwright E2E + its config run under Playwright's own runner (its esbuild transpiles them),
+      // so — like `scripts/` — they live outside the app's tsconfig and the type-aware linter.
+      'e2e',
+      'playwright.config.ts',
+      'playwright-report',
+      'test-results',
       'src/game/levels.data.ts',
       'src/game/levels.provenance.ts',
       // wasm-pack build output (Track F core); generated JS/dts, nothing to lint.

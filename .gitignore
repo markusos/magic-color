@@ -7,6 +7,12 @@ dist-ssr
 dist-report
 coverage
 
+# Playwright
+test-results
+playwright-report
+blob-report
+.playwright
+
 # Rust (Track F core)
 target
 core/pkg

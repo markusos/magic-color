@@ -11,7 +11,8 @@
 # rule-shaped (adapter smoke, store, live generation) plus the freshness guards. The vitest step
 # runs with coverage (`test:coverage`): it prints a summary and writes coverage/ but enforces no
 # threshold, so it never fails the gate — the number is there for visibility while UI coverage
-# grows. (When the Playwright E2E suite lands it will be wired in as its own step here.)
+# grows. A Playwright E2E step runs the browser-only critical-path smokes after the Rust checks,
+# guarded so it SKIPs (green) when no browser is installed.
 #
 # Usage: exe/test [bake-out-dir]   (level self-check runs only if that dir has levels.json;
 #                                    default ./bake-out — produce it with `npm run build:levels`)
@@ -64,6 +65,24 @@ if [ -d "$BAKE_DIR" ] && [ -f "$BAKE_DIR/levels.json" ]; then
 else
   echo "SKIP (no artifacts at $BAKE_DIR — produce them with: npm run build:levels)"
   SUMMARY+=("SKIP  verify — baked levels (no artifacts at $BAKE_DIR)")
+fi
+
+# Playwright E2E — the browser-only top of the pyramid (real Chromium against a production build).
+# Guarded like verify: it runs only when a Chromium is available, and SKIPs (green) otherwise, so a
+# browserless CI stays passing. Install a browser with `npx playwright install chromium`.
+echo ""
+echo "──────── playwright — e2e critical-path smokes (real browser) ────────"
+E2E_BROWSER="$(ls -d "${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"/chromium-*/chrome-linux/chrome 2>/dev/null | head -n1)"
+if [ -n "$E2E_BROWSER" ]; then
+  if npm run test:e2e; then
+    SUMMARY+=("PASS  playwright — e2e smokes")
+  else
+    SUMMARY+=("FAIL  playwright — e2e smokes")
+    FAILED=1
+  fi
+else
+  echo "SKIP (no Chromium under ${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers} — install with: npx playwright install chromium)"
+  SUMMARY+=("SKIP  playwright — e2e smokes (no browser)")
 fi
 
 echo ""
