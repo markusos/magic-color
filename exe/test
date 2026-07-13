@@ -8,7 +8,10 @@
 # prints at the end. Exits non-zero on the first failing step's account. The gameplay rules live
 # ONLY in the Rust core: cargo test replays the frozen golden vectors (vectors/*.json) alongside
 # the crate's unit tests, and the vitest suite drives the committed .wasm for everything
-# rule-shaped (adapter smoke, store, live generation) plus the freshness guards.
+# rule-shaped (adapter smoke, store, live generation) plus the freshness guards. The vitest step
+# runs with coverage (`test:coverage`): it prints a summary and writes coverage/ but enforces no
+# threshold, so it never fails the gate — the number is there for visibility while UI coverage
+# grows. (When the Playwright E2E suite lands it will be wired in as its own step here.)
 #
 # Usage: exe/test [bake-out-dir]   (level self-check runs only if that dir has levels.json;
 #                                    default ./bake-out — produce it with `npm run build:levels`)
@@ -37,7 +40,7 @@ echo "== quality gate =="
 # TypeScript app
 step "eslint — lint app + scripts"                      npm run lint
 step "typescript — strict typecheck"                    npm run typecheck
-step "vitest — app, store, live generation + wasm adapter (drives the committed .wasm)" npm test
+step "vitest — app, store, live generation + wasm adapter (drives the committed .wasm), with coverage" npm run test:coverage
 
 # Rust core crate
 step "rustfmt — core crate formatting"                  npm run core:fmt
