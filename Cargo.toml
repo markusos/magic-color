@@ -6,3 +6,11 @@ resolver = "2"
 # The bake is a long-running batch job; favor runtime speed.
 lto = true
 codegen-units = 1
+
+[profile.test]
+# The golden-vector replays (conformance/difficulty) run the compute-heavy solver; in unoptimized
+# debug codegen they dominate `cargo test` (~86s → ~13s of run time with this). Optimize the test
+# build to run them fast — no LTO, so compile stays quick, and debug-assertions/overflow-checks stay
+# ON (this only sets opt-level), so the tests keep their debug-build safety. Test-only: the release
+# bake and the wasm build are unaffected, so bake/cross-target determinism is untouched.
+opt-level = 3
