@@ -34,7 +34,8 @@ playwright — e2e critical-path smokes (real browser)              (only when a
 The gameplay rules live only in the Rust core: `cargo test` covers rule correctness (crate unit
 tests + the frozen golden vectors in `vectors/`), while the vitest suite drives the committed
 `.wasm` for everything rule-shaped and includes the freshness guards (it runs with V8 coverage —
-non-gating, for visibility). Two steps are conditional: `verify` self-checks emitted level artifacts
+it enforces a LOOSE floor — set well below current coverage, so it fails only on a real regression,
+not ±1% jitter). Two steps are conditional: `verify` self-checks emitted level artifacts
 and runs only when a bake output directory is present (`npm run check -- bake-out`, produced by
 `npm run build:levels`); `playwright` drives the built app in a real browser and runs only when a
 Chromium is installed (CI installs one; locally it skips green if absent). Steps can be dropped by id

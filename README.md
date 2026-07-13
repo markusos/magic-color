@@ -132,8 +132,9 @@ npm run check -- --skip=e2e   # drop steps by id
 
 The gameplay rules live only in the Rust core: `cargo test` covers rule correctness (crate unit
 tests + the frozen golden vectors in `vectors/`), and the vitest suite drives the committed
-`.wasm` for everything rule-shaped, including the freshness guard. Coverage is reported but not
-gated (visibility while UI coverage grows). Two steps are conditional on their inputs: `verify`
+`.wasm` for everything rule-shaped, including the freshness guard. Coverage is reported and held to
+a loose floor (well below current, so only a real regression fails). Two steps are conditional on
+their inputs: `verify`
 re-checks emitted level artifacts (runs after a bake), and `playwright` drives the app in a real
 browser (runs when a Chromium is present — always in CI).
 

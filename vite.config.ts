@@ -61,11 +61,17 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      // `npm run test:coverage` prints a terminal summary and writes an HTML report under
-      // coverage/. No thresholds are enforced yet — the goal here is VISIBILITY (UI coverage is
-      // still thin), so coverage runs must not fail CI. Add a `thresholds` block once we've
-      // ratcheted the component/E2E layers up to a floor worth defending.
+      // `npm run test:coverage` prints a terminal summary and writes an HTML report under coverage/.
       reporter: ['text-summary', 'html'],
+      // A LOOSE floor, set well below the current numbers (~82% lines / ~84% branches) so it catches
+      // a real regression — a whole area losing its tests — without flaking on ±1% jitter from an
+      // ordinary change. Ratchet these up as coverage climbs; it's deliberately not a tight gate.
+      thresholds: {
+        lines: 75,
+        statements: 75,
+        functions: 75,
+        branches: 78,
+      },
       // Measure the shipped app only. The `report/` dev viewer and `scripts/` build tooling are
       // not part of the product, and the gameplay RULES live in the Rust crate (measured
       // separately by `cargo test`), so this number reflects real, testable app TS.
