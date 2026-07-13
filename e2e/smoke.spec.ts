@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test';
 /**
  * P0 critical-path smokes — the flows where a break means "the game won't start / won't navigate".
  * These run against the real production build in Chromium, so they exercise the wasm boot and the
- * History-backed hash router that jsdom can't. Deeper journeys (full win, PWA offline, layout-fit,
- * visual regression) are follow-ups layered on top of this scaffold.
+ * History-backed hash router that jsdom can't. The full play-to-win path lives in play.spec.ts;
+ * remaining follow-ups (PWA offline, layout-fit, visual regression) layer on top of this scaffold.
  */
 
 test('boots to the start screen', async ({ page }) => {
