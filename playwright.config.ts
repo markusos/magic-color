@@ -17,9 +17,11 @@ function chromiumExecutable(): string | undefined {
   if (process.env.PLAYWRIGHT_CHROMIUM_PATH) return process.env.PLAYWRIGHT_CHROMIUM_PATH;
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers';
   if (!existsSync(root)) return undefined;
+  // Numeric revision sort (see scripts/gate.ts): lexicographic order mis-ranks "chromium-999" above
+  // "chromium-1005" once revisions differ in digit count, picking an older browser.
   const revs = readdirSync(root)
-    .filter((name) => name.startsWith('chromium-'))
-    .sort()
+    .filter((name) => /^chromium-\d+$/.test(name))
+    .sort((a, b) => Number(a.slice('chromium-'.length)) - Number(b.slice('chromium-'.length)))
     .reverse();
   for (const rev of revs) {
     const bin = `${root}/${rev}/chrome-linux/chrome`;

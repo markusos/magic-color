@@ -56,9 +56,11 @@ const VERIFY_BIN = './target/release/verify';
 /** Locate the newest pre-installed Chromium under `browsersPath` (empty string if none). */
 function findChromium(browsersPath: string): string {
   if (!existsSync(browsersPath)) return '';
+  // Sort by the numeric revision, NOT lexicographically: string order puts "chromium-999" after
+  // "chromium-1005", which would pick an older build once revisions cross a digit-count boundary.
   const revs = readdirSync(browsersPath)
-    .filter((name) => name.startsWith('chromium-'))
-    .sort();
+    .filter((name) => /^chromium-\d+$/.test(name))
+    .sort((a, b) => Number(a.slice('chromium-'.length)) - Number(b.slice('chromium-'.length)));
   for (const rev of revs.reverse()) {
     const bin = `${browsersPath}/${rev}/chrome-linux/chrome`;
     if (existsSync(bin)) return bin;
