@@ -71,7 +71,9 @@ src/
 scripts/                  # bake pipeline glue + version stamps + the quality-gate orchestrator
 scripts/gate.ts           # the quality gate as a reusable module (run by exe/test AND CI)
 e2e/                      # Playwright browser smokes (run against a production build)
-exe/test                  # thin launcher for the gate (→ scripts/check.ts)
+exe/test                  # thin launcher for the gate    (→ scripts/check.ts)
+exe/run                   # thin launcher for the dev server (→ scripts/run.ts)
+exe/levels                # thin launcher for the level bake (→ scripts/levels.ts)
 ```
 
 ### Progression & mechanics
@@ -150,10 +152,15 @@ you change the crate, rebuild the affected artifact — `npm run core:wasm` and/
 
 ## Tooling
 
+Three `exe/` scripts are thin bash launchers around shared TypeScript modules (so the same logic
+runs from `exe/…` and the matching `npm run …`): `exe/test` → the gate, `exe/run` → the dev server,
+`exe/levels` → the level bake.
+
 | Command | Does |
 | --- | --- |
-| `npm run dev` / `build` / `preview` | Vite dev server / production build / preview |
-| `npm run check` | the full gate (`scripts/gate.ts`) |
+| `exe/run` or `npm run dev` | Vite dev server with hot reload (`scripts/run.ts`) — args pass through |
+| `npm run build` / `preview` | production build / preview |
+| `exe/test` or `npm run check` | the full gate (`scripts/gate.ts`) |
 | `npm test` / `test:watch` / `test:coverage` | Vitest (run-once / watch / +coverage) |
 | `npm run test:e2e` / `test:e2e:ui` | Playwright browser smokes (headless / debug UI) |
 | `npm run lint` / `typecheck` | ESLint / `tsc --noEmit` |
@@ -161,7 +168,7 @@ you change the crate, rebuild the affected artifact — `npm run core:wasm` and/
 | `npm run core:lint` / `core:fmt` | `cargo clippy -D warnings` / `cargo fmt --check` |
 | `npm run core:build` | `cargo build --release` (native binaries) |
 | `npm run core:wasm` | rebuild the committed wasm package with `wasm-pack` and re-stamp it |
-| `npm run build:levels` | bake the campaign natively → `levels.data.ts` (+ provenance, archive) |
+| `exe/levels` or `npm run build:levels` | bake the campaign natively → `levels.data.ts` (+ provenance, archive); deterministic — reproduces the committed levels (`scripts/levels.ts`) |
 | `npm run bench` | generation benchmark |
 
 ### The Rust core

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Thin launcher for the local dev server (Vite, with hot-module reloading). The logic lives in
+# TypeScript (scripts/run.ts) so `exe/run` and `npm run dev` share one entry point — just like
+# `exe/test` / `npm run check`. Extra args pass straight through to Vite.
+#
+# Usage: exe/run [vite args]     e.g. exe/run --port 3000 --host
+set -euo pipefail
+cd "$(dirname "$0")/.."
+exec npx tsx scripts/run.ts "$@"

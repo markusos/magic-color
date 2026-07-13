@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx scripts/run.ts",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -18,7 +18,7 @@
     "core:fmt": "cargo fmt --check",
     "check": "tsx scripts/check.ts",
     "bench": "tsx scripts/benchmark-generation.ts",
-    "build:levels": "cargo build --release && ./target/release/bake --out bake-out && tsx scripts/emit-baked-from-rust.ts bake-out && tsx scripts/emit-provenance.ts && tsx scripts/archive-report.ts",
+    "build:levels": "tsx scripts/levels.ts",
     "levels:provenance": "tsx scripts/emit-provenance.ts",
     "levels:archive": "tsx scripts/archive-report.ts",
     "levels:report": "tsx scripts/level-report.ts",
