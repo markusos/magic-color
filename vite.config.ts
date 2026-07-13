@@ -56,5 +56,30 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    coverage: {
+      provider: 'v8',
+      // `npm run test:coverage` prints a terminal summary and writes an HTML report under
+      // coverage/. No thresholds are enforced yet — the goal here is VISIBILITY (UI coverage is
+      // still thin), so coverage runs must not fail CI. Add a `thresholds` block once we've
+      // ratcheted the component/E2E layers up to a floor worth defending.
+      reporter: ['text-summary', 'html'],
+      // Measure the shipped app only. The `report/` dev viewer and `scripts/` build tooling are
+      // not part of the product, and the gameplay RULES live in the Rust crate (measured
+      // separately by `cargo test`), so this number reflects real, testable app TS.
+      include: ['src/**'],
+      // Within src/, drop files that carry no logic worth a line count.
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/test/**',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        'src/game/core-pkg/**', // generated wasm-bindgen glue
+        'src/game/levels.data.ts', // baked level blob (data, not code)
+        'src/game/levels.meta.ts',
+        'src/game/levels.provenance.ts',
+        'src/**/*.module.css',
+      ],
+    },
   },
 });
