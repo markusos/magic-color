@@ -4,7 +4,8 @@
 # .github/workflows/ci.yml. This shim just ensures cargo is on PATH and hands off; `npm run check`
 # runs the identical thing.
 #
-# Usage: exe/test [bake-out-dir] [--skip=id,id]
+# Usage: exe/test [bake-out-dir] [--skip=id,id] [--serial]
+#   Steps run in concurrent lanes (app | core | e2e); pass --serial for one-at-a-time grouped output.
 #   The baked-level self-check runs only when the bake dir has levels.json (default ./bake-out —
 #   produce it with `npm run build:levels`). The e2e step runs only when a Chromium is installed.
 set -euo pipefail

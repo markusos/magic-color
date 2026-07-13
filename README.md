@@ -113,8 +113,12 @@ on every PR; `.github/workflows/deploy.yml` runs the identical gate before publi
 so passing locally means CI passes too. It runs each step with a clear name, streams the step's
 output, and prints a pass/fail summary:
 
+Steps run in three concurrent lanes — `app` (lint→typecheck→vitest), `core` (fmt→clippy→cargo
+test→verify), and `e2e` — so the wall-clock is ~the slowest lane, not the sum (locally and in CI).
+
 ```
-npm run check                 # the full gate
+npm run check                 # the full gate (lanes run concurrently)
+npm run check -- --serial     # one step at a time, grouped output (easier to read)
 npm run check -- bake-out     # also self-check baked-level artifacts in ./bake-out
 npm run check -- --skip=e2e   # drop steps by id
 ```

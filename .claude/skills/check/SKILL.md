@@ -18,17 +18,15 @@ npm run check       # → tsx scripts/check.ts — the whole gate, JS + Rust + e
 ```
 
 `npm run check` runs the TypeScript orchestrator (`exe/test` is a thin shim that calls the same
-thing). It streams each step's output under a header and prints a pass/fail summary at the end:
+thing). Steps run in three concurrent LANES (output is prefixed `[app]` / `[core]` / `[e2e]`), so
+the wall-clock is ~the slowest lane rather than the sum. A per-step pass/fail summary prints at the
+end. Add `--serial` for one-at-a-time, grouped output when a log is easier to read that way
+(`npm run check -- --serial`).
 
 ```
-eslint — lint app + scripts
-typescript — strict typecheck
-vitest — app, store, live generation + wasm adapter (drives the committed .wasm), with coverage
-rustfmt — core crate formatting
-clippy — core crate lints
-cargo test — engine, solver, generator + frozen golden-vector replays
-verify — baked levels: golden winning lines + static invariants   (only when bake output exists)
-playwright — e2e critical-path smokes (real browser)              (only when a Chromium is installed)
+app  — eslint → typescript → vitest (+coverage)
+core — rustfmt → clippy → cargo test → verify (verify only when bake output exists)
+e2e  — playwright critical-path smokes (only when a Chromium is installed)
 ```
 
 The gameplay rules live only in the Rust core: `cargo test` covers rule correctness (crate unit

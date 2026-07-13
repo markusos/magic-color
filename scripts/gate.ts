@@ -4,17 +4,25 @@
  * "what green means" for both sides of the codebase (the TypeScript app AND the Rust core crate),
  * so a passing local run and a passing CI run mean exactly the same thing.
  *
- * Each step streams its own output under a header; a per-step summary prints at the end and the
- * process exits non-zero if any step failed. When running under GitHub Actions the headers become
- * collapsible `::group::` blocks and failures emit `::error::` annotations. The gameplay rules live
- * ONLY in the Rust core: `cargo test` replays the frozen golden vectors (vectors/*.json) alongside
- * the crate's unit tests, and the vitest suite drives the committed .wasm for everything
- * rule-shaped plus the freshness guards. The Playwright step drives the built app in a real browser.
+ * Steps are grouped into independent LANES (`app`, `core`, `e2e`) that run CONCURRENTLY; steps
+ * within a lane run in order. The lanes are genuinely independent — the TS app checks, the Rust
+ * crate checks, and the browser e2e don't share inputs — so the wall-clock is ~max(lane) instead of
+ * the sum, both locally and in CI (one command, one runner, no duplicated setup). `--serial` forces
+ * one-at-a-time execution with cleaner grouped output for debugging. A per-step summary prints at
+ * the end and the process exits non-zero if any step failed.
+ *
+ * The gameplay rules live ONLY in the Rust core: `cargo test` replays the frozen golden vectors
+ * (vectors/*.json) alongside the crate's unit tests, and the vitest suite drives the committed .wasm
+ * for everything rule-shaped plus the freshness guards. The Playwright step drives the built app in
+ * a real browser.
  */
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 
 export type StepStatus = 'pass' | 'fail' | 'skip';
+
+/** Concurrency groups. Lanes run in parallel; steps within a lane run in order. */
+export type Lane = 'app' | 'core' | 'e2e';
 
 /** A single external command in a step (argv form — no shell, so no quoting pitfalls). */
 export interface Command {
@@ -22,12 +30,14 @@ export interface Command {
   args: string[];
 }
 
-/** One gate step: a name, an optional guard that can skip it, and the commands it runs in order. */
+/** One gate step: a name, its lane, an optional guard that can skip it, and the commands it runs. */
 export interface StepDef {
   /** Stable short id (used by `--skip`). */
   id: string;
   /** Human label shown in headers and the summary. */
   label: string;
+  /** Which concurrency lane this step belongs to. */
+  lane: Lane;
   /** Return a reason to SKIP (green), or null to run. Evaluated at run time. */
   skip?: (ctx: GateContext) => string | null;
   /** The commands to run, computed at run time (so freshness checks see prior steps' effects). */
@@ -39,9 +49,11 @@ export interface GateContext {
   bakeDir: string;
   /** Where Playwright's browsers live; the `e2e` step is skipped when none is found here. */
   browsersPath: string;
-  /** Step ids the caller asked to skip (e.g. to split CI into parallel jobs). */
+  /** Step ids the caller asked to skip (`--skip=a,b`). */
   skipIds: Set<string>;
-  /** True under GitHub Actions — switches headers to `::group::` and failures to `::error::`. */
+  /** Run lanes one at a time with grouped output instead of concurrently with prefixed output. */
+  serial: boolean;
+  /** True under GitHub Actions — switches serial headers to `::group::` and failures to `::error::`. */
   isCI: boolean;
   /** Environment for child processes (cargo is ensured on PATH). */
   env: NodeJS.ProcessEnv;
@@ -68,28 +80,35 @@ function findChromium(browsersPath: string): string {
   return '';
 }
 
-/** The ordered gate steps. Kept as data so CI can introspect/select them, not just run them. */
+/**
+ * The ordered gate steps, tagged with their lane. Kept as data so CI can introspect/select them.
+ * Lanes: `app` (TS: lint→typecheck→vitest), `core` (Rust: fmt→clippy→cargo test→verify), `e2e`
+ * (browser). `verify` sits in `core` so its `cargo build` can't run concurrently with `cargo test`
+ * and contend on the `target/` lock.
+ */
 export function gateSteps(): StepDef[] {
   return [
-    // ---- TypeScript app ----
-    { id: 'lint', label: 'eslint — lint app + scripts', commands: () => [npmRun('lint')] },
-    { id: 'typecheck', label: 'typescript — strict typecheck', commands: () => [npmRun('typecheck')] },
+    // ---- app lane: TypeScript ----
+    { id: 'lint', lane: 'app', label: 'eslint — lint app + scripts', commands: () => [npmRun('lint')] },
+    { id: 'typecheck', lane: 'app', label: 'typescript — strict typecheck', commands: () => [npmRun('typecheck')] },
     {
       id: 'test',
+      lane: 'app',
       label: 'vitest — app, store, live generation + wasm adapter (drives the committed .wasm), with coverage',
       commands: () => [npmRun('test:coverage')],
     },
-    // ---- Rust core crate ----
-    { id: 'fmt', label: 'rustfmt — core crate formatting', commands: () => [npmRun('core:fmt')] },
-    { id: 'clippy', label: 'clippy — core crate lints', commands: () => [npmRun('core:lint')] },
+    // ---- core lane: Rust crate ----
+    { id: 'fmt', lane: 'core', label: 'rustfmt — core crate formatting', commands: () => [npmRun('core:fmt')] },
+    { id: 'clippy', lane: 'core', label: 'clippy — core crate lints', commands: () => [npmRun('core:lint')] },
     {
       id: 'core-test',
+      lane: 'core',
       label: 'cargo test — engine, solver, generator + frozen golden-vector replays',
       commands: () => [npmRun('core:test')],
     },
-    // ---- Baked-level self-check (only when artifacts are present) ----
     {
       id: 'verify',
+      lane: 'core',
       label: 'verify — baked levels: golden winning lines + static invariants',
       skip: (ctx) =>
         existsSync(`${ctx.bakeDir}/levels.json`)
@@ -97,7 +116,6 @@ export function gateSteps(): StepDef[] {
           : `no artifacts at ${ctx.bakeDir} — produce them with: npm run build:levels`,
       commands: (ctx) => {
         const cmds: Command[] = [];
-        // Build the verify binary on demand if it isn't already there.
         if (!existsSync(VERIFY_BIN)) {
           cmds.push({ cmd: 'cargo', args: ['build', '--release', '--bin', 'verify'] });
         }
@@ -105,9 +123,10 @@ export function gateSteps(): StepDef[] {
         return cmds;
       },
     },
-    // ---- Browser-only E2E (only when a Chromium is available) ----
+    // ---- e2e lane: browser ----
     {
       id: 'e2e',
+      lane: 'e2e',
       label: 'playwright — e2e critical-path smokes (real browser)',
       skip: (ctx) =>
         findChromium(ctx.browsersPath)
@@ -122,8 +141,10 @@ export function gateSteps(): StepDef[] {
 export function resolveContext(argv: string[]): GateContext {
   const skipIds = new Set<string>();
   let bakeDir = 'bake-out';
+  let serial = false;
   for (const arg of argv) {
-    if (arg.startsWith('--skip=')) {
+    if (arg === '--serial') serial = true;
+    else if (arg.startsWith('--skip=')) {
       for (const id of arg.slice('--skip='.length).split(',')) if (id) skipIds.add(id);
     } else if (!arg.startsWith('-')) {
       bakeDir = arg;
@@ -134,62 +155,109 @@ export function resolveContext(argv: string[]): GateContext {
     bakeDir,
     browsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers',
     skipIds,
+    serial,
     isCI: process.env.GITHUB_ACTIONS === 'true',
     // Ensure cargo is reachable even from a login shell that hasn't sourced the rustup env.
     env: { ...process.env, PATH: `${home}/.cargo/bin:${process.env.PATH ?? ''}` },
   };
 }
 
-function openHeader(label: string, isCI: boolean): void {
-  if (isCI) console.log(`::group::${label}`);
-  else console.log(`\n──────── ${label} ────────`);
+/** Outcome of running one step, keyed for the end-of-run summary (printed in gateSteps() order). */
+interface StepOutcome {
+  status: StepStatus;
+  /** Skip reason or `--skip`, for the summary line. */
+  note?: string;
 }
 
-function closeHeader(isCI: boolean): void {
-  if (isCI) console.log('::endgroup::');
+/** Run one command, streaming each output line through `onLine`. Resolves true on exit code 0. */
+function runCommand(c: Command, env: NodeJS.ProcessEnv, onLine: (line: string) => void): Promise<boolean> {
+  return new Promise((resolve) => {
+    const child = spawn(c.cmd, c.args, { env });
+    const pump = (stream: NodeJS.ReadableStream) => {
+      let buf = '';
+      stream.on('data', (chunk: Buffer) => {
+        buf += chunk.toString();
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+        for (const line of lines) onLine(line);
+      });
+      stream.on('end', () => {
+        if (buf) onLine(buf);
+      });
+    };
+    pump(child.stdout);
+    pump(child.stderr);
+    child.on('close', (code) => resolve(code === 0));
+    child.on('error', () => resolve(false));
+  });
+}
+
+/** Run one step (its command sequence), reporting output via `onLine`. */
+async function runStep(step: StepDef, ctx: GateContext, onLine: (line: string) => void): Promise<StepOutcome> {
+  if (ctx.skipIds.has(step.id)) return { status: 'skip', note: `--skip=${step.id}` };
+  const reason = step.skip?.(ctx) ?? null;
+  if (reason) {
+    onLine(`SKIP (${reason})`);
+    return { status: 'skip', note: reason };
+  }
+  for (const c of step.commands(ctx)) {
+    if (!(await runCommand(c, ctx.env, onLine))) return { status: 'fail' };
+  }
+  return { status: 'pass' };
+}
+
+/** Run one lane's steps in order, prefixing every output line with the lane tag. */
+async function runLaneParallel(
+  lane: Lane,
+  steps: StepDef[],
+  ctx: GateContext,
+  outcomes: Map<string, StepOutcome>,
+): Promise<void> {
+  const tag = `[${lane}]`.padEnd(6);
+  for (const step of steps) {
+    console.log(`${tag} ┌─ ${step.label}`);
+    const outcome = await runStep(step, ctx, (line) => console.log(`${tag} │ ${line}`));
+    outcomes.set(step.id, outcome);
+    console.log(`${tag} └─ ${outcome.status.toUpperCase()}`);
+  }
+}
+
+/** Run one step with serial (grouped) output — used by `--serial`. */
+async function runStepSerial(step: StepDef, ctx: GateContext, outcomes: Map<string, StepOutcome>): Promise<void> {
+  if (ctx.isCI) console.log(`::group::${step.label}`);
+  else console.log(`\n──────── ${step.label} ────────`);
+  const outcome = await runStep(step, ctx, (line) => console.log(line));
+  outcomes.set(step.id, outcome);
+  if (ctx.isCI) console.log('::endgroup::');
 }
 
 /** Run the gate. Returns the process exit code (0 = all steps PASS/SKIP, 1 = a step FAILED). */
-export function runGate(ctx: GateContext): number {
-  console.log('== quality gate ==');
-  const summary: string[] = [];
+export async function runGate(ctx: GateContext): Promise<number> {
+  console.log(`== quality gate ==${ctx.serial ? ' (serial)' : ' (lanes: app | core | e2e)'}`);
+  const steps = gateSteps();
+  const outcomes = new Map<string, StepOutcome>();
+
+  if (ctx.serial) {
+    for (const step of steps) await runStepSerial(step, ctx, outcomes);
+  } else {
+    const lanes = [...new Set(steps.map((s) => s.lane))];
+    await Promise.all(
+      lanes.map((lane) => runLaneParallel(lane, steps.filter((s) => s.lane === lane), ctx, outcomes)),
+    );
+  }
+
+  // Summary in declaration order, regardless of which lane finished first.
   let failed = false;
-
-  for (const step of gateSteps()) {
-    if (ctx.skipIds.has(step.id)) {
-      summary.push(`SKIP  ${step.label} (--skip=${step.id})`);
-      continue;
-    }
-    const reason = step.skip?.(ctx) ?? null;
-    openHeader(step.label, ctx.isCI);
-    if (reason) {
-      console.log(`SKIP (${reason})`);
-      summary.push(`SKIP  ${step.label} (${reason})`);
-      closeHeader(ctx.isCI);
-      continue;
-    }
-
-    let ok = true;
-    for (const c of step.commands(ctx)) {
-      const result = spawnSync(c.cmd, c.args, { stdio: 'inherit', env: ctx.env });
-      if (result.status !== 0 || result.error) {
-        ok = false;
-        break;
-      }
-    }
-    closeHeader(ctx.isCI);
-
-    if (ok) {
-      summary.push(`PASS  ${step.label}`);
-    } else {
-      summary.push(`FAIL  ${step.label}`);
+  console.log('\n== summary ==');
+  for (const step of steps) {
+    const outcome = outcomes.get(step.id) ?? { status: 'fail' as StepStatus };
+    const suffix = outcome.note ? ` (${outcome.note})` : '';
+    console.log(`  ${outcome.status.toUpperCase().padEnd(4)}  ${step.label}${suffix}`);
+    if (outcome.status === 'fail') {
       failed = true;
       if (ctx.isCI) console.log(`::error::gate step failed: ${step.label}`);
     }
   }
-
-  console.log('\n== summary ==');
-  for (const line of summary) console.log(`  ${line}`);
   console.log(failed ? '== GATE: FAIL ==' : '== GATE: PASS ==');
   return failed ? 1 : 0;
 }
