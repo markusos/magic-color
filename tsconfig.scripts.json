@@ -1,0 +1,17 @@
+{
+  // Typecheck config for the dev tooling under `scripts/` — the quality gate itself (`gate.ts`),
+  // the bake pipeline, the dev-server/level launchers, etc. These run via `tsx` (esbuild), so they
+  // live OUTSIDE the app's `tsconfig.json` and were previously never typechecked or linted: a type
+  // error in `gate.ts` (the thing that defines "green") would only surface when the script happened
+  // to run. This project catches them statically instead. Wired into the gate as its own step, so
+  // CI runs it too.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Node-side scripts: Node's stdlib types, no vitest/jsdom test globals. DOM libs stay on because
+    // the bake/dev scripts import `src/game/*` modules (e.g. the wasm glue in `coreWasm.ts`) that
+    // reference DOM types like `BufferSource` — the scripts run under Node, but the code they pull
+    // in is typed against the browser lib.
+    "types": ["node"]
+  },
+  "include": ["scripts"]
+}

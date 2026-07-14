@@ -11,8 +11,6 @@ import reactRefresh from 'eslint-plugin-react-refresh';
  * ignored.
  */
 export default tseslint.config(
-  // `scripts/` holds standalone dev tools run via tsx; they're outside the app's tsconfig, so the
-  // type-aware linter can't resolve them. They aren't part of the build, so skip them.
   // `src/game/levels.data.ts` and `src/game/levels.provenance.ts` are generated
   // (`npm run build:levels`); tsc still typechecks them, but there's nothing to lint in a committed
   // data blob.
@@ -21,7 +19,6 @@ export default tseslint.config(
       'dist',
       'dev-dist',
       'coverage',
-      'scripts',
       // Playwright E2E + its config run under Playwright's own runner (its esbuild transpiles them),
       // so — like `scripts/` — they live outside the app's tsconfig and the type-aware linter.
       'e2e',
@@ -61,6 +58,21 @@ export default tseslint.config(
     files: ['**/*.test.{ts,tsx}', 'src/test/**', 'vite.config.ts'],
     languageOptions: {
       globals: { ...globals.node },
+    },
+  },
+  // `scripts/` are standalone Node dev tools run via tsx (the gate, bake pipeline, dev launchers).
+  // They live outside the app's `tsconfig.json`, so the default project service can't resolve them;
+  // point the type-aware parser at `tsconfig.scripts.json` explicitly and run them under Node
+  // globals, not the browser.
+  {
+    files: ['scripts/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.node },
+      parserOptions: {
+        projectService: false,
+        project: './tsconfig.scripts.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 );

@@ -23,7 +23,7 @@ Narrower loops: `npm test` / `npm run test:watch` / `npm run test:coverage` (vit
 
 One gate runs both sides of the codebase, in three **concurrent lanes** (so wall-clock ≈ the slowest lane):
 
-- **app** — eslint → typescript → vitest (with a coverage floor; see `vite.config.ts`)
+- **app** — eslint → typescript (app) → typescript (`scripts/` dev tooling) → vitest (with a coverage floor; see `vite.config.ts`)
 - **core** — rustfmt → clippy → cargo test (crate unit tests + frozen golden-vector replays) → verify
 - **e2e** — Playwright smokes against a production build (auto-skips if no Chromium is installed)
 
@@ -49,8 +49,10 @@ See `.claude/skills/check/SKILL.md` for the full breakdown.
 - **Tests live beside their source** as `*.test.ts(x)` and use vitest globals (no imports). Pure `src/game/*`
   logic has no DOM; component/store tests use jsdom + Testing Library and prefer accessible-name selectors
   (the app exposes aria-labels — no test ids). E2E specs live in `e2e/` and are run only by Playwright.
-- `scripts/` and `exe/` are outside the app tsconfig (run via `tsx`), so they're not covered by
-  `npm run lint`/`typecheck` — sanity-check them by running them.
+- `scripts/` ARE linted and typechecked — `npm run lint` covers them (type-aware, via
+  `tsconfig.scripts.json`) and `npm run typecheck:scripts` is a gate step, so a type error in the
+  gate itself is caught statically. `exe/` are thin bash launchers (not TypeScript); sanity-check
+  those by running them.
 
 ## Layout
 

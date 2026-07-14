@@ -95,7 +95,13 @@ export function gateSteps(): StepDef[] {
   return [
     // ---- app lane: TypeScript ----
     { id: 'lint', lane: 'app', label: 'eslint — lint app + scripts', commands: () => [npmRun('lint')] },
-    { id: 'typecheck', lane: 'app', label: 'typescript — strict typecheck', commands: () => [npmRun('typecheck')] },
+    { id: 'typecheck', lane: 'app', label: 'typescript — strict typecheck (app)', commands: () => [npmRun('typecheck')] },
+    {
+      id: 'typecheck-scripts',
+      lane: 'app',
+      label: 'typescript — strict typecheck (scripts/ dev tooling + the gate itself)',
+      commands: () => [npmRun('typecheck:scripts')],
+    },
     {
       id: 'test',
       lane: 'app',
