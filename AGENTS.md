@@ -13,6 +13,7 @@ matching `npm run` alias that invokes the exact same module, so use whichever yo
 | --- | --- | --- |
 | Run the quality gate | `exe/test` (or `npm run check`) | The full gate — **run before every commit.** |
 | Start the dev server | `exe/run` (or `npm run dev`) | Vite + hot reload at http://localhost:5173. Args pass through (`exe/run --port 3000`). |
+| Auto-rebuild wasm on core edits | `npm run dev:core` | Watches `core/src`, re-runs `core:wasm` on each `.rs` save. Run alongside `npm run dev` when editing rules. |
 | Re-bake the levels | `exe/levels` (or `npm run build:levels`) | Deterministic native bake → `levels.data.ts`. Slow (minutes) + all-cores. |
 | Production build | `npm run build` | `tsc --noEmit && vite build` → `dist/`. |
 
@@ -40,7 +41,8 @@ See `.claude/skills/check/SKILL.md` for the full breakdown.
   the TS registry (`mechanics.ts`) only holds DISPLAY transforms. Don't reimplement rules in TS.
 - **After changing `core/`**, rebuild the committed artifacts or the freshness guards fail:
   `npm run core:wasm` (re-stamps the wasm; guarded by `coreVersion.test.ts`) and, if you touched the
-  generator/curve/selection, `exe/levels` (re-bake; guarded by `baked.test.ts`).
+  generator/curve/selection, `exe/levels` (re-bake; guarded by `baked.test.ts`). `npm run dev:core`
+  automates the `core:wasm` half — leave it running while you edit and it re-stamps on every save.
 - **The bake is deterministic** — a no-op re-bake reproduces the committed levels byte-for-byte
   (`git diff src/game/levels.data.ts` stays empty). A diff there means a core rule actually changed.
 - **Shared constants must stay in lockstep.** The palette id list and capacity exist in `src/game/palette.ts`,
