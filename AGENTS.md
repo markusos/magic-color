@@ -17,13 +17,14 @@ matching `npm run` alias that invokes the exact same module, so use whichever yo
 | Production build | `npm run build` | `tsc --noEmit && vite build` → `dist/`. |
 
 Narrower loops: `npm test` / `npm run test:watch` / `npm run test:coverage` (vitest), `npm run test:e2e`
-(Playwright), `npm run lint`, `npm run typecheck`, `npm run core:test` (cargo).
+(Playwright), `npm run lint`, `npm run format` (Prettier, auto-fixes ts/tsx; the gate runs
+`format:check`), `npm run typecheck`, `npm run core:test` (cargo).
 
 ## The quality gate (`exe/test` → `scripts/gate.ts`)
 
 One gate runs both sides of the codebase, in three **concurrent lanes** (so wall-clock ≈ the slowest lane):
 
-- **app** — eslint → typescript (app) → typescript (`scripts/` dev tooling) → vitest (with a coverage floor; see `vite.config.ts`)
+- **app** — prettier (format check) → eslint → typescript (app) → typescript (`scripts/` dev tooling) → vitest (with a coverage floor; see `vite.config.ts`)
 - **core** — rustfmt → clippy → cargo test (crate unit tests + frozen golden-vector replays) → verify
 - **e2e** — Playwright smokes against a production build (auto-skips if no Chromium is installed)
 

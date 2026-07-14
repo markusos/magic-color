@@ -121,9 +121,7 @@ export function Overlay() {
               </>
             ) : (
               <>
-                <h2 className={styles.fail}>
-                  {status === 'stuck' ? 'No way forward' : 'No moves left'}
-                </h2>
+                <h2 className={styles.fail}>{status === 'stuck' ? 'No way forward' : 'No moves left'}</h2>
                 <p className={styles.sub}>
                   {status === 'stuck'
                     ? 'Every move just loops back — restart to try again.'

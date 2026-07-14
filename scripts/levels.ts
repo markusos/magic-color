@@ -32,7 +32,11 @@ interface Step {
 const steps: Step[] = [
   { name: 'build bake binary (release)', cmd: 'cargo', args: ['build', '--release'] },
   { name: 'bake → ./bake-out', cmd: './target/release/bake', args: ['--out', 'bake-out'] },
-  { name: 'emit levels.data.ts + meta + provenance.json', cmd: tsx, args: ['scripts/emit-baked-from-rust.ts', 'bake-out'] },
+  {
+    name: 'emit levels.data.ts + meta + provenance.json',
+    cmd: tsx,
+    args: ['scripts/emit-baked-from-rust.ts', 'bake-out'],
+  },
   { name: 'emit levels.provenance.ts', cmd: tsx, args: ['scripts/emit-provenance.ts'] },
   { name: 'archive provenance report', cmd: tsx, args: ['scripts/archive-report.ts'] },
 ];
@@ -50,4 +54,6 @@ for (const [i, step] of steps.entries()) {
     process.exit(result.status ?? 1);
   }
 }
-console.log('\n== levels baked ==  (git diff src/game/levels.data.ts should be empty if the core is unchanged)');
+console.log(
+  '\n== levels baked ==  (git diff src/game/levels.data.ts should be empty if the core is unchanged)',
+);

@@ -28,7 +28,7 @@ export function noIce(state: GameState): IceGrid {
  * no longer uses.
  */
 export function recolorIce(ice: IceGrid, map: Record<string, Color>): IceGrid {
-  return ice.map((col) => col.map((tint) => (tint == null ? null : map[tint] ?? tint)));
+  return ice.map((col) => col.map((tint) => (tint == null ? null : (map[tint] ?? tint))));
 }
 
 /**

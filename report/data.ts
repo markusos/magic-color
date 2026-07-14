@@ -135,8 +135,20 @@ export interface MetricDef {
 export const METRICS: MetricDef[] = [
   { key: 'score', label: 'score', color: '#ffd166', accessor: (p) => p.score, unit: '01' },
   { key: 'optimal', label: 'optimal', color: '#4ade80', accessor: (p) => p.metrics.optimal, unit: 'count' },
-  { key: 'deadEndDensity', label: 'dead-end', color: '#ff5d73', accessor: (p) => p.metrics.deadEndDensity, unit: '01' },
-  { key: 'forcedMoveRatio', label: 'forced', color: '#f59e6b', accessor: (p) => p.metrics.forcedMoveRatio, unit: '01' },
+  {
+    key: 'deadEndDensity',
+    label: 'dead-end',
+    color: '#ff5d73',
+    accessor: (p) => p.metrics.deadEndDensity,
+    unit: '01',
+  },
+  {
+    key: 'forcedMoveRatio',
+    label: 'forced',
+    color: '#f59e6b',
+    accessor: (p) => p.metrics.forcedMoveRatio,
+    unit: '01',
+  },
   { key: 'digDepth', label: 'dig depth', color: '#9d7cd8', accessor: (p) => p.metrics.digDepth, unit: '01' },
   { key: 'funnelLoad', label: 'funnel', color: '#56b6c2', accessor: (p) => p.metrics.funnelLoad, unit: '01' },
   { key: 'iceLoad', label: 'ice', color: '#7aa2ff', accessor: (p) => p.metrics.iceLoad, unit: '01' },

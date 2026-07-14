@@ -1,14 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import type { LevelProvenance } from '../src/game/provenance';
 import { buildReport, diffProvenance, histogram, REPORT_METRICS } from '../src/game/levelReport';
-import {
-  availableBuilds,
-  type Build,
-  buildFromFile,
-  METRICS,
-  summarize,
-  TARGET_ACCESSOR,
-} from './data';
+import { availableBuilds, type Build, buildFromFile, METRICS, summarize, TARGET_ACCESSOR } from './data';
 import { type Band, MetricChart } from './MetricChart';
 
 /** Round a count up to a tidy axis maximum. */
@@ -68,10 +61,7 @@ export function Report() {
     () => (compare ? new Map(compare.levels.map((p) => [p.level, p])) : null),
     [compare],
   );
-  const diff = useMemo(
-    () => (compare ? diffProvenance(compare.levels, levels) : null),
-    [compare, levels],
-  );
+  const diff = useMemo(() => (compare ? diffProvenance(compare.levels, levels) : null), [compare, levels]);
 
   const onFile = (file: File): void => {
     void file.text().then((text) => {
@@ -106,7 +96,8 @@ export function Report() {
             {builds.length === 1 ? '' : 's'} in history
             {compare && (
               <>
-                {' '}· diff <b>{compare.label}</b> → <b>{baseline.label}</b>
+                {' '}
+                · diff <b>{compare.label}</b> → <b>{baseline.label}</b>
               </>
             )}
           </p>
@@ -136,10 +127,12 @@ export function Report() {
             </select>
           </label>
           <label className="chk">
-            <input type="checkbox" checked={showBands} onChange={(e) => setShowBands(e.target.checked)} /> bands
+            <input type="checkbox" checked={showBands} onChange={(e) => setShowBands(e.target.checked)} />{' '}
+            bands
           </label>
           <label className="chk">
-            <input type="checkbox" checked={showPoints} onChange={(e) => setShowPoints(e.target.checked)} /> points
+            <input type="checkbox" checked={showPoints} onChange={(e) => setShowPoints(e.target.checked)} />{' '}
+            points
           </label>
           <input
             ref={fileInput}
@@ -156,8 +149,8 @@ export function Report() {
       </header>
 
       <p className="hint">
-        Pick a baseline and a comparison build above (or drop a provenance JSON anywhere) to diff two
-        bakes. Hover any chart to inspect a level across all metrics.
+        Pick a baseline and a comparison build above (or drop a provenance JSON anywhere) to diff two bakes.
+        Hover any chart to inspect a level across all metrics.
       </p>
 
       <BuildsOverview
@@ -187,7 +180,12 @@ export function Report() {
                 m.key === 'score'
                   ? { values: levels.map(TARGET_ACCESSOR), color: '#7aa2ff' }
                   : compareByLevel
-                    ? { values: levels.map((p) => compareByLevel.get(p.level)).map((c) => (c ? m.accessor(c) : undefined)), color: '#ffffff' }
+                    ? {
+                        values: levels
+                          .map((p) => compareByLevel.get(p.level))
+                          .map((c) => (c ? m.accessor(c) : undefined)),
+                        color: '#ffffff',
+                      }
                     : undefined
               }
             />
@@ -226,10 +224,7 @@ function BuildsOverview({
   onBaseline: (id: string) => void;
   onCompare: (id: string) => void;
 }) {
-  const rows = useMemo(
-    () => builds.map((b) => ({ build: b, sum: summarize(b.levels) })),
-    [builds],
-  );
+  const rows = useMemo(() => builds.map((b) => ({ build: b, sum: summarize(b.levels) })), [builds]);
   const baseSum = rows.find((r) => r.build.id === baselineId)?.sum;
 
   return (
@@ -256,10 +251,18 @@ function BuildsOverview({
             return (
               <tr key={b.id} className={isBase ? 'base' : isCmp ? 'cmp' : ''}>
                 <td className="rowsel">
-                  <button className={isBase ? 'on' : ''} title="Use as baseline" onClick={() => onBaseline(b.id)}>
+                  <button
+                    className={isBase ? 'on' : ''}
+                    title="Use as baseline"
+                    onClick={() => onBaseline(b.id)}
+                  >
                     base
                   </button>
-                  <button className={isCmp ? 'on' : ''} title="Compare against baseline" onClick={() => onCompare(b.id)}>
+                  <button
+                    className={isCmp ? 'on' : ''}
+                    title="Compare against baseline"
+                    onClick={() => onCompare(b.id)}
+                  >
                     vs
                   </button>
                 </td>
@@ -272,7 +275,9 @@ function BuildsOverview({
                   {sum.score.min.toFixed(2)} / <b>{sum.score.mean.toFixed(3)}</b> / {sum.score.max.toFixed(2)}
                   {dMean !== null && (
                     <span className={dMean >= 0 ? 'pos' : 'neg'}>
-                      {' '}({dMean >= 0 ? '+' : ''}{dMean.toFixed(3)})
+                      {' '}
+                      ({dMean >= 0 ? '+' : ''}
+                      {dMean.toFixed(3)})
                     </span>
                   )}
                 </td>
@@ -303,11 +308,17 @@ function LevelDetail({ level, compare }: { level: LevelProvenance; compare?: Lev
   return (
     <div className="card">
       <h3>
-        L{level.level} <span className="muted">ch {level.chapter} · {level.phase}</span>
+        L{level.level}{' '}
+        <span className="muted">
+          ch {level.chapter} · {level.phase}
+        </span>
       </h3>
       {kv('footprint', level.footprint)}
       {kv('family', level.family)}
-      {kv('score', `${level.score.toFixed(3)}${dScore !== null ? `  (${dScore >= 0 ? '+' : ''}${dScore.toFixed(3)})` : ''}`)}
+      {kv(
+        'score',
+        `${level.score.toFixed(3)}${dScore !== null ? `  (${dScore >= 0 ? '+' : ''}${dScore.toFixed(3)})` : ''}`,
+      )}
       {kv('target', level.targetPercentile.toFixed(3))}
       {kv('optimal', `${m.optimal}${m.optimalExact ? '' : ' (proxy)'}`)}
       {kv('2★ ≤', m.twoStarMax)}
@@ -344,8 +355,12 @@ function ChapterTable({ chapters }: { chapters: ReturnType<typeof buildReport> }
           {chapters.map((c) => (
             <tr key={c.chapter}>
               <td>{c.chapter}</td>
-              <td>{c.firstLevel}–{c.lastLevel}</td>
-              <td>{c.score.min.toFixed(2)} / {c.score.mean.toFixed(2)} / {c.score.max.toFixed(2)}</td>
+              <td>
+                {c.firstLevel}–{c.lastLevel}
+              </td>
+              <td>
+                {c.score.min.toFixed(2)} / {c.score.mean.toFixed(2)} / {c.score.max.toFixed(2)}
+              </td>
               <td>{c.optimal.mean.toFixed(1)}</td>
               <td>{Math.round(c.exactRate * 100)}%</td>
               {REPORT_METRICS.map((k) => (
@@ -373,8 +388,20 @@ function ScoreHistogram({
   levels: LevelProvenance[];
   compareLevels?: LevelProvenance[];
 }) {
-  const buckets = histogram(levels.map((p) => p.score), 10, 0, 1);
-  const cmp = compareLevels ? histogram(compareLevels.map((p) => p.score), 10, 0, 1) : null;
+  const buckets = histogram(
+    levels.map((p) => p.score),
+    10,
+    0,
+    1,
+  );
+  const cmp = compareLevels
+    ? histogram(
+        compareLevels.map((p) => p.score),
+        10,
+        0,
+        1,
+      )
+    : null;
   const max = Math.max(...buckets, ...(cmp ?? [0]));
   return (
     <section className="section">
@@ -422,8 +449,13 @@ function DiffTable({ name, diff }: { name: string; diff: ReturnType<typeof diffP
                   {d.dScore >= 0 ? '+' : ''}
                   {d.dScore.toFixed(3)}
                 </td>
-                <td>{d.scoreA.toFixed(2)} → {d.scoreB.toFixed(2)}</td>
-                <td>{d.dOptimal >= 0 ? '+' : ''}{d.dOptimal}</td>
+                <td>
+                  {d.scoreA.toFixed(2)} → {d.scoreB.toFixed(2)}
+                </td>
+                <td>
+                  {d.dOptimal >= 0 ? '+' : ''}
+                  {d.dOptimal}
+                </td>
                 <td>{d.familyA === d.familyB ? d.familyA : `${d.familyA} → ${d.familyB}`}</td>
               </tr>
             ))}

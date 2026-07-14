@@ -46,5 +46,7 @@ if (existsSync(out) && !force) {
   // across idempotent re-runs (we only reach here on a new hash or --force).
   const archived = { ...json, archivedAt: new Date().toISOString() };
   writeFileSync(out, JSON.stringify(archived, null, 2) + '\n');
-  console.log(`Archived build ${version} (${json.levels.length} levels) → scripts/build-history/${version}.json`);
+  console.log(
+    `Archived build ${version} (${json.levels.length} levels) → scripts/build-history/${version}.json`,
+  );
 }

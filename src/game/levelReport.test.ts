@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { LevelProvenance } from './provenance';
 import type { Metrics } from './provenance';
-import {
-  buildReport,
-  diffProvenance,
-  histogram,
-  monotonicityViolations,
-  numStats,
-} from './levelReport';
+import { buildReport, diffProvenance, histogram, monotonicityViolations, numStats } from './levelReport';
 
 interface RowOver {
   level: number;
@@ -75,8 +69,9 @@ describe('monotonicityViolations', () => {
   });
 
   it('returns nothing for a non-decreasing curve', () => {
-    expect(monotonicityViolations([row({ level: 1, score: 0.2 }), row({ level: 2, score: 0.2 })]))
-      .toHaveLength(0);
+    expect(
+      monotonicityViolations([row({ level: 1, score: 0.2 }), row({ level: 2, score: 0.2 })]),
+    ).toHaveLength(0);
   });
 });
 

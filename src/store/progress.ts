@@ -70,7 +70,9 @@ export function loadProgress(): Progress {
       stars: asRecord<Stars>(parsed.stars),
       // Additive field — older saves (which lack it) just default to 0, no version bump needed.
       randomHardBestStreak:
-        typeof parsed.randomHardBestStreak === 'number' ? Math.max(0, Math.floor(parsed.randomHardBestStreak)) : 0,
+        typeof parsed.randomHardBestStreak === 'number'
+          ? Math.max(0, Math.floor(parsed.randomHardBestStreak))
+          : 0,
       // Additive field — older saves default to 0, no version bump needed.
       hintsUsed: typeof parsed.hintsUsed === 'number' ? Math.max(0, Math.floor(parsed.hintsUsed)) : 0,
       // Additive field — older saves (which lack it) default to an empty map, no version bump needed.
@@ -94,15 +96,11 @@ export function saveProgress(progress: Progress): void {
  * Record a completed level's result: keep the fewest moves and the most stars seen. Returns the
  * updated progress (immutably). Does not advance `current` — that's the caller's call.
  */
-export function recordResult(
-  progress: Progress,
-  level: number,
-  moves: number,
-  stars: Stars,
-): Progress {
+export function recordResult(progress: Progress, level: number, moves: number, stars: Stars): Progress {
   const prevMoves = progress.best[level];
   const prevStars = progress.stars[level];
-  const best = prevMoves !== undefined && prevMoves <= moves ? progress.best : { ...progress.best, [level]: moves };
+  const best =
+    prevMoves !== undefined && prevMoves <= moves ? progress.best : { ...progress.best, [level]: moves };
   const starMap =
     prevStars !== undefined && prevStars >= stars ? progress.stars : { ...progress.stars, [level]: stars };
   return { ...progress, best, stars: starMap };

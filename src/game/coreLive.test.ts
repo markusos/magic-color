@@ -16,9 +16,22 @@ import {
 
 /** Comparable projection (JSON round-trip drops functions/undefined noise). */
 function comparable(level: LoadedLevel): unknown {
-  const { state, solution, hidden, funnels, ice, optimal, twoStarMax, par, minMoves, seed, liveProvenance } = level;
+  const { state, solution, hidden, funnels, ice, optimal, twoStarMax, par, minMoves, seed, liveProvenance } =
+    level;
   return JSON.parse(
-    JSON.stringify({ state, solution, hidden, funnels, ice, optimal, twoStarMax, par, minMoves, seed, liveProvenance }),
+    JSON.stringify({
+      state,
+      solution,
+      hidden,
+      funnels,
+      ice,
+      optimal,
+      twoStarMax,
+      par,
+      minMoves,
+      seed,
+      liveProvenance,
+    }),
   );
 }
 

@@ -28,6 +28,11 @@ describe('recolorIce', () => {
 describe('iceLoad', () => {
   it('is the frozen-cell fraction', () => {
     expect(iceLoad([[null, null], [null]])).toBe(0);
-    expect(iceLoad([[C('ruby'), C('ruby')], [null, null]])).toBeCloseTo(0.5);
+    expect(
+      iceLoad([
+        [C('ruby'), C('ruby')],
+        [null, null],
+      ]),
+    ).toBeCloseTo(0.5);
   });
 });

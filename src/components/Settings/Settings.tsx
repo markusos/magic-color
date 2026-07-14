@@ -12,15 +12,7 @@ import { InstallInstructions } from '../InstallBanner/InstallInstructions';
 import styles from './Settings.module.css';
 
 /** A labeled on/off switch row (an accessible toggle button). */
-function ToggleRow({
-  label,
-  checked,
-  onToggle,
-}: {
-  label: string;
-  checked: boolean;
-  onToggle: () => void;
-}) {
+function ToggleRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
   return (
     <div className={styles.toggleRow}>
       <span className={styles.toggleLabel}>{label}</span>
@@ -212,9 +204,7 @@ export function Settings() {
             onCommit={previewSound}
           />
           <SliderRow label="Music" value={musicVolume} onChange={setMusicVolume} />
-          {hapticsSupported() && (
-            <ToggleRow label="Haptics" checked={haptics} onToggle={toggleHaptics} />
-          )}
+          {hapticsSupported() && <ToggleRow label="Haptics" checked={haptics} onToggle={toggleHaptics} />}
         </section>
 
         <section className={styles.group}>
@@ -261,7 +251,8 @@ export function Settings() {
             </p>
             <ToggleRow label="Level Inspector" checked={inspector} onToggle={toggleInspector} />
             <p className={styles.hint}>
-              Overlay the active board's difficulty metrics while playing (plus baked provenance in dev builds).
+              Overlay the active board's difficulty metrics while playing (plus baked provenance in dev
+              builds).
             </p>
             <p className={styles.hint}>
               Core: {coreVersion ? `wasm ${coreVersion}` : 'wasm (loading…)'}

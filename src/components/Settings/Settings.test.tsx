@@ -21,7 +21,13 @@ function setGame(overrides: Partial<Parameters<typeof useGameStore.setState>[0]>
 
 beforeEach(() => {
   // Real settings store (these specs verify toggles actually persist), reset to known defaults.
-  useSettings.setState({ soundVolume: 0.4, musicVolume: 0, haptics: true, patterns: false, inspector: false });
+  useSettings.setState({
+    soundVolume: 0.4,
+    musicVolume: 0,
+    haptics: true,
+    patterns: false,
+    inspector: false,
+  });
   setGame();
 });
 

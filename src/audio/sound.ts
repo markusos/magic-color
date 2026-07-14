@@ -112,7 +112,6 @@ export function playSound(cue: Cue, level?: number): void {
   if (!c) return;
   const out = ensureMaster(c);
   const t0 = c.currentTime + 0.001;
-  const pitch =
-    cue === 'pour' && level != null ? 2 ** ((Math.max(0, Math.min(1, level)) * 7) / 12) : 1;
+  const pitch = cue === 'pour' && level != null ? 2 ** ((Math.max(0, Math.min(1, level)) * 7) / 12) : 1;
   for (const note of CUES[cue]) schedule(c, out, note, t0, pitch);
 }

@@ -180,7 +180,7 @@ describe('post-campaign "Play Random" mode', () => {
 });
 
 describe('daily challenge mode', () => {
-  it('enters daily mode (deferred, spinner) and generates today\'s board', async () => {
+  it("enters daily mode (deferred, spinner) and generates today's board", async () => {
     store().playDaily();
     expect(store().mode).toBe('daily');
     expect(store().loading).toBe(true);
@@ -386,19 +386,39 @@ describe('frozen tubes (chapter 3)', () => {
     // undo commits the prior board verbatim (no recolor), so the trigger's absence is stable.
     // (Pre-F6 this used a fake non-palette trigger to survive restart's re-roll; the wasm
     // boundary only encodes palette ids, and undo makes the trick unnecessary.)
-    const frozen = board([['ruby', 'ruby'], ['teal', 'teal']], 2);
-    const ice = [[color('amber'), color('amber')], [null, null]];
+    const frozen = board(
+      [
+        ['ruby', 'ruby'],
+        ['teal', 'teal'],
+      ],
+      2,
+    );
+    const ice = [
+      [color('amber'), color('amber')],
+      [null, null],
+    ];
     useGameStore.setState({
       current: frozen,
       initial: frozen,
-      hidden: [[false, false], [false, false]],
-      initialHidden: [[false, false], [false, false]],
+      hidden: [
+        [false, false],
+        [false, false],
+      ],
+      initialHidden: [
+        [false, false],
+        [false, false],
+      ],
       funnels: [null, null],
       initialFunnels: [null, null],
       ice,
       initialIce: ice,
       history: [frozen], // undo target: the same sorted-but-frozen board
-      hiddenHistory: [[[false, false], [false, false]]],
+      hiddenHistory: [
+        [
+          [false, false],
+          [false, false],
+        ],
+      ],
       moves: [{ from: 0, to: 1, count: 1, color: color('ruby') }],
       selected: null,
       status: 'playing',
@@ -423,26 +443,29 @@ describe('hidden colors (chapter 1)', () => {
   // The key guarantee: even though pours are capped to the visible run, a hidden level is
   // still beatable. We drive the full-info solution as repeated capped pours — each concealed
   // cell in a run is the same color, so it reveals and pours on the next tap.
-  it.each([LIVE_HIDDEN, LIVE_HIDDEN_2])('hidden level %i is solvable through the capped tap interface', async (level) => {
-    store().loadLevel(level);
-    await flushLoad();
-    expect(anyHidden(store().hidden)).toBe(true);
+  it.each([LIVE_HIDDEN, LIVE_HIDDEN_2])(
+    'hidden level %i is solvable through the capped tap interface',
+    async (level) => {
+      store().loadLevel(level);
+      await flushLoad();
+      expect(anyHidden(store().hidden)).toBe(true);
 
-    // The store loads this level via `getLevel`, so drive that exact board's solution.
-    for (const move of getLevel(level).solution) {
-      for (let k = 0; k < move.count; k++) {
-        const before = store().moves.length;
-        store().tapBottle(move.from);
-        store().tapBottle(move.to);
-        if (store().moves.length === before) break; // visible run exhausted for this move
+      // The store loads this level via `getLevel`, so drive that exact board's solution.
+      for (const move of getLevel(level).solution) {
+        for (let k = 0; k < move.count; k++) {
+          const before = store().moves.length;
+          store().tapBottle(move.from);
+          store().tapBottle(move.to);
+          if (store().moves.length === before) break; // visible run exhausted for this move
+        }
+        const sel = store().selected;
+        if (sel !== null) store().tapBottle(sel); // clear any dangling selection
       }
-      const sel = store().selected;
-      if (sel !== null) store().tapBottle(sel); // clear any dangling selection
-    }
 
-    expect(store().status).toBe('won');
-    expect(anyHidden(store().hidden)).toBe(false); // everything revealed by the end
-  });
+      expect(store().status).toBe('won');
+      expect(anyHidden(store().hidden)).toBe(false); // everything revealed by the end
+    },
+  );
 
   it('a pour snapshots concealment and undo restores it; restart re-conceals', async () => {
     store().loadLevel(LIVE_HIDDEN);
@@ -605,7 +628,13 @@ describe('deadlock detection (genuine walls only)', () => {
 
   it('declares deadlock only when there is genuinely no legal move', () => {
     // Two full, mismatched tubes and no empty — nothing can be poured anywhere.
-    seed([['ruby', 'emerald'], ['emerald', 'ruby']], 2);
+    seed(
+      [
+        ['ruby', 'emerald'],
+        ['emerald', 'ruby'],
+      ],
+      2,
+    );
     expect(store().status).toBe('deadlocked');
   });
 });

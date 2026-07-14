@@ -13,9 +13,7 @@ const STATS = {
   current: 19,
   hintsUsed: 3,
   randomHardBestStreak: 0,
-  chapters: [
-    { chapter: 0, name: 'Beginnings', completed: 18, total: 60, stars: 40, maxStars: 180 },
-  ],
+  chapters: [{ chapter: 0, name: 'Beginnings', completed: 18, total: 60, stars: 40, maxStars: 180 }],
 };
 
 function setState(stats: object = STATS, dailyStreak = 0) {

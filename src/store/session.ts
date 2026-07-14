@@ -9,12 +9,7 @@
  * The store ([gameStore.ts](./gameStore.ts)) remains the adapter for progression/persistence/
  * loading; components render from {@link viewOf} snapshots instead of consulting rule helpers.
  */
-import {
-  wasmBoardView,
-  wasmPlanTap,
-  type BoardViewSnapshot,
-  type WasmTapPlan,
-} from '../game/coreWasm';
+import { wasmBoardView, wasmPlanTap, type BoardViewSnapshot, type WasmTapPlan } from '../game/coreWasm';
 import type { OverlaySet } from '../game/mechanics';
 import type { GameState } from '../game/types';
 import type { Cue } from '../audio/cues';
@@ -34,24 +29,15 @@ export type ViewSnapshot = BoardViewSnapshot;
  * (renders use {@link viewOf}, which skips the check).
  */
 export function deriveStatus(state: GameState, overlays: OverlaySet): GameStatus {
-  return wasmBoardView(
-    state,
-    overlays.hidden,
-    { funnels: overlays.funnels, ice: overlays.ice },
-    null,
-    true,
-  ).status;
+  return wasmBoardView(state, overlays.hidden, { funnels: overlays.funnels, ice: overlays.ice }, null, true)
+    .status;
 }
 
 /**
  * The render snapshot: per-cell blocked/frozen flags, per-tube selectable/capped/pour-target
  * flags, and the cheap status (loop check skipped — a render must never pay for a search).
  */
-export function viewOf(
-  state: GameState,
-  overlays: OverlaySet,
-  selected: number | null,
-): ViewSnapshot {
+export function viewOf(state: GameState, overlays: OverlaySet, selected: number | null): ViewSnapshot {
   return wasmBoardView(
     state,
     overlays.hidden,
@@ -62,19 +48,8 @@ export function viewOf(
 }
 
 /** Decide what tapping bottle `i` does. Pure pass-through to the core — see {@link TapPlan}. */
-export function planTap(
-  state: GameState,
-  overlays: OverlaySet,
-  selected: number | null,
-  i: number,
-): TapPlan {
-  return wasmPlanTap(
-    state,
-    overlays.hidden,
-    { funnels: overlays.funnels, ice: overlays.ice },
-    selected,
-    i,
-  );
+export function planTap(state: GameState, overlays: OverlaySet, selected: number | null, i: number): TapPlan {
+  return wasmPlanTap(state, overlays.hidden, { funnels: overlays.funnels, ice: overlays.ice }, selected, i);
 }
 
 /**
@@ -88,12 +63,7 @@ export function planTap(
  * `invalid`; tapping the selected tube again is an ordinary `deselect`. A no-op `ignore` tap
  * stays silent.
  */
-export function cueForTap(
-  plan: TapPlan,
-  status: GameStatus,
-  selected: number | null,
-  i: number,
-): Cue | null {
+export function cueForTap(plan: TapPlan, status: GameStatus, selected: number | null, i: number): Cue | null {
   switch (plan.kind) {
     case 'ignore':
       return null;

@@ -133,7 +133,12 @@ export function loadDiagnostics(): {
   dailyCacheSize: number;
   config: LiveGenConfig;
 } {
-  return { last: lastLoad, liveCacheSize: liveCache.size, dailyCacheSize: dailyCache.size, config: liveConfig };
+  return {
+    last: lastLoad,
+    liveCacheSize: liveCache.size,
+    dailyCacheSize: dailyCache.size,
+    config: liveConfig,
+  };
 }
 
 /**

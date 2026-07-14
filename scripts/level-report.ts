@@ -50,9 +50,7 @@ function bar(count: number, max: number, width = 36): string {
 
 function printReport(path: string, file: ProvenanceFile): void {
   const levels = file.levels;
-  console.log(
-    `Bake report: ${path}  (version ${file.version ?? '?'}, ${levels.length} levels)\n`,
-  );
+  console.log(`Bake report: ${path}  (version ${file.version ?? '?'}, ${levels.length} levels)\n`);
 
   // Overall score distribution across the whole campaign.
   const scores = levels.map((l) => l.score);
@@ -72,7 +70,9 @@ function printChapter(ch: ChapterReport): void {
     .sort((a, b) => b[1] - a[1])
     .map(([k, v]) => `${k} ${v}`)
     .join(', ');
-  const metrics = REPORT_METRICS.map((k) => `${k.replace(/(Density|Ratio|Load)$/, '')} ${f2(ch.metricMeans[k])}`).join('  ');
+  const metrics = REPORT_METRICS.map(
+    (k) => `${k.replace(/(Density|Ratio|Load)$/, '')} ${f2(ch.metricMeans[k])}`,
+  ).join('  ');
 
   console.log(`Chapter ${ch.chapter}  levels ${ch.firstLevel}–${ch.lastLevel}  (${ch.count})`);
   console.log(

@@ -16,9 +16,7 @@ describe('baked levels', () => {
 
   it('covers a contiguous 1..N campaign', () => {
     expect(BAKED_LEVELS).toHaveLength(EXPECTED_COUNT);
-    expect(BAKED_LEVELS.map((l) => l.level)).toEqual(
-      Array.from({ length: EXPECTED_COUNT }, (_, i) => i + 1),
-    );
+    expect(BAKED_LEVELS.map((l) => l.level)).toEqual(Array.from({ length: EXPECTED_COUNT }, (_, i) => i + 1));
   });
 
   it('is well-formed and uses a defined shape with correct labels', () => {

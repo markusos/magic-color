@@ -1,14 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import {
-  generateDailyLevel,
-  generateRandomLevel,
-  getLevel,
-  resetLiveGenerator,
-} from './levelLoader';
+import { generateDailyLevel, generateRandomLevel, getLevel, resetLiveGenerator } from './levelLoader';
 
 /** A board's identity for comparison — the tube contents (palette is recolored later, in the store). */
-const fingerprint = (level: ReturnType<typeof generateDailyLevel>) =>
-  JSON.stringify(level.state.bottles);
+const fingerprint = (level: ReturnType<typeof generateDailyLevel>) => JSON.stringify(level.state.bottles);
 
 describe('generateDailyLevel', () => {
   // The live cache memoizes by key; clear it so each spec exercises a real generation.

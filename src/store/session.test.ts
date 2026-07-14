@@ -33,7 +33,13 @@ describe('deriveStatus', () => {
     // Both tubes are full single-color (so `isWon` is true), but tube 0 is frozen to the top by a
     // trigger ('g') that nothing on the board can ever cap. No pour is possible (every top is frozen or
     // full), so the player is genuinely out of moves — not "still playing".
-    const state = board([['r', 'r', 'r', 'r'], ['b', 'b', 'b', 'b']], 4);
+    const state = board(
+      [
+        ['r', 'r', 'r', 'r'],
+        ['b', 'b', 'b', 'b'],
+      ],
+      4,
+    );
     const ice = [[color('g'), color('g'), color('g'), color('g')], []];
     expect(deriveStatus(state, overlays(state, { ice }))).toBe('deadlocked');
   });
@@ -51,14 +57,26 @@ describe('deriveStatus', () => {
     // can't move. Tube 1 is open red with room — the colors MATCH, but the only pour the match implies
     // is tube0 -> tube1, which is illegal (frozen source). Tube 1 has nowhere else to go (tube 0 is
     // full), so the board is genuinely out of moves.
-    const state = board([['r', 'r', 'r', 'r'], ['r', 'r']], 4);
+    const state = board(
+      [
+        ['r', 'r', 'r', 'r'],
+        ['r', 'r'],
+      ],
+      4,
+    );
     const ice = [[color('g'), color('g'), color('g'), color('g')], []];
     expect(deriveStatus(state, overlays(state, { ice }))).toBe('deadlocked');
   });
 
   it('reports a board with no legal move as deadlocked', () => {
     // Two full tubes of clashing colors, no empty: nothing can be poured anywhere.
-    const state = board([['r', 'b', 'r', 'b'], ['b', 'r', 'b', 'r']], 4);
+    const state = board(
+      [
+        ['r', 'b', 'r', 'b'],
+        ['b', 'r', 'b', 'r'],
+      ],
+      4,
+    );
     expect(deriveStatus(state, overlays(state))).toBe('deadlocked');
   });
 

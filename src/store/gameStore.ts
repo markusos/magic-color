@@ -16,13 +16,7 @@
  * while there's still somewhere new to explore — only once they're looping with nowhere to go.
  */
 import { create } from 'zustand';
-import {
-  initCoreWasm,
-  wasmForcePour,
-  wasmHintMove,
-  wasmStuck,
-  type HintMove,
-} from '../game/coreWasm';
+import { initCoreWasm, wasmForcePour, wasmHintMove, wasmStuck, type HintMove } from '../game/coreWasm';
 import { DEFAULT_CAPACITY } from '../game/palette';
 import {
   BAKED_LEVEL_COUNT,
@@ -716,9 +710,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       const cue = cueForTap(plan, get().status, selected, i);
       if (cue) {
         const level =
-          plan.kind === 'pour'
-            ? plan.next.bottles[plan.move.to]!.length / plan.next.capacity
-            : undefined;
+          plan.kind === 'pour' ? plan.next.bottles[plan.move.to]!.length / plan.next.capacity : undefined;
         feedback(cue, level);
       }
     },
@@ -882,7 +874,9 @@ export const useGameStore = create<GameStore>((set, get) => {
         if (cue) feedback(cue, plan.next.bottles[plan.move.to]!.length / plan.next.capacity);
         if (get().status === 'won') {
           finishRun();
-          console.info(`[auto-solve] solved in ${applied} moves (${Math.round(performance.now() - startedAt)}ms)`);
+          console.info(
+            `[auto-solve] solved in ${applied} moves (${Math.round(performance.now() - startedAt)}ms)`,
+          );
         } else if (get().status === 'playing') {
           autoSolveTimer = setTimeout(step, AUTO_SOLVE_DELAY_MS);
         } else {
@@ -915,7 +909,9 @@ export const useGameStore = create<GameStore>((set, get) => {
             return;
           }
           // Per-move timing at debug level, so the default console stays minimal (start/end only).
-          console.debug(`[auto-solve] #${applied + 1} ${move.from}→${move.to} (${Math.round(performance.now() - t0)}ms)`);
+          console.debug(
+            `[auto-solve] #${applied + 1} ${move.from}→${move.to} (${Math.round(performance.now() - t0)}ms)`,
+          );
           apply(move.from, move.to);
         };
         const timeout = setTimeout(() => done(null, true), AUTO_SOLVE_MOVE_TIMEOUT_MS);
