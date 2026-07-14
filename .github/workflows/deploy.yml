@@ -45,10 +45,6 @@ jobs:
         with:
           browsers-path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
       # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
-      # The e2e step's Playwright webServer runs `npm run build` to serve the app, so this ALSO
-      # produces the production dist/ we publish below — no separate build step needed (it would be
-      # an identical second `npm run build`). e2e always runs here (browser installed above), so
-      # dist/ is always present; if it somehow weren't, upload-pages-artifact fails loudly.
       - run: npm run check
       # Keep the Playwright report + traces if the gate fails, so a runner-only e2e failure is
       # debuggable rather than a one-line error.
@@ -61,6 +57,12 @@ jobs:
             test-results/
           retention-days: 7
           if-no-files-found: ignore
+      # Build the production dist/ we publish. This is explicit (not a side effect of the gate's e2e
+      # step) so the deploy never depends on whether e2e ran: the gate's Playwright webServer only
+      # builds when the e2e step actually runs, and that step SKIPS itself when no Chromium is found
+      # (scripts/gate.ts) — which silently left no dist/ and broke upload-pages-artifact. An explicit
+      # build guarantees dist/ exists regardless. `npm run check` above still gates the publish.
+      - run: npm run build
       - uses: actions/configure-pages@v5
         # Turn Pages on (and set the source to Actions) automatically on first run,
         # so no manual Settings → Pages toggle is needed.

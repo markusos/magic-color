@@ -74,8 +74,13 @@ function findChromium(browsersPath: string): string {
     .filter((name) => /^chromium-\d+$/.test(name))
     .sort((a, b) => Number(a.slice('chromium-'.length)) - Number(b.slice('chromium-'.length)));
   for (const rev of revs.reverse()) {
-    const bin = `${browsersPath}/${rev}/chrome-linux/chrome`;
-    if (existsSync(bin)) return bin;
+    // Playwright's "Chrome for Testing" builds extract to `chrome-linux64/` on linux-x64 (the CI
+    // runners); older revisions and linux-arm64 use `chrome-linux/`. Check both, newest layout
+    // first — missing this is exactly what made the e2e step silently skip in CI.
+    for (const sub of ['chrome-linux64', 'chrome-linux']) {
+      const bin = `${browsersPath}/${rev}/${sub}/chrome`;
+      if (existsSync(bin)) return bin;
+    }
   }
   return '';
 }
@@ -128,8 +133,12 @@ export function gateSteps(): StepDef[] {
       id: 'e2e',
       lane: 'e2e',
       label: 'playwright — e2e critical-path smokes (real browser)',
+      // Locally a missing browser SKIPS (green) so `npm run check` works without installing one.
+      // In CI we REQUIRE it: returning null means the step runs, so a missing browser fails loudly
+      // (Playwright errors out) instead of skipping to green. e2e silently skipping in CI — the
+      // probe missing the chrome-linux64 layout — is exactly the regression this guards against.
       skip: (ctx) =>
-        findChromium(ctx.browsersPath)
+        findChromium(ctx.browsersPath) || ctx.isCI
           ? null
           : `no Chromium under ${ctx.browsersPath} — install with: npx playwright install chromium`,
       commands: () => [npmRun('test:e2e')],
