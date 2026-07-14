@@ -83,6 +83,13 @@ new code.
 
 #### H1 — Decompose `gameStore.ts` (934 LOC) — the one clear SRP violation on the TS side
 
+> **Status: addressed.** The shared off-thread solver primitive was extracted to
+> `store/solverWorker.ts` (`solveMove`), the hint flow to `store/hint.ts` (`createHint`), and the
+> auto-solve state machine to `store/autoSolve.ts` (`createAutoSolve`). `gameStore.ts` dropped from
+> 934 → 711 lines and now owns progression, persistence, and the pour loop; the store wires the two
+> controllers in and delegates its `requestHint` / `autoSolve` / `cancelAutoSolve` actions to them.
+> Behavior-preserving: typecheck, lint, all 304 vitest tests, and the production build pass unchanged.
+
 `src/store/gameStore.ts` is the repo's God-object. It currently owns at least four separately
 motivated concerns:
 
