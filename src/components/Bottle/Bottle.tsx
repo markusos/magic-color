@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
-import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
+import { ArrowUpFromLine, ArrowDownToLine, Funnel } from 'lucide-react';
 import type { Bottle as BottleData, Color } from '../../game/types';
 import { cssColor, patternFor } from '../../theme/colors';
 import { LiquidSegment } from '../LiquidSegment/LiquidSegment';
@@ -162,10 +162,10 @@ export function Bottle({
             </div>
           )}
 
-          {/* Funnel collar: a tinted ring at the tube neck marking the only color this tube accepts.
-            Lives in the glass (clipped to the rim) and so tilts with the tube. Drawn above the liquid
-            but it sits at the very top, where liquid only reaches once the tube is full. */}
-          {funnel != null && (
+          {/* Funnel collar: a tinted band at the tube neck marking the only color this tube accepts,
+            capped by a crisp "lock line" at its base. Lives in the glass (clipped to the rim) and so
+            tilts with the tube. Hidden once the tube is capped — a finished tube's lock is moot. */}
+          {funnel != null && !capped && (
             <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }}>
               {/* Colorblind aid: the collar's accepted color also carries its texture, so which color a
                 funnel locks to reads without hue. */}
@@ -173,6 +173,23 @@ export function Bottle({
             </div>
           )}
         </div>
+
+        {/* Funnel badge: a color chip with a funnel glyph seated on the neck — the unambiguous "this
+            tube only accepts THIS color" cue, echoing the ice badge. Drawn in the tube frame (a sibling
+            of the glass, so unclipped by the rim) and tilts with the tube. */}
+        {funnel != null && !capped && (
+          <div className={styles.funnelBadge} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }}>
+            <Funnel size={14} strokeWidth={2.5} aria-hidden />
+            {/* Colorblind aid: the swatch carries its texture too, so the lock color reads without hue. */}
+            {patterns && (
+              <div
+                className={`${styles.funnelBadgePattern} cb-pattern`}
+                data-cb={patternFor(funnel)}
+                aria-hidden
+              />
+            )}
+          </div>
+        )}
 
         {/* Ice: the frozen part of the tube encased in faceted crystalline ice. STACKED one tile per
             frozen segment (so it never distorts with the count) and SEMI-TRANSPARENT (the liquid colour
