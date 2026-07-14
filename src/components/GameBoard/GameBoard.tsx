@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useSettings } from '../../store/settings';
 import { viewOf } from '../../store/session';
@@ -26,10 +26,16 @@ export function GameBoard() {
   const areaRef = useRef<HTMLDivElement>(null);
   const metrics = useBottleMetrics(areaRef, current.bottles.length, current.capacity);
 
-  // The core's render snapshot (F6): per-cell frozen flags, per-tube capped flags, and the
-  // legal pour targets from the current selection — one sync wasm call per render, no rule
-  // logic in JS. The stuck check is skipped on this path (render must never pay for a search).
-  const view = viewOf(current, { hidden, funnels, ice }, selected);
+  // The core's render snapshot (F6): per-cell frozen flags, per-tube capped flags, and the legal
+  // pour targets from the current selection — one sync wasm call (4 encodes + 5 decodes across the
+  // boundary), no rule logic in JS. The stuck check is skipped on this path (render must never pay
+  // for a search). Memoized on its actual inputs so a re-render driven by an unrelated subscription
+  // (a `patterns`/`revealHidden` toggle, or any field added here later) doesn't re-cross the
+  // boundary; a normal tap changes `current`/`selected`, so it recomputes then as it must.
+  const view = useMemo(
+    () => viewOf(current, { hidden, funnels, ice }, selected),
+    [current, hidden, funnels, ice, selected],
+  );
 
   return (
     <div className={styles.boardArea} ref={areaRef}>

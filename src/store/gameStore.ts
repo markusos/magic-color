@@ -16,7 +16,7 @@
  * while there's still somewhere new to explore — only once they're looping with nowhere to go.
  */
 import { create } from 'zustand';
-import { initCoreWasm, wasmForcePour, wasmHintMove, wasmStuck, type HintMove } from '../game/coreWasm';
+import { initCoreWasm, wasmForcePour, wasmStuck, type HintMove } from '../game/coreWasm';
 import { DEFAULT_CAPACITY } from '../game/palette';
 import {
   BAKED_LEVEL_COUNT,
@@ -44,6 +44,8 @@ import { useSettings } from './settings';
 import type { CampaignStats } from './progressStats';
 import { deferAfterPaint } from './deferAfterPaint';
 import { feedback } from '../audio/feedback';
+import { createAutoSolve } from './autoSolve';
+import { createHint } from './hint';
 
 export type { GameStatus };
 
@@ -53,7 +55,7 @@ export type GameMode = 'campaign' | 'endless' | 'daily';
 /** Upper bound for the admin level-unlock hatch (see `unlockUpTo`) — the full baked campaign. */
 const MAX_UNLOCK_LEVEL = BAKED_LEVEL_COUNT;
 
-interface GameStore {
+export interface GameStore {
   /** The active board. */
   current: GameState;
   /** Snapshots before each pour, enabling unlimited undo. */
@@ -219,64 +221,16 @@ interface GameStore {
   /** Dismiss the transient "No hint available" popover early (the UI also auto-fades it after 2s). */
   dismissHintUnavailable: () => void;
   /**
-   * Admin/testing (E4): play the board to completion, applying the optimal next move every
-   * {@link AUTO_SOLVE_DELAY_MS} so the solution is visible move by move. Each move is solved off-thread
-   * in the hint worker (with a per-move timeout) so a slow board never freezes the page. The win is
-   * recorded normally — NOT counted as a hint (no 1★ cap). A no-op unless the board is in play.
+   * Admin/testing (E4): play the board to completion, applying the optimal next move at a fixed
+   * interval so the solution is visible move by move. Each move is solved off-thread in the hint
+   * worker (with a per-move timeout) so a slow board never freezes the page. The win is recorded
+   * normally — NOT counted as a hint (no 1★ cap). A no-op unless the board is in play. Implemented
+   * by the auto-solve controller (`./autoSolve`).
    */
   autoSolve: () => void;
   /** Stop an in-progress auto-solve run (the "solving…" spinner's Stop control). */
   cancelAutoSolve: () => void;
 }
-
-/**
- * Node budget for the on-demand hint A*. The search runs in a worker (see `getHintWorker`), so a long
- * solve no longer janks the tap handler — the cap only bounds how long the spinner can spin. Set high
- * enough that a hard-but-solvable board (e.g. a 15-tube, heavily-iced level whose ~50-move optimum
- * needs ~500k nodes to surface even a first move) yields a real hint instead of a false "no hint";
- * still bounded so a genuinely deadlocked board returns "no hint" in a few seconds rather than hanging.
- */
-const HINT_NODE_BUDGET = 1_000_000;
-
-/** Wait this long before showing the hint spinner — a fast solve resolves first and never flashes it. */
-const HINT_SPINNER_DELAY_MS = 500;
-
-/**
- * Per-step A* budget for `autoSolve` (admin-only). Much larger than the hint's — it runs off-thread and
- * is wall-clock-bounded below, and the hardest hidden 15-tube boards need well over a million nodes to
- * surface even a first move. A move that still overflows this stops the run (with the "no move" notice).
- */
-const AUTO_SOLVE_NODE_BUDGET = 20_000_000;
-
-/** Delay between auto-solve moves so the solution plays out visibly, move by move. */
-const AUTO_SOLVE_DELAY_MS = 500;
-/**
- * Wall-clock backstop per move: if the off-thread solve hasn't answered in time, stop the run and show a
- * "timed out" notice. Generous — it runs off-thread with a Stop button, and the hardest concealed boards
- * legitimately need this long to search {@link AUTO_SOLVE_NODE_BUDGET} nodes for a first move.
- */
-const AUTO_SOLVE_MOVE_TIMEOUT_MS = 60_000;
-/** How long the auto-solve stop notice ("timed out" / "no further moves") stays up before fading. */
-const AUTO_SOLVE_NOTICE_MS = 5_000;
-
-/**
- * Lazily-created, reused worker that runs the hint A* off the main thread (`coreHintWorker` —
- * the Rust core; the JS twin was deleted at F5). Created on first hint so boot stays light,
- * and kept alive for subsequent hints. Returns null when the platform has no `Worker`
- * (jsdom/tests) or construction throws, so the store falls back to a synchronous main-thread
- * wasm solve.
- */
-let hintWorker: Worker | null = null;
-const getHintWorker = (): Worker | null => {
-  if (hintWorker) return hintWorker;
-  if (typeof Worker === 'undefined') return null;
-  try {
-    hintWorker = new Worker(new URL('../game/coreHintWorker.ts', import.meta.url), { type: 'module' });
-  } catch {
-    hintWorker = null;
-  }
-  return hintWorker;
-};
 
 // Initialize the main-thread wasm instance at boot: the stuck-loop check and the no-worker
 // hint fallback call it synchronously, so it must be instantiated ahead of need. `typeof
@@ -287,34 +241,6 @@ if (typeof Worker !== 'undefined') void initCoreWasm();
 export const useGameStore = create<GameStore>((set, get) => {
   // The persisted campaign — the sole owner of progress + localStorage.
   const campaign = createCampaign();
-
-  // True while a hint solve is in flight — guards against a double-tap kicking off a second worker
-  // round-trip (and a duplicate `recordHint`) before the first answers.
-  let hintPending = false;
-
-  // Auto-solve run state. `autoSolveGen` is bumped on every start/stop; in-flight worker callbacks and
-  // the between-move timer capture the generation they belong to and no-op if it has moved on (so a
-  // stale solve from a cancelled run can never apply a move to the current board).
-  let autoSolveGen = 0;
-  let autoSolveTimer: ReturnType<typeof setTimeout> | null = null;
-  let autoSolveNoticeTimer: ReturnType<typeof setTimeout> | null = null;
-  const stopAutoSolve = () => {
-    autoSolveGen++;
-    if (autoSolveTimer !== null) {
-      clearTimeout(autoSolveTimer);
-      autoSolveTimer = null;
-    }
-    if (get().autoSolving) set({ autoSolving: false });
-  };
-  /** Flash a transient auto-solve stop message, auto-clearing it after {@link AUTO_SOLVE_NOTICE_MS}. */
-  const showAutoSolveNotice = (message: string) => {
-    if (autoSolveNoticeTimer !== null) clearTimeout(autoSolveNoticeTimer);
-    set({ autoSolveNotice: message });
-    autoSolveNoticeTimer = setTimeout(() => {
-      autoSolveNoticeTimer = null;
-      set({ autoSolveNotice: null });
-    }, AUTO_SOLVE_NOTICE_MS);
-  };
 
   /**
    * Commit a new board: set the synchronously-known status. On a win, record the best result for
@@ -405,21 +331,40 @@ export const useGameStore = create<GameStore>((set, get) => {
     };
   };
 
-  /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
-  const applyLevel = (level: number) => {
-    stopAutoSolve(); // a board change ends any auto-solve run
-    const generated = getLevel(level);
-    // Replaying an earlier level must not lower the unlock frontier.
-    campaign.reach(level);
-    // Display the board under a fresh random palette; `freshBoardState` keeps `initial`/`initialFunnels`
-    // in the generator's canonical colors so each Restart re-rolls the hues (see `restart`).
+  // Off-thread solver orchestration lives in its own controllers (H1): auto-solve owns its run
+  // generation + timers; hint owns its in-flight guard + spinner. Auto-solve is created first because
+  // the hint controller cancels it (a hint and an auto-solve must not fight over the shared worker),
+  // and both are cancelled from every path that takes over the board.
+  const autoSolver = createAutoSolve({ get, set, commit });
+  const hintCtl = createHint({
+    get,
+    set,
+    recordHint: () => campaign.recordHint(),
+    stopAutoSolve: autoSolver.stop,
+  });
+
+  /**
+   * Install a freshly generated board: end any auto-solve run, display it under a fresh random
+   * palette (`freshBoardState` keeps `initial`/`initial*` in the generator's canonical colors so each
+   * Restart re-rolls the hues — see `restart`), and commit it with the reset session state plus the
+   * caller's `mode`-specific fields. The single skeleton behind `applyLevel`/`applyRandom`/`applyDaily`.
+   */
+  const installBoard = (generated: LoadedLevel, modeFields: Partial<GameStore>) => {
+    autoSolver.stop(); // a board change ends any auto-solve run
     const { board, overlays } = recolorBoard(generated.state, {
       hidden: generated.hidden,
       funnels: generated.funnels,
       ice: generated.ice,
     });
-    commit(board, {
-      ...freshBoardState(generated, board, overlays),
+    commit(board, { ...freshBoardState(generated, board, overlays), ...modeFields });
+  };
+
+  /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
+  const applyLevel = (level: number) => {
+    const generated = getLevel(level);
+    // Replaying an earlier level must not lower the unlock frontier.
+    campaign.reach(level);
+    installBoard(generated, {
       mode: 'campaign',
       level,
       ...campaign.recordFor(level),
@@ -429,34 +374,18 @@ export const useGameStore = create<GameStore>((set, get) => {
     });
   };
 
-  /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
+  /** Generate and commit a fresh random board (endless mode). */
   const applyRandom = (seed: number) => {
-    stopAutoSolve();
-    const generated = generateRandomLevel(seed);
-    const { board, overlays } = recolorBoard(generated.state, {
-      hidden: generated.hidden,
-      funnels: generated.funnels,
-      ice: generated.ice,
-    });
-    commit(board, {
-      ...freshBoardState(generated, board, overlays),
+    installBoard(generateRandomLevel(seed), {
       mode: 'endless',
       best: null, // random boards have no per-level best/stars
       bestStars: null,
     });
   };
 
-  /** Generate and commit the date-seeded daily board. Mirrors `applyRandom` (no per-level records). */
+  /** Generate and commit the date-seeded daily board (no per-level records). */
   const applyDaily = (key: string) => {
-    stopAutoSolve();
-    const generated = generateDailyLevel(key);
-    const { board, overlays } = recolorBoard(generated.state, {
-      hidden: generated.hidden,
-      funnels: generated.funnels,
-      ice: generated.ice,
-    });
-    commit(board, {
-      ...freshBoardState(generated, board, overlays),
+    installBoard(generateDailyLevel(key), {
       mode: 'daily',
       dailyKey: key,
       best: null, // the daily has no per-level best/stars
@@ -646,7 +575,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     tapBottle: (i) => {
-      stopAutoSolve(); // a manual tap takes over from any auto-solve run
+      autoSolver.stop(); // a manual tap takes over from any auto-solve run
       const { current, selected, status, hidden, funnels, ice } = get();
       if (status !== 'playing') return;
 
@@ -716,7 +645,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     undo: () => {
-      stopAutoSolve();
+      autoSolver.stop();
       const { history, hiddenHistory, moves } = get();
       if (history.length === 0) return;
       const previous = history[history.length - 1]!;
@@ -735,7 +664,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     },
 
     restart: () => {
-      stopAutoSolve();
+      autoSolver.stop();
       // Re-roll BOTH the palette and the tube order on every restart: the same puzzle, but with
       // new colors and a new left-to-right arrangement, so a solved level can't be replayed from
       // muscle memory. `initial`/`initialHidden` stay canonical, so each restart re-rolls afresh.
@@ -763,172 +692,12 @@ export const useGameStore = create<GameStore>((set, get) => {
       });
     },
 
-    requestHint: () => {
-      stopAutoSolve(); // don't let a hint and an auto-solve run fight over the shared worker
-      const { current, hidden, funnels, ice, status } = get();
-      // Ignore re-taps while a hint is already in flight, and only hint a live board.
-      if (status !== 'playing' || hintPending) return;
-      hintPending = true;
-      // Clear any lingering "no hint" popover from a previous press.
-      set({ hintUnavailable: false });
+    requestHint: hintCtl.request,
 
-      const overlays = { funnels, ice };
+    dismissHintUnavailable: hintCtl.dismissUnavailable,
 
-      // Show the spinner only if the solve is slow (>500 ms). The timer can fire because the heavy
-      // work runs off-thread in the worker; a fast hint resolves first and cancels it, so the button
-      // never flickers a spinner for the common instant case.
-      let spinnerTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-        spinnerTimer = null;
-        set({ hintLoading: true });
-      }, HINT_SPINNER_DELAY_MS);
+    autoSolve: autoSolver.start,
 
-      // Settle one request: stop the spinner timer, then either pulse the move or pop the
-      // "no hint" notice. Optimal *from the current board* (after any undos / partial solve) under the
-      // live overlays — not necessarily the baked solution's next move.
-      const finish = (move: HintMove | null) => {
-        hintPending = false;
-        if (spinnerTimer) {
-          clearTimeout(spinnerTimer);
-          spinnerTimer = null;
-        }
-        if (move) {
-          // Taking a hint caps this attempt's rating to 1 star (see `hintUsed`) and adds to the
-          // persisted lifetime hint tally surfaced on the stats screen.
-          campaign.recordHint();
-          set({ hint: move, selected: null, hintUsed: true, hintLoading: false });
-          feedback('select');
-        } else {
-          // Won is filtered out above; stuck/budget-exhausted → no continuation to offer. Flag the
-          // transient popover (the UI fades it out after 2s) and nudge toward Undo/Restart.
-          set({ hintLoading: false, hintUnavailable: true });
-          feedback('invalid');
-        }
-      };
-
-      const worker = getHintWorker();
-      if (worker) {
-        worker.onmessage = (e: MessageEvent<HintMove | null>) => finish(e.data);
-        worker.onerror = () => {
-          // Worker failed to load/run — fall back to a synchronous main-thread wasm solve.
-          finish(wasmHintMove(current, hidden, overlays, HINT_NODE_BUDGET));
-        };
-        worker.postMessage({ state: current, hidden, overlays, maxNodes: HINT_NODE_BUDGET });
-      } else {
-        // No worker (e.g. jsdom/tests): solve inline through the main-thread wasm. The spinner
-        // timer is cancelled by `finish` before it can fire, so this stays synchronous.
-        finish(wasmHintMove(current, hidden, overlays, HINT_NODE_BUDGET));
-      }
-    },
-
-    dismissHintUnavailable: () => {
-      if (get().hintUnavailable) set({ hintUnavailable: false });
-    },
-
-    autoSolve: () => {
-      stopAutoSolve(); // cancel any prior run and take a fresh generation
-      if (get().status !== 'playing') return;
-      const gen = autoSolveGen;
-      const nonce = get().boardNonce;
-      const startedAt = performance.now();
-      let applied = 0; // moves applied so far this run (for the summary / logs)
-      set({ autoSolving: true, autoSolveNotice: null, selected: null, hint: null });
-      console.info(`[auto-solve] start — ${get().mode} L${get().level}`);
-
-      // Whether this run is still the active one AND the same board is in play.
-      const live = () => gen === autoSolveGen && get().boardNonce === nonce && get().status === 'playing';
-      const finishRun = () => {
-        if (gen !== autoSolveGen) return; // a newer run/stop already owns the state
-        if (autoSolveTimer !== null) {
-          clearTimeout(autoSolveTimer);
-          autoSolveTimer = null;
-        }
-        set({ autoSolving: false });
-      };
-      // Stop the run early (timed out / no move) with a transient on-screen notice.
-      const stop = (message: string) => {
-        finishRun();
-        showAutoSolveNotice(message);
-        feedback('invalid');
-        console.warn(`[auto-solve] stopped after ${applied} move(s): ${message}`);
-      };
-
-      // Apply one solved move (planTap keeps it legal under the overlays), then schedule the next.
-      const apply = (from: number, to: number) => {
-        const { current, hidden, ice } = get();
-        const plan = planTap(current, { hidden, funnels: get().funnels, ice }, from, to);
-        if (plan.kind !== 'pour') {
-          stop('No further moves');
-          return;
-        }
-        commit(plan.next, {
-          history: [...get().history, current],
-          hiddenHistory: [...get().hiddenHistory, hidden],
-          hidden: plan.revealedHidden,
-          moves: [...get().moves, plan.move],
-          selected: null,
-          hint: null,
-        });
-        applied++;
-        // Play the move's natural cue — including the win chime on the final move.
-        const cue = cueForTap(plan, get().status, from, to);
-        if (cue) feedback(cue, plan.next.bottles[plan.move.to]!.length / plan.next.capacity);
-        if (get().status === 'won') {
-          finishRun();
-          console.info(
-            `[auto-solve] solved in ${applied} moves (${Math.round(performance.now() - startedAt)}ms)`,
-          );
-        } else if (get().status === 'playing') {
-          autoSolveTimer = setTimeout(step, AUTO_SOLVE_DELAY_MS);
-        } else {
-          stop(`Board ${get().status}`); // stuck/deadlocked — shouldn't happen on an optimal line
-        }
-      };
-
-      // Solve the next move OFF-THREAD (like a hint) so a slow board never janks the page; a wall-clock
-      // timeout backstops a hung solve. Falls back to a synchronous solve when there's no worker (tests).
-      const step = () => {
-        autoSolveTimer = null;
-        if (!live()) {
-          finishRun();
-          return;
-        }
-        const { current, hidden, funnels, ice } = get();
-        const overlays = { funnels, ice };
-        const t0 = performance.now();
-        let settled = false;
-        const done = (move: HintMove | null, timedOut = false) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          if (!live()) {
-            finishRun();
-            return;
-          }
-          if (!move) {
-            stop(timedOut ? 'Solver timed out' : 'No further moves');
-            return;
-          }
-          // Per-move timing at debug level, so the default console stays minimal (start/end only).
-          console.debug(
-            `[auto-solve] #${applied + 1} ${move.from}→${move.to} (${Math.round(performance.now() - t0)}ms)`,
-          );
-          apply(move.from, move.to);
-        };
-        const timeout = setTimeout(() => done(null, true), AUTO_SOLVE_MOVE_TIMEOUT_MS);
-
-        const worker = getHintWorker();
-        if (worker) {
-          worker.onmessage = (e: MessageEvent<HintMove | null>) => done(e.data);
-          worker.onerror = () => done(wasmHintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
-          worker.postMessage({ state: current, hidden, overlays, maxNodes: AUTO_SOLVE_NODE_BUDGET });
-        } else {
-          done(wasmHintMove(current, hidden, overlays, AUTO_SOLVE_NODE_BUDGET));
-        }
-      };
-
-      step(); // first move computed immediately; the rest follow every AUTO_SOLVE_DELAY_MS
-    },
-
-    cancelAutoSolve: stopAutoSolve,
+    cancelAutoSolve: autoSolver.stop,
   };
 });
