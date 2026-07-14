@@ -15,8 +15,9 @@ actually deleted after parity was proven, rather than left to rot.
 
 There are no correctness red flags. The findings below are almost entirely about **maintainability
 headroom** and **hot-path efficiency**, not defects. The single most valuable refactor is
-decomposing the 934-line `gameStore.ts`; the single most valuable performance lever is reducing
-per-node heap allocation in the Rust search core. Both are ranked High below.
+decomposing the 934-line `gameStore.ts` (H1 — done). The other High item, reducing per-node heap
+allocation in the Rust search core (H2), was investigated and **rejected on measurement** — it's a
+small regression, not a win; see H2 for the data. Both are now resolved.
 
 ---
 
@@ -117,29 +118,43 @@ The store shrinks to progression + persistence + the pour loop (its documented j
 controllers become independently testable. This is a maintainability/testability win, not a bug
 fix — sequence it as a deliberate refactor with the existing store tests as the safety net.
 
-#### H2 — Cut per-node heap allocation in the Rust search core (efficiency)
+#### H2 — Per-node heap allocation in the Rust search core (efficiency) — investigated, not pursued
 
-`State { tubes: Vec<Tube>, capacity }` is heap-allocated, and it is **cloned on every successor** —
-`engine::pour` does `state.clone()` (engine.rs:77), and `pour` runs for every move expanded in
-`search`, `bfs_optimal`, and the A* in `search.rs`. Likewise `Key = Vec<u128>` is freshly allocated
-**and sorted on every `canonical()`/`state_key()` call** — i.e. once per visited node.
+> **Status: investigated and rejected on measurement.** The hypothesis did not hold; the baseline is
+> left unchanged. Details below — kept as the record so this isn't re-proposed without new evidence.
 
-The bounds are already documented and tight: **bottles ≤ 15**, and `Tube` is `Copy`/inline. So both
-of the dominant per-node allocations can become inline storage:
+**The hypothesis.** `State { tubes: Vec<Tube>, capacity }` is heap-allocated and **cloned on every
+successor** (`engine::pour` does `state.clone()`, and `pour` runs for every move expanded in `search`,
+`bfs_optimal`, and the A*). Likewise `Key = Vec<u128>` is allocated and sorted **once per visited
+node**. Bottles are hard-capped at 15 and `Tube` is `Copy`/inline, so both looked like clean
+candidates for inline (`SmallVec`) storage to take the allocator off the hottest path.
 
-- `State.tubes: Vec<Tube>` → `SmallVec<[Tube; 16]>` (or a fixed `[Tube; 16] + len`). `State` becomes
-  clone-cheap with no heap traffic per pour.
-- `Key = Vec<u128>` → `SmallVec<[u128; 16]>` (15 tubes × 16 B = 240 B on the stack).
+**What was measured.** A native release benchmark (`cargo run --example`, outside `core/src` so it
+doesn't touch the crate-source hash) timing the real production path — `pick_best` at the production
+budget (`poolSize 600`, `finalists 30`) on 15- and 10-tube shapes, plus micro-loops over `solve` and
+`optimal_capped_moves` on a fixed board. Three configurations, identical 12-iteration harness:
 
-This matters because it's the hottest code in the product: live generation runs the solver across a
-**pool of ~600 boards** behind a **~1.5s phone spinner budget**, and the bake runs it far more. This
-is exactly the kind of change the repo is set up to validate — gate it on the existing
-`npm run bench` / `benchmark` skill and the golden vectors so you *measure* the win and prove
-behavior is unchanged. Treat it as **benchmark-first**: land the measurement, then the change.
+| Metric | Baseline (`Vec`) | `State` inline | `State` + `Key` inline |
+| --- | --- | --- | --- |
+| `pick_best` 15-tube | **262.6 ms** | 268.3 ms | 272.6 ms |
+| `pick_best` 10-tube | **109.2 ms** | 111.2 ms | 112.9 ms |
+| `optimal_capped_moves` A* (5×8) | **0.048 ms** | 0.057 ms | 0.056 ms |
 
-(A smaller companion win: `legal_moves`/`useful_moves` return `Vec<(u8,u8)>` per call; with ≤ 15
-tubes the move list is tiny and could also be a `SmallVec`, but H2's two allocations dominate —
-start there.)
+**Conclusion.** The `Vec` baseline is fastest across every case; inlining is a consistent small
+**regression**. The search is **compute-bound, not allocation-bound** on this hardware: glibc's
+thread-cached allocator serves the small per-node vectors cheaply, while the oversized inline structs
+(`State` 176 B and `Key` 256 B, vs. 24 B for a `Vec` handle) hurt cache locality in the visited/`best_g`
+hash maps and in the A* binary heap's sift-swaps — and most boards are 5–10 tubes, so the fixed inline
+capacity is mostly copied waste. There is also no budget pressure to relieve: 15-tube `pick_best` is
+~260 ms here (~780 ms at a pessimistic ×3 phone factor), comfortably inside the ~2 s spinner budget.
+
+A real speedup would have to be **algorithmic** (sharper pruning, a tuned transposition table, or
+iterative deepening), not an allocation micro-optimization — a larger, riskier effort with no current
+performance problem to justify it. Not recommended.
+
+**Takeaway for the reviewer's own credibility:** this was my highest-ranked efficiency item and the
+measurement killed it. That's the benchmark-first discipline working as intended — the ranking was a
+hypothesis, not a verdict.
 
 ### MEDIUM
 
@@ -226,24 +241,22 @@ captured above.
   the heuristic is genuinely admissible. ✔
 - **Generation** — rejection sampling with best-of-N par floor and canonical-key dedupe. Standard
   and correct for "never emit an unsolvable board." ✔
-- The **only** algorithmic efficiency lever is H2 (allocation, not asymptotics). The search
-  structures themselves are appropriate; don't rewrite them — make their per-node cost cheaper.
-- `is_stuck_in_loop` / `bfs_optimal` allocate `Vec<State>` frontiers of cloned states; these ride
-  on the same H2 fix (cheap `State` clone) for free.
+- The per-node allocation was the obvious efficiency lever (H2) — but measurement showed the search
+  is compute-bound, not allocation-bound, so inlining those vectors regressed rather than helped
+  (see H2). The structures are appropriate as-is; a real speedup would be algorithmic, and there's
+  no budget pressure to justify that risk today.
 
 ## Suggested sequencing
 
-1. **H2 measurement first** — add/confirm a generation benchmark baseline (the `benchmark` skill /
-   `npm run bench`), then land the `SmallVec` changes and show the delta. Highest user-visible payoff
-   (live-gen/bake speed), lowest behavioral risk given the golden vectors.
-2. **H1 + M1 together** — extract the hint/auto-solve controllers and unify the install paths in one
-   focused refactor of `gameStore.ts`, leaning on the existing store tests.
-3. **M3 / M4** — mechanical cleanups, do anytime.
-4. **M2 / L\*** — only if profiling or further growth justifies them.
+1. ~~**H1** — extract the hint/auto-solve controllers from `gameStore.ts`.~~ **Done.**
+2. ~~**H2** — the allocation change.~~ **Investigated and rejected on measurement** (see H2).
+3. **M1** — unify the three board-install paths (pairs naturally with the H1 refactor already landed).
+4. **M3 / M4** — mechanical cleanups, do anytime.
+5. **M2 / L\*** — only if profiling or further growth justifies them.
 
 ## Scope note
 
 This review covers architecture, SOLID, algorithms, and code quality. It is **not** a security or
-dependency-audit pass, and it did not re-run the full gate as part of writing (no code was changed).
-Every recommendation above is behavior-preserving and should be validated through the existing gate
-(`npm run check`) and, for H2, the golden vectors + benchmark.
+dependency-audit pass. H1 has since been implemented and H2 investigated (both validated against the
+gate and, for H2, a native benchmark); the remaining recommendations are behavior-preserving and
+should be validated through the existing gate (`npm run check`) and the golden vectors.
