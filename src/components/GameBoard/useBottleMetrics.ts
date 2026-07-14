@@ -28,7 +28,11 @@ const COL_GAP_F = 0.34; // column gap / width
 const ROW_GAP_F = 0.72;
 const LIFT_ROOM_F = 0.5; // headroom above the top row for the lifted/selected bottle
 const MIN_WIDTH = 20;
-const MAX_WIDTH = 88;
+// Upper clamp on tube width. Phones are always width-bound well below this (5 tubes across a ~360px
+// row is ~56px each), so this only bites on WIDE screens (desktop / tablet), where the old 88px cap
+// left the board a small column stranded in a large field. Raising it lets the board grow to fill
+// more of a big viewport (still bounded by wByHeight, so tall boards never overflow). U4.
+const MAX_WIDTH = 120;
 
 /** bottle height as a multiple of width, for a given capacity. */
 function heightFactor(capacity: number): number {

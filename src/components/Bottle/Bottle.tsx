@@ -1,6 +1,13 @@
 import { useEffect, useId, useRef } from 'react';
-import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
-import { ArrowUpFromLine, ArrowDownToLine } from 'lucide-react';
+import {
+  animate,
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from 'framer-motion';
+import { ArrowUpFromLine, ArrowDownToLine, Funnel } from 'lucide-react';
 import type { Bottle as BottleData, Color } from '../../game/types';
 import { cssColor, patternFor } from '../../theme/colors';
 import { LiquidSegment } from '../LiquidSegment/LiquidSegment';
@@ -33,6 +40,11 @@ interface Props {
   isTarget?: boolean;
   /** How far (px) the bottle lifts when selected; scales with bottle size. */
   lift: number;
+  /**
+   * Change signal for the "illegal pour target" shake (U7): a non-zero value that CHANGES plays one
+   * shake. Zero (or unchanged) plays nothing, so only the rejected tube reacts. See {@link GameBoard}.
+   */
+  shakeToken?: number;
   onTap: () => void;
 }
 
@@ -68,6 +80,7 @@ export function Bottle({
   hintRole,
   isTarget,
   lift,
+  shakeToken,
   onTap,
 }: Props) {
   const segments = bottle.slice(0, capacity);
@@ -99,6 +112,22 @@ export function Bottle({
     return () => controls.stop();
   }, [selected, tubeRotate]);
 
+  // Reject shake (U7): a quick side-to-side jitter of the whole tube when it was tapped as an illegal
+  // pour target. Driven by `shakeToken` changing to a non-zero value; the amplitude scales with the
+  // tube so tiny boards don't over-swing. Skipped under reduced-motion. `shakeX` translates the tube
+  // (glass + liquid together), independent of the tilt rotation, so the two never fight.
+  const reduceMotion = useReducedMotion();
+  const shakeX = useMotionValue(0);
+  useEffect(() => {
+    if (!shakeToken || reduceMotion) return;
+    const amp = Math.max(3, lift * 0.24);
+    const controls = animate(shakeX, [0, -amp, amp, -amp * 0.7, amp * 0.7, -amp * 0.4, 0], {
+      duration: 0.4,
+      ease: 'easeInOut',
+    });
+    return () => controls.stop();
+  }, [shakeToken, reduceMotion, lift, shakeX]);
+
   return (
     <motion.button
       type="button"
@@ -114,7 +143,7 @@ export function Bottle({
     >
       {/* The tube tilts here (not on the button) so its rotation is a clean motion value the liquid
           can mirror — Framer's gesture/animate system on the button would otherwise override it. */}
-      <motion.div className={styles.tube} style={{ rotate: tubeRotate }}>
+      <motion.div className={styles.tube} style={{ rotate: tubeRotate, x: shakeX }}>
         <div className={styles.glass}>
           {/* Counter-rotate the liquid against the tube's tilt so its surfaces stay level with the
             world — the tilt then reads as the liquid sloshing rather than the whole column
@@ -145,27 +174,30 @@ export function Bottle({
           {/* Concealed "?" marks live here, in the tube's frame (not the counter-rotated liquid), so
             they stay centred on the tube's axis and tilt with it. Drawing them inside the liquid
             instead pins them to the liquid's vertical centre-line, which drifts off-axis as the
-            tube tilts. Positioned by band index from the bottom. */}
-          {segments.some((_, i) => hidden?.[i]) && (
-            <div className={styles.marks} aria-hidden>
+            tube tilts. Positioned by band index from the bottom. Wrapped in AnimatePresence (with
+            `initial={false}` so they don't fade IN on a fresh board) so that when a cell reveals, its
+            "?" fades out in step with the segment's frosted cover (U5). */}
+          <div className={styles.marks} aria-hidden>
+            <AnimatePresence initial={false}>
               {segments.map((_, i) =>
                 hidden?.[i] ? (
-                  <span
+                  <motion.span
                     key={i}
                     className={styles.mark}
                     style={{ bottom: `calc(${i} * var(--segment-height))` }}
+                    exit={{ opacity: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
                   >
                     ?
-                  </span>
+                  </motion.span>
                 ) : null,
               )}
-            </div>
-          )}
+            </AnimatePresence>
+          </div>
 
-          {/* Funnel collar: a tinted ring at the tube neck marking the only color this tube accepts.
-            Lives in the glass (clipped to the rim) and so tilts with the tube. Drawn above the liquid
-            but it sits at the very top, where liquid only reaches once the tube is full. */}
-          {funnel != null && (
+          {/* Funnel collar: a tinted band at the tube neck marking the only color this tube accepts,
+            capped by a crisp "lock line" at its base. Lives in the glass (clipped to the rim) and so
+            tilts with the tube. Hidden once the tube is capped — a finished tube's lock is moot. */}
+          {funnel != null && !capped && (
             <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }}>
               {/* Colorblind aid: the collar's accepted color also carries its texture, so which color a
                 funnel locks to reads without hue. */}
@@ -173,6 +205,27 @@ export function Bottle({
             </div>
           )}
         </div>
+
+        {/* Funnel badge: a color chip with a funnel glyph seated on the neck — the unambiguous "this
+            tube only accepts THIS color" cue, echoing the ice badge. Drawn in the tube frame (a sibling
+            of the glass, so unclipped by the rim) and tilts with the tube. */}
+        {funnel != null && !capped && (
+          <div
+            className={styles.funnelBadge}
+            aria-hidden
+            style={{ ['--funnel' as string]: cssColor(funnel) }}
+          >
+            <Funnel size={14} strokeWidth={2.5} aria-hidden />
+            {/* Colorblind aid: the swatch carries its texture too, so the lock color reads without hue. */}
+            {patterns && (
+              <div
+                className={`${styles.funnelBadgePattern} cb-pattern`}
+                data-cb={patternFor(funnel)}
+                aria-hidden
+              />
+            )}
+          </div>
+        )}
 
         {/* Ice: the frozen part of the tube encased in faceted crystalline ice. STACKED one tile per
             frozen segment (so it never distorts with the count) and SEMI-TRANSPARENT (the liquid colour

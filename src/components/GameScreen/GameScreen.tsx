@@ -5,6 +5,7 @@ import { Stats } from '../Stats/Stats';
 import { InfoButton } from '../InfoButton/InfoButton';
 import { Toolbar } from '../Toolbar/Toolbar';
 import { Overlay } from '../Overlay/Overlay';
+import { ChapterIntro } from '../ChapterIntro/ChapterIntro';
 import { useGameStore } from '../../store/gameStore';
 import type { Difficulty } from '../../game/types';
 import { navigate } from '../../useHashRoute';
@@ -84,6 +85,7 @@ export function GameScreen() {
       </footer>
 
       <Overlay />
+      <ChapterIntro />
     </>
   );
 }

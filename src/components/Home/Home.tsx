@@ -5,6 +5,7 @@ import { navigate } from '../../useHashRoute';
 import { GAME_URL } from '../../game/daily';
 import { shareOrCopy } from '../../share';
 import { InstallBanner } from '../InstallBanner/InstallBanner';
+import { PatternNudge } from '../PatternNudge/PatternNudge';
 import styles from './Home.module.css';
 
 /**
@@ -119,6 +120,7 @@ export function Home() {
         )}
       </div>
 
+      <PatternNudge />
       <InstallBanner />
     </div>
   );

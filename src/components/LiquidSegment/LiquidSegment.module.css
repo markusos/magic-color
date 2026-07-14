@@ -271,7 +271,24 @@
   margin-top: calc(-1 * var(--wave-overlap));
 }
 
-/* Concealed segment: a near-black band carrying a "?" until it surfaces and reveals. */
-.hidden {
-  background-color: #0c0c16;
+/* Concealed segment: a dark FROSTED band (not a flat black void) carrying a "?" until it surfaces
+   and reveals. The cool mottled radials read as frosted glass over an unknown liquid. The reveal
+   cover reuses the exact same surface so a revealing cell fades from this look into its color. */
+.hidden,
+.revealCover {
+  background-color: #0e0e1a;
+  background-image: radial-gradient(58% 50% at 30% 26%, rgba(150, 162, 210, 0.2), transparent 60%),
+    radial-gradient(52% 46% at 74% 72%, rgba(96, 108, 160, 0.16), transparent 62%),
+    radial-gradient(42% 40% at 56% 46%, rgba(180, 190, 225, 0.1), transparent 66%);
+  background-repeat: no-repeat;
+  background-size: 160% 160%, 175% 175%, 150% 150%;
+}
+
+/* The frosted cover laid back over a just-revealed cell; fades out to melt the color into view. It
+   inherits the segment's wave mask (it's a child), so it follows the same rippled edges. */
+.revealCover {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
 }

@@ -113,6 +113,129 @@ describe('progression', () => {
   });
 });
 
+describe('illegal-tap shake signal (U7)', () => {
+  // tube 0 tops ruby; tube 1 is a CAPPED full tube of sapphire (can't receive a pour and can't be
+  // picked up as a source); tube 2 is empty. Pouring 0 → 1 is illegal AND tube 1 isn't selectable, so
+  // the core returns the "invalid" deselect. 0 → 2 is legal; tapping 0 again just deselects.
+  const full = ['sapphire', 'sapphire', 'sapphire', 'sapphire'];
+  const setup = () =>
+    useGameStore.setState({
+      mode: 'campaign',
+      current: board([['ruby', 'ruby'], full, []], 4),
+      initial: board([['ruby', 'ruby'], full, []], 4),
+      hidden: [[false, false], [false, false, false, false], []],
+      initialHidden: [[false, false], [false, false, false, false], []],
+      funnels: [null, null, null],
+      initialFunnels: [null, null, null],
+      ice: [[null, null], [null, null, null, null], []],
+      initialIce: [[null, null], [null, null, null, null], []],
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      selected: null,
+      status: 'playing',
+      rejectedTube: null,
+      rejectedNonce: 0,
+    });
+
+  it('flags the rejected tube and bumps the nonce on an illegal pour', () => {
+    setup();
+    store().tapBottle(0); // select the ruby source
+    store().tapBottle(1); // illegal: pour ruby onto sapphire
+    expect(store().selected).toBeNull(); // the illegal tap deselects
+    expect(store().rejectedTube).toBe(1);
+    expect(store().rejectedNonce).toBe(1);
+  });
+
+  it('re-triggers (bumps the nonce again) when the same tube is rejected twice', () => {
+    setup();
+    store().tapBottle(0);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    store().tapBottle(1);
+    expect(store().rejectedTube).toBe(1);
+    expect(store().rejectedNonce).toBe(2);
+  });
+
+  it('does not flag a plain deselect (re-tapping the selected tube)', () => {
+    setup();
+    store().tapBottle(0); // select
+    store().tapBottle(0); // deselect — not a rejection
+    expect(store().selected).toBeNull();
+    expect(store().rejectedTube).toBeNull();
+    expect(store().rejectedNonce).toBe(0);
+  });
+
+  it('does not flag a legal pour', () => {
+    setup();
+    store().tapBottle(0); // select ruby
+    store().tapBottle(2); // legal pour into the empty tube
+    expect(store().rejectedNonce).toBe(0);
+  });
+});
+
+describe('win: new-best flag (U2)', () => {
+  // Put the store one pour from a win in campaign mode, with a given prior best mirrored in. The
+  // winning pour scores 1 move; `prevBest` is read from the mirrored `best` field before the record.
+  const oneFromWin = (best: number | null) =>
+    useGameStore.setState({
+      mode: 'campaign',
+      level: 1,
+      best,
+      current: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      initial: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      hidden: [[false, false, false], [false], []],
+      initialHidden: [[false, false, false], [false], []],
+      funnels: [null, null, null],
+      initialFunnels: [null, null, null],
+      ice: [[null, null, null], [null], []],
+      initialIce: [[null, null, null], [null], []],
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      undos: 0,
+      selected: null,
+      status: 'playing',
+      optimal: 1,
+      twoStarMax: 2,
+      hintUsed: false,
+      newBest: false,
+    });
+
+  it('flags newBest when the run beats a prior (suboptimal) best', () => {
+    oneFromWin(5);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().newBest).toBe(true);
+  });
+
+  it('does not flag newBest on a first-ever clear (nothing to beat)', () => {
+    oneFromWin(null);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().newBest).toBe(false);
+  });
+
+  it('does not flag newBest when the run only ties the prior best', () => {
+    oneFromWin(1);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().newBest).toBe(false);
+  });
+
+  it('clears newBest on the next board load', () => {
+    oneFromWin(5);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().newBest).toBe(true);
+    store().loadLevel(1);
+    expect(store().newBest).toBe(false);
+  });
+});
+
 describe('live-level loading state (drives the spinner)', () => {
   it('loads baked levels synchronously with no loading flash', () => {
     store().loadLevel(1); // baked

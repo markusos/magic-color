@@ -12,8 +12,32 @@
 }
 
 .board {
+  position: relative;
   display: grid;
   justify-content: center;
   align-content: center;
   justify-items: center;
+}
+
+/* Ambient "stage" glow behind the tubes (U4). Few-row boards (e.g. a 5-tube level) can't grow to
+   fill a tall viewport — the grid is a fixed 5-per-row with no ragged rows — so instead of leaving
+   the play area reading as an empty void, a soft spotlight sits under the board and travels with it
+   (it's centred on the grid), giving the tubes a stage to rest on. Purely decorative, behind
+   everything, and clipped to nothing (it fades to transparent well before any edge). */
+.board::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 130%;
+  height: 118%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(184, 146, 255, 0.28),
+    rgba(168, 120, 244, 0.12) 44%,
+    transparent 68%
+  );
 }
