@@ -174,21 +174,24 @@ overrides.
 
 #### M2 — The render path allocates a full wasm round-trip per `GameBoard` render
 
-`GameBoard` calls `viewOf(current, {hidden,funnels,ice}, selected)` **inline on every render**
-(GameBoard.tsx:32). Each call allocates a fresh wasm `Board`, encodes the board + three overlays
-into typed arrays, crosses the boundary, and decodes five arrays back. `GameBoard` re-renders on
-every change to `current/selected/hidden/funnels/hint/…`, and `selected` flips on *every tap*, so
-this runs constantly during play. It's sub-millisecond on a 15-tube board, so this is about
-allocation churn, not jank.
+> **Status: partly addressed — the cheap `useMemo`, deliberately not the split.** `viewOf` is now
+> memoized on `[current, hidden, funnels, ice, selected]` in `GameBoard`, so the wasm crossing fires
+> only when its actual inputs change. **Honest scope of the win:** analysis of `GameBoard`'s
+> subscriptions shows the *only* re-renders that leave `viewOf`'s inputs unchanged are
+> `patterns`/`revealHidden` toggles (rare debug/settings actions) — `tapBottle` is a stable ref, and
+> `hint`/`boardNonce` changes always co-occur with a `current`/`selected` change. So in normal play a
+> tap invalidates the memo and it recomputes anyway; the real value is scoping the one genuinely
+> expensive op to its inputs and hardening it against a future subscription silently re-triggering it,
+> more than a measurable perf gain. The structural `pourTargets`-split option below was **not** done —
+> `viewOf` runs once per user action (not per animation frame; Framer animates via motion values
+> without re-rendering) at sub-millisecond cost, so there is no jank to justify the added complexity.
 
-Two options, cheapest first:
-- `useMemo` the `viewOf` call keyed on its inputs. Low effort; removes recompute when an unrelated
-  store field changes.
-- Structurally, only `pourTargets` depends on `selected`; `blocked/frozen/capped/status` are
-  stable between selection changes. If profiling ever flags this, split the boundary into a stable
-  board view + a cheap `pourTargets(selected)` call.
-
-Measure before investing beyond the `useMemo`.
+`GameBoard` called `viewOf(current, {hidden,funnels,ice}, selected)` inline on every render. Each call
+allocates a fresh wasm `Board`, encodes the board + three overlays, crosses the boundary, and decodes
+five arrays back — sub-millisecond, so this was always allocation churn, not jank. The unbuilt
+structural option: only `pourTargets` depends on `selected`, so `blocked/frozen/capped/status` could
+be split into a stable board view + a cheap `pourTargets(selected)` call — worth it only if profiling
+ever flags this path, which nothing suggests.
 
 #### M3 — Small logic duplications worth consolidating
 
