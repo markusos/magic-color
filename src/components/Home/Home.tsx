@@ -70,11 +70,7 @@ export function Home() {
         )}
       </button>
 
-      <button
-        className={styles.settingsLink}
-        onClick={() => navigate('settings')}
-        aria-label="Settings"
-      >
+      <button className={styles.settingsLink} onClick={() => navigate('settings')} aria-label="Settings">
         <SettingsIcon size={24} strokeWidth={2} aria-hidden />
       </button>
 

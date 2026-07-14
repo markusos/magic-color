@@ -28,10 +28,30 @@ export function StatsScreen() {
 
       <div className={styles.body}>
         <div className={styles.cards}>
-          <Card icon={<Flag size={18} aria-hidden />} label="Levels cleared" value={`${levelsCompleted}`} sub={`of ${campaignLength}`} />
-          <Card icon={<Star size={18} aria-hidden />} label="Stars earned" value={`${totalStars}`} sub={`of ${maxStars}`} />
-          <Card icon={<Trophy size={18} aria-hidden />} label="3-star clears" value={`${threeStarCount}`} sub={`of ${campaignLength}`} />
-          <Card icon={<Flag size={18} aria-hidden />} label="Current level" value={`${current}`} sub="campaign" />
+          <Card
+            icon={<Flag size={18} aria-hidden />}
+            label="Levels cleared"
+            value={`${levelsCompleted}`}
+            sub={`of ${campaignLength}`}
+          />
+          <Card
+            icon={<Star size={18} aria-hidden />}
+            label="Stars earned"
+            value={`${totalStars}`}
+            sub={`of ${maxStars}`}
+          />
+          <Card
+            icon={<Trophy size={18} aria-hidden />}
+            label="3-star clears"
+            value={`${threeStarCount}`}
+            sub={`of ${campaignLength}`}
+          />
+          <Card
+            icon={<Flag size={18} aria-hidden />}
+            label="Current level"
+            value={`${current}`}
+            sub="campaign"
+          />
         </div>
 
         <div className={styles.row}>

@@ -25,7 +25,7 @@ export function noFunnels(state: GameState): FunnelGrid {
  * mismatched funnel rings.
  */
 export function recolorFunnels(funnels: FunnelGrid, map: Record<string, Color>): FunnelGrid {
-  return funnels.map((tint) => (tint == null ? null : map[tint] ?? tint));
+  return funnels.map((tint) => (tint == null ? null : (map[tint] ?? tint)));
 }
 
 /**

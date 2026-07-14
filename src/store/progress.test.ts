@@ -37,7 +37,9 @@ describe('progress persistence', () => {
   });
 
   it('round-trips through localStorage', () => {
-    saveProgress(base({ current: 7, best: { 3: 18 }, stars: { 3: 2 }, randomHardBestStreak: 4, hintsUsed: 9 }));
+    saveProgress(
+      base({ current: 7, best: { 3: 18 }, stars: { 3: 2 }, randomHardBestStreak: 4, hintsUsed: 9 }),
+    );
     expect(loadProgress()).toEqual({
       version: 1,
       current: 7,

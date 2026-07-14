@@ -94,16 +94,39 @@ function findChromium(browsersPath: string): string {
 export function gateSteps(): StepDef[] {
   return [
     // ---- app lane: TypeScript ----
+    {
+      id: 'format',
+      lane: 'app',
+      label: 'prettier — formatting check (ts/tsx)',
+      commands: () => [npmRun('format:check')],
+    },
     { id: 'lint', lane: 'app', label: 'eslint — lint app + scripts', commands: () => [npmRun('lint')] },
-    { id: 'typecheck', lane: 'app', label: 'typescript — strict typecheck', commands: () => [npmRun('typecheck')] },
+    {
+      id: 'typecheck',
+      lane: 'app',
+      label: 'typescript — strict typecheck (app)',
+      commands: () => [npmRun('typecheck')],
+    },
+    {
+      id: 'typecheck-scripts',
+      lane: 'app',
+      label: 'typescript — strict typecheck (scripts/ dev tooling + the gate itself)',
+      commands: () => [npmRun('typecheck:scripts')],
+    },
     {
       id: 'test',
       lane: 'app',
-      label: 'vitest — app, store, live generation + wasm adapter (drives the committed .wasm), with coverage',
+      label:
+        'vitest — app, store, live generation + wasm adapter (drives the committed .wasm), with coverage',
       commands: () => [npmRun('test:coverage')],
     },
     // ---- core lane: Rust crate ----
-    { id: 'fmt', lane: 'core', label: 'rustfmt — core crate formatting', commands: () => [npmRun('core:fmt')] },
+    {
+      id: 'fmt',
+      lane: 'core',
+      label: 'rustfmt — core crate formatting',
+      commands: () => [npmRun('core:fmt')],
+    },
     { id: 'clippy', lane: 'core', label: 'clippy — core crate lints', commands: () => [npmRun('core:lint')] },
     {
       id: 'core-test',
@@ -202,7 +225,11 @@ function runCommand(c: Command, env: NodeJS.ProcessEnv, onLine: (line: string) =
 }
 
 /** Run one step (its command sequence), reporting output via `onLine`. */
-async function runStep(step: StepDef, ctx: GateContext, onLine: (line: string) => void): Promise<StepOutcome> {
+async function runStep(
+  step: StepDef,
+  ctx: GateContext,
+  onLine: (line: string) => void,
+): Promise<StepOutcome> {
   if (ctx.skipIds.has(step.id)) return { status: 'skip', note: `--skip=${step.id}` };
   const reason = step.skip?.(ctx) ?? null;
   if (reason) {
@@ -232,7 +259,11 @@ async function runLaneParallel(
 }
 
 /** Run one step with serial (grouped) output — used by `--serial`. */
-async function runStepSerial(step: StepDef, ctx: GateContext, outcomes: Map<string, StepOutcome>): Promise<void> {
+async function runStepSerial(
+  step: StepDef,
+  ctx: GateContext,
+  outcomes: Map<string, StepOutcome>,
+): Promise<void> {
   if (ctx.isCI) console.log(`::group::${step.label}`);
   else console.log(`\n──────── ${step.label} ────────`);
   const outcome = await runStep(step, ctx, (line) => console.log(line));
@@ -251,7 +282,14 @@ export async function runGate(ctx: GateContext): Promise<number> {
   } else {
     const lanes = [...new Set(steps.map((s) => s.lane))];
     await Promise.all(
-      lanes.map((lane) => runLaneParallel(lane, steps.filter((s) => s.lane === lane), ctx, outcomes)),
+      lanes.map((lane) =>
+        runLaneParallel(
+          lane,
+          steps.filter((s) => s.lane === lane),
+          ctx,
+          outcomes,
+        ),
+      ),
     );
   }
 

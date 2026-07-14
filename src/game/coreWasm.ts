@@ -283,13 +283,13 @@ export function wasmPickBest(
   }
 
   const hidden: HiddenGrid = masksToGrid(bottles, picked.hidden);
-  const funnels: FunnelGrid = Array.from(picked.funnels, (f) => (f === NO_COLOR ? null : toColor(PALETTE[f]!)));
+  const funnels: FunnelGrid = Array.from(picked.funnels, (f) =>
+    f === NO_COLOR ? null : toColor(PALETTE[f]!),
+  );
   const ice: IceGrid = bottles.map((col, b) => {
     const trigger = picked.ice_pairs[b * 2]!;
     const height = picked.ice_pairs[b * 2 + 1]!;
-    return col.map((_, i) =>
-      trigger !== NO_COLOR && i < height ? toColor(PALETTE[trigger]!) : null,
-    );
+    return col.map((_, i) => (trigger !== NO_COLOR && i < height ? toColor(PALETTE[trigger]!) : null));
   });
 
   const result: WasmLivePick = {

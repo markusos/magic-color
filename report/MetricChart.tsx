@@ -53,7 +53,11 @@ export function MetricChart({
 
   const line = (vals: (number | undefined)[]): string =>
     vals
-      .map((v, i) => (v === undefined ? '' : `${i === 0 || vals[i - 1] === undefined ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`))
+      .map((v, i) =>
+        v === undefined
+          ? ''
+          : `${i === 0 || vals[i - 1] === undefined ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`,
+      )
       .join(' ');
 
   const main = levels.map((p) => accessor(p));
@@ -104,25 +108,47 @@ export function MetricChart({
         {/* y gridlines: 0, mid, max */}
         {[0, 0.5, 1].map((t) => (
           <g key={t}>
-            <line x1={M.l} x2={W - M.r} y1={M.t + PH * (1 - t)} y2={M.t + PH * (1 - t)} stroke="rgba(255,255,255,0.08)" />
+            <line
+              x1={M.l}
+              x2={W - M.r}
+              y1={M.t + PH * (1 - t)}
+              y2={M.t + PH * (1 - t)}
+              stroke="rgba(255,255,255,0.08)"
+            />
             <text x={M.l - 4} y={M.t + PH * (1 - t) + 3} className="axis" textAnchor="end">
               {yMax > 1 ? Math.round(yMax * t) : (yMax * t).toFixed(1)}
             </text>
           </g>
         ))}
 
-        {compare && <path d={line(compare.values)} fill="none" stroke={compare.color} strokeWidth={1.25} strokeDasharray="4 3" opacity={0.85} />}
+        {compare && (
+          <path
+            d={line(compare.values)}
+            fill="none"
+            stroke={compare.color}
+            strokeWidth={1.25}
+            strokeDasharray="4 3"
+            opacity={0.85}
+          />
+        )}
         <path d={line(main)} fill="none" stroke={color} strokeWidth={1.5} />
 
         {showPoints &&
-          main.map((v, i) => (
-            <circle key={i} cx={x(i)} cy={y(v)} r={1.4} fill={color} opacity={0.5} />
-          ))}
+          main.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={1.4} fill={color} opacity={0.5} />)}
 
         {hovered !== null && (
           <>
             <line x1={x(hovered)} x2={x(hovered)} y1={M.t} y2={M.t + PH} stroke="rgba(255,255,255,0.4)" />
-            {hoveredVal !== undefined && <circle cx={x(hovered)} cy={y(hoveredVal)} r={3} fill={color} stroke="#0b0818" strokeWidth={1} />}
+            {hoveredVal !== undefined && (
+              <circle
+                cx={x(hovered)}
+                cy={y(hoveredVal)}
+                r={3}
+                fill={color}
+                stroke="#0b0818"
+                strokeWidth={1}
+              />
+            )}
           </>
         )}
       </svg>

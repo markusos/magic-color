@@ -36,11 +36,7 @@ describe('randomColorMap', () => {
 describe('applyColorMap', () => {
   it('remaps every segment consistently and leaves shape untouched', () => {
     const out = applyColorMap(board, { ruby: color('teal'), amethyst: color('lime') });
-    expect(out.bottles).toEqual([
-      ['teal', 'lime', 'teal', 'lime'],
-      ['lime', 'teal', 'lime', 'teal'],
-      [],
-    ]);
+    expect(out.bottles).toEqual([['teal', 'lime', 'teal', 'lime'], ['lime', 'teal', 'lime', 'teal'], []]);
     expect(out.capacity).toBe(4);
   });
 

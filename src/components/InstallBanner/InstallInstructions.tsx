@@ -27,9 +27,7 @@ export function InstallInstructions({
       <div className={styles.head}>
         <img className={styles.appIcon} src={APP_ICON} alt="" width={48} height={48} />
         <div className={styles.copy}>
-          <p className={styles.title}>
-            {isAndroid ? 'Install Magic Color' : 'Add to Home Screen'}
-          </p>
+          <p className={styles.title}>{isAndroid ? 'Install Magic Color' : 'Add to Home Screen'}</p>
           {isAndroid ? (
             <p className={styles.text}>Play full-screen, even offline.</p>
           ) : (

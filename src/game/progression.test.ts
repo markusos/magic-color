@@ -89,7 +89,11 @@ describe('planForLevel (live path)', () => {
     expect(plan.phase).toBe(phaseForLevel(75));
     expect(plan.seed).toBe(seedForLevel(75));
     // Footprint is one of the defined shapes.
-    expect(SHAPES.some((s) => s.colors === plan.colors && s.bottles === plan.bottles && s.capacity === plan.capacity)).toBe(true);
+    expect(
+      SHAPES.some(
+        (s) => s.colors === plan.colors && s.bottles === plan.bottles && s.capacity === plan.capacity,
+      ),
+    ).toBe(true);
   });
 });
 

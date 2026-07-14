@@ -156,7 +156,11 @@ export const useSettings = create<SettingsStore>((set, get) => {
       // closed — it's opened on demand from the header, like how-to-play. Disabling it also clears the
       // debug cheats so neither lingers without a way (the popover) to turn it back off.
       const inspector = !get().inspector;
-      set(inspector ? { inspector, inspectorOpen: false } : { inspector, inspectorOpen: false, revealHidden: false, freePour: false });
+      set(
+        inspector
+          ? { inspector, inspectorOpen: false }
+          : { inspector, inspectorOpen: false, revealHidden: false, freePour: false },
+      );
       save(persistedOf(get())); // inspectorOpen + the cheats are ephemeral, excluded from persistedOf
     },
     toggleInspectorOpen: () => set({ inspectorOpen: !get().inspectorOpen }),

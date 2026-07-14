@@ -61,8 +61,8 @@ export function InfoButton() {
             >
               <h2 className={styles.title}>How to play</h2>
               <p className={styles.body}>
-                Tap a bottle to pick it up, then tap another to pour the top color onto a
-                matching color or an empty tube. Sort until every bottle is a single shade.
+                Tap a bottle to pick it up, then tap another to pour the top color onto a matching color or an
+                empty tube. Sort until every bottle is a single shade.
               </p>
             </motion.div>
           </>

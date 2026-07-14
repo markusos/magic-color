@@ -12,18 +12,21 @@ matching `npm run` alias that invokes the exact same module, so use whichever yo
 | Do this | Command | Notes |
 | --- | --- | --- |
 | Run the quality gate | `exe/test` (or `npm run check`) | The full gate — **run before every commit.** |
-| Start the dev server | `exe/run` (or `npm run dev`) | Vite + hot reload at http://localhost:5173. Args pass through (`exe/run --port 3000`). |
+| Start the dev server | `exe/run` (or `npm run dev`) | Vite + hot reload at http://localhost:5173. Frontend-only — no Rust toolchain needed. Args pass through (`exe/run --port 3000`). |
+| Dev server **+** wasm watcher | `exe/dev` (or `npm run dev:all`) | Vite AND auto-rebuild of the wasm on every `core/src` edit, under one command (Ctrl-C stops both). Use when editing rules + app together; needs cargo + wasm-pack. Args pass to Vite. |
+| Wasm watcher only | `npm run dev:core` | Just the watcher (no server): re-runs `core:wasm` on each `.rs` save. Pair with a separate `npm run dev` if you prefer split terminals. |
 | Re-bake the levels | `exe/levels` (or `npm run build:levels`) | Deterministic native bake → `levels.data.ts`. Slow (minutes) + all-cores. |
 | Production build | `npm run build` | `tsc --noEmit && vite build` → `dist/`. |
 
 Narrower loops: `npm test` / `npm run test:watch` / `npm run test:coverage` (vitest), `npm run test:e2e`
-(Playwright), `npm run lint`, `npm run typecheck`, `npm run core:test` (cargo).
+(Playwright), `npm run lint`, `npm run format` (Prettier, auto-fixes ts/tsx; the gate runs
+`format:check`), `npm run typecheck`, `npm run core:test` (cargo).
 
 ## The quality gate (`exe/test` → `scripts/gate.ts`)
 
 One gate runs both sides of the codebase, in three **concurrent lanes** (so wall-clock ≈ the slowest lane):
 
-- **app** — eslint → typescript → vitest (with a coverage floor; see `vite.config.ts`)
+- **app** — prettier (format check) → eslint → typescript (app) → typescript (`scripts/` dev tooling) → vitest (with a coverage floor; see `vite.config.ts`)
 - **core** — rustfmt → clippy → cargo test (crate unit tests + frozen golden-vector replays) → verify
 - **e2e** — Playwright smokes against a production build (auto-skips if no Chromium is installed)
 
@@ -39,7 +42,8 @@ See `.claude/skills/check/SKILL.md` for the full breakdown.
   the TS registry (`mechanics.ts`) only holds DISPLAY transforms. Don't reimplement rules in TS.
 - **After changing `core/`**, rebuild the committed artifacts or the freshness guards fail:
   `npm run core:wasm` (re-stamps the wasm; guarded by `coreVersion.test.ts`) and, if you touched the
-  generator/curve/selection, `exe/levels` (re-bake; guarded by `baked.test.ts`).
+  generator/curve/selection, `exe/levels` (re-bake; guarded by `baked.test.ts`). `npm run dev:core`
+  automates the `core:wasm` half — leave it running while you edit and it re-stamps on every save.
 - **The bake is deterministic** — a no-op re-bake reproduces the committed levels byte-for-byte
   (`git diff src/game/levels.data.ts` stays empty). A diff there means a core rule actually changed.
 - **Shared constants must stay in lockstep.** The palette id list and capacity exist in `src/game/palette.ts`,
@@ -49,8 +53,10 @@ See `.claude/skills/check/SKILL.md` for the full breakdown.
 - **Tests live beside their source** as `*.test.ts(x)` and use vitest globals (no imports). Pure `src/game/*`
   logic has no DOM; component/store tests use jsdom + Testing Library and prefer accessible-name selectors
   (the app exposes aria-labels — no test ids). E2E specs live in `e2e/` and are run only by Playwright.
-- `scripts/` and `exe/` are outside the app tsconfig (run via `tsx`), so they're not covered by
-  `npm run lint`/`typecheck` — sanity-check them by running them.
+- `scripts/` ARE linted and typechecked — `npm run lint` covers them (type-aware, via
+  `tsconfig.scripts.json`) and `npm run typecheck:scripts` is a gate step, so a type error in the
+  gate itself is caught statically. `exe/` are thin bash launchers (not TypeScript); sanity-check
+  those by running them.
 
 ## Layout
 
@@ -59,7 +65,7 @@ src/            React app (components/, store/, game/, theme/, audio/)  — game
 core/           Rust crate: the rules (engine, solver, generator, difficulty, mechanics) + the bake binary
 e2e/            Playwright browser smokes
 scripts/        gate.ts (quality gate), run.ts (dev), levels.ts (bake), + bake-pipeline glue
-exe/            thin launchers: test → scripts/check.ts, run → scripts/run.ts, levels → scripts/levels.ts
+exe/            thin launchers: test → check.ts, run → run.ts, dev → dev-all.ts (server+wasm watch), levels → levels.ts
 ```
 
 ## Commits & PRs

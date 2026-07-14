@@ -152,10 +152,7 @@ export interface ProvenanceDiff {
 }
 
 /** Join two bakes by level and report what moved. `a` is the baseline, `b` the new bake. */
-export function diffProvenance(
-  a: readonly LevelProvenance[],
-  b: readonly LevelProvenance[],
-): ProvenanceDiff {
+export function diffProvenance(a: readonly LevelProvenance[], b: readonly LevelProvenance[]): ProvenanceDiff {
   const aMap = new Map(a.map((p) => [p.level, p]));
   const bMap = new Map(b.map((p) => [p.level, p]));
   const added = [...bMap.keys()].filter((l) => !aMap.has(l)).sort((x, y) => x - y);

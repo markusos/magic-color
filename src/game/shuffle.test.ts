@@ -12,11 +12,7 @@ import type { Color } from './types';
 describe('shuffleBottles', () => {
   it('reorders tubes, the hidden grid, the funnels, and the ice by the same permutation', () => {
     const state = board([['ruby', 'ruby'], ['amber', 'teal'], []], 2);
-    const hidden = [
-      [true, false],
-      [false, true],
-      [],
-    ];
+    const hidden = [[true, false], [false, true], []];
     const funnels = ['ruby' as Color, null, 'teal' as Color];
     const ice = [['ruby' as Color, null], [null, null], []];
     // A pinned PRNG gives a deterministic permutation we can assert against.
@@ -51,7 +47,11 @@ describe('shuffleBottles', () => {
     const empty = state.bottles.map(() => []);
     const orders = new Set<string>();
     for (let seed = 0; seed < 20; seed++) {
-      const out = shuffleBottles(state, { hidden: empty, funnels: noFunnels(state), ice: noIce(state) }, mulberry32(seed));
+      const out = shuffleBottles(
+        state,
+        { hidden: empty, funnels: noFunnels(state), ice: noIce(state) },
+        mulberry32(seed),
+      );
       orders.add(out.state.bottles.map((b) => b[0]).join(','));
     }
     expect(orders.size).toBeGreaterThan(1);

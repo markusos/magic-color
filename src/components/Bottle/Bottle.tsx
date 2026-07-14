@@ -85,13 +85,29 @@ const ICE_FACETS: readonly (readonly [string, 'A' | 'B' | 'C'])[] = [
 // and match the bottom-edge points (also 44/84) so cracks connect across chunk seams. The pinched side
 // points (6,38)/(122,34) keep the stacked column's edges from reading as two dead-straight lines.
 const ICE_CRACKS: readonly string[] = [
-  '0,0 60,30', '44,0 60,30', '84,0 60,30', '84,0 94,46', '128,0 94,46',
-  '122,34 94,46', '128,72 94,46', '84,72 94,46', '84,72 60,30', '44,72 60,30',
-  '44,72 34,44', '0,72 34,44', '6,38 34,44', '0,0 34,44', '60,30 94,46', '60,30 34,44',
+  '0,0 60,30',
+  '44,0 60,30',
+  '84,0 60,30',
+  '84,0 94,46',
+  '128,0 94,46',
+  '122,34 94,46',
+  '128,72 94,46',
+  '84,72 94,46',
+  '84,72 60,30',
+  '44,72 60,30',
+  '44,72 34,44',
+  '0,72 34,44',
+  '6,38 34,44',
+  '0,0 34,44',
+  '60,30 94,46',
+  '60,30 34,44',
 ];
 // Frost bubbles trapped in the chunk (x, y, r).
 const ICE_BUBBLES: readonly (readonly [number, number, number])[] = [
-  [30, 40, 2], [88, 30, 1.4], [66, 56, 1.6], [22, 18, 1.1],
+  [30, 40, 2],
+  [88, 30, 1.4],
+  [66, 56, 1.6],
+  [22, 18, 1.1],
 ];
 // Irregular crystalline crown, drawn in the topmost chunk's OWN coordinates (rising above its y=0 top
 // edge) so it shares that chunk's single fill layer — no separate translucent overlay stacking on top of
@@ -103,11 +119,29 @@ const ICE_CROWN: readonly (readonly [string, 'A' | 'B' | 'C'])[] = [
   ['0,0 22,-26 44,0 64,-34 84,0 106,-26 128,0', 'C'],
 ];
 const ICE_CROWN_CRACKS: readonly string[] = [
-  '0,0 22,-26', '22,-26 44,0', '44,0 64,-34', '64,-34 84,0', '84,0 106,-26', '106,-26 128,0',
+  '0,0 22,-26',
+  '22,-26 44,0',
+  '44,0 64,-34',
+  '64,-34 84,0',
+  '84,0 106,-26',
+  '106,-26 128,0',
 ];
 
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
-export function Bottle({ bottle, capacity, hidden, funnel, frozen, capped, selected, patterns, hintRole, isTarget, lift, onTap }: Props) {
+export function Bottle({
+  bottle,
+  capacity,
+  hidden,
+  funnel,
+  frozen,
+  capped,
+  selected,
+  patterns,
+  hintRole,
+  isTarget,
+  lift,
+  onTap,
+}: Props) {
   const segments = bottle.slice(0, capacity);
   // The frozen block is a contiguous run of cells from the floor, all sharing one trigger tint.
   const frozenCount = frozen ? frozen.filter((t) => t != null).length : 0;
@@ -154,63 +188,62 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, capped, selec
           can mirror — Framer's gesture/animate system on the button would otherwise override it. */}
       <motion.div className={styles.tube} style={{ rotate: tubeRotate }}>
         <div className={styles.glass}>
-        {/* Counter-rotate the liquid against the tube's tilt so its surfaces stay level with the
+          {/* Counter-rotate the liquid against the tube's tilt so its surfaces stay level with the
             world — the tilt then reads as the liquid sloshing rather than the whole column
             rotating rigidly. `liquidRotate` is the exact negation of the tube's rotation (shared
             motion value), so it cancels at every instant with no wobble. The gap-covering scale
             lives on the inner element as plain CSS. */}
-        <motion.div className={styles.liquidTilt} style={{ rotate: liquidRotate }}>
-          <div
-            className={styles.liquidColumn}
-            style={{ transform: selected ? `scaleX(${coverScaleX(capacity)}) scaleY(1.05)` : undefined }}
-          >
-            <AnimatePresence initial={false}>
-              {segments.map((color, i) => (
-                <LiquidSegment
-                  key={i}
-                  color={color}
-                  isBottom={i === 0}
-                  isTop={i === segments.length - 1}
-                  hidden={hidden?.[i]}
-                  patterns={patterns}
-                  fillDelay={i >= prevFill ? (i - prevFill) * 0.08 : 0}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+          <motion.div className={styles.liquidTilt} style={{ rotate: liquidRotate }}>
+            <div
+              className={styles.liquidColumn}
+              style={{ transform: selected ? `scaleX(${coverScaleX(capacity)}) scaleY(1.05)` : undefined }}
+            >
+              <AnimatePresence initial={false}>
+                {segments.map((color, i) => (
+                  <LiquidSegment
+                    key={i}
+                    color={color}
+                    isBottom={i === 0}
+                    isTop={i === segments.length - 1}
+                    hidden={hidden?.[i]}
+                    patterns={patterns}
+                    fillDelay={i >= prevFill ? (i - prevFill) * 0.08 : 0}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          </motion.div>
 
-        {/* Concealed "?" marks live here, in the tube's frame (not the counter-rotated liquid), so
+          {/* Concealed "?" marks live here, in the tube's frame (not the counter-rotated liquid), so
             they stay centred on the tube's axis and tilt with it. Drawing them inside the liquid
             instead pins them to the liquid's vertical centre-line, which drifts off-axis as the
             tube tilts. Positioned by band index from the bottom. */}
-        {segments.some((_, i) => hidden?.[i]) && (
-          <div className={styles.marks} aria-hidden>
-            {segments.map((_, i) =>
-              hidden?.[i] ? (
-                <span
-                  key={i}
-                  className={styles.mark}
-                  style={{ bottom: `calc(${i} * var(--segment-height))` }}
-                >
-                  ?
-                </span>
-              ) : null,
-            )}
-          </div>
-        )}
+          {segments.some((_, i) => hidden?.[i]) && (
+            <div className={styles.marks} aria-hidden>
+              {segments.map((_, i) =>
+                hidden?.[i] ? (
+                  <span
+                    key={i}
+                    className={styles.mark}
+                    style={{ bottom: `calc(${i} * var(--segment-height))` }}
+                  >
+                    ?
+                  </span>
+                ) : null,
+              )}
+            </div>
+          )}
 
-        {/* Funnel collar: a tinted ring at the tube neck marking the only color this tube accepts.
+          {/* Funnel collar: a tinted ring at the tube neck marking the only color this tube accepts.
             Lives in the glass (clipped to the rim) and so tilts with the tube. Drawn above the liquid
             but it sits at the very top, where liquid only reaches once the tube is full. */}
-        {funnel != null && (
-          <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }}>
-            {/* Colorblind aid: the collar's accepted color also carries its texture, so which color a
+          {funnel != null && (
+            <div className={styles.funnel} aria-hidden style={{ ['--funnel' as string]: cssColor(funnel) }}>
+              {/* Colorblind aid: the collar's accepted color also carries its texture, so which color a
                 funnel locks to reads without hue. */}
-            {patterns && <div className="cb-pattern" data-cb={patternFor(funnel)} aria-hidden />}
-          </div>
-        )}
-
+              {patterns && <div className="cb-pattern" data-cb={patternFor(funnel)} aria-hidden />}
+            </div>
+          )}
         </div>
 
         {/* Ice: the frozen part of the tube encased in faceted crystalline ice. STACKED one tile per
@@ -263,18 +296,12 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, capped, selec
                   geometry recompute in device space (more sub-pixel jitter); the viewBox aspect equals
                   the block box so the default `meet` fits without distortion, and plain viewBox-unit
                   strokes scale with the tube so every repaint is pixel-deterministic. */}
-              <svg
-                className={styles.iceSheet}
-                viewBox={`0 0 128 ${72 * frozenCount}`}
-                aria-hidden
-              >
+              <svg className={styles.iceSheet} viewBox={`0 0 128 ${72 * frozenCount}`} aria-hidden>
                 {Array.from({ length: frozenCount }, (_, k) => {
                   // k=0 is the topmost chunk. Slot it at y=72*k; mirror alternate chunks (by stack
                   // position from the floor) so the cracks meeting each seam land at different x.
                   const flip = (frozenCount - 1 - k) % 2 === 1;
-                  const slot = flip
-                    ? `translate(128,${72 * k}) scale(-1,1)`
-                    : `translate(0,${72 * k})`;
+                  const slot = flip ? `translate(128,${72 * k}) scale(-1,1)` : `translate(0,${72 * k})`;
                   return (
                     <g key={k} transform={slot}>
                       {ICE_FACETS.map(([pts, g], fi) => (
@@ -327,7 +354,11 @@ export function Bottle({ bottle, capacity, hidden, funnel, frozen, capped, selec
                 {/* Colorblind aid: the trigger-color swatch carries its texture too, so the "complete
                     THIS color" badge reads without hue. Clipped to the round badge. */}
                 {patterns && (
-                  <div className={`${styles.iceBadgePattern} cb-pattern`} data-cb={patternFor(iceTint)} aria-hidden />
+                  <div
+                    className={`${styles.iceBadgePattern} cb-pattern`}
+                    data-cb={patternFor(iceTint)}
+                    aria-hidden
+                  />
                 )}
               </div>
             </motion.div>

@@ -15,11 +15,9 @@ test('auto-solves a level to a win, driving the real board + win overlay', async
   // Reveal the hidden admin panel: 7 taps on the Settings title within 600ms of each other. Fire
   // them synchronously in one tick (sequential Playwright clicks can drift past that window).
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page
-    .getByRole('heading', { name: 'Settings' })
-    .evaluate((el: HTMLElement) => {
-      for (let i = 0; i < 7; i++) el.click();
-    });
+  await page.getByRole('heading', { name: 'Settings' }).evaluate((el: HTMLElement) => {
+    for (let i = 0; i < 7; i++) el.click();
+  });
 
   // Turn the Level Inspector on (persists to the settings store), then start level 1.
   await page.getByRole('switch', { name: 'Level Inspector' }).click();

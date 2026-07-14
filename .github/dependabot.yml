@@ -1,0 +1,34 @@
+# Automated dependency update PRs. Each PR pushes a branch, which triggers the CI gate
+# (.github/workflows/ci.yml runs on push to any non-main branch), so an update only merges cleanly
+# if the full app + core + e2e gate still passes. Updates are grouped to keep the PR volume low.
+version: 2
+updates:
+  # npm (the React/Vite/Playwright front end + dev tooling).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for all non-major bumps; majors still open individually so they get a closer look.
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  # Cargo (the Rust core workspace — root Cargo.toml with the `core` member).
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      cargo-minor-patch:
+        update-types: [minor, patch]
+
+  # The GitHub Actions used by ci.yml / deploy.yml (checkout, setup-node, rust-cache, …).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-all:
+        patterns: ['*']

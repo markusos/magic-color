@@ -33,11 +33,7 @@ export function Toolbar() {
             No hint available
           </div>
         )}
-        <button
-          onClick={requestHint}
-          disabled={status !== 'playing' || hintLoading}
-          title="Show a hint"
-        >
+        <button onClick={requestHint} disabled={status !== 'playing' || hintLoading} title="Show a hint">
           {hintLoading ? (
             <span className={styles.spinner} aria-hidden />
           ) : (
