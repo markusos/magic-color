@@ -36,9 +36,9 @@ interface Persisted {
   /** Debug (Track E1): overlay the active board's difficulty metrics. Hidden behind the admin hatch, off by default. */
   inspector: boolean;
   /**
-   * Chapter indices whose one-time mechanic-intro card the player has dismissed (U1). Kept here,
-   * separate from campaign `progress`, so "Start Over" replays the campaign without re-teaching
-   * mechanics the player already knows.
+   * Chapter indices whose one-time mechanic-intro card the player has dismissed (U1). "Start Over"
+   * clears this (via {@link SettingsStore.clearOnboarding}) so a full reset re-teaches every
+   * mechanic from scratch, just like a fresh install.
    */
   seenChapters: number[];
 }
@@ -126,6 +126,13 @@ interface SettingsStore extends Persisted {
   dismissPatternsNudge: () => void;
   /** Record that the player has dismissed a chapter's mechanic-intro card (idempotent). */
   markChapterSeen: (chapter: number) => void;
+  /**
+   * Forget every "already seen" onboarding flag — the dismissed chapter intros and the retired
+   * Color Patterns nudge — so a "Start Over" re-teaches the mechanics from scratch. Deliberately
+   * leaves the player's actual preferences (volumes, haptics, patterns, inspector) untouched: those
+   * are choices, not progress.
+   */
+  clearOnboarding: () => void;
   toggleInspector: () => void;
   /** Expand/collapse the inspector overlay without disabling it (the ⓘ button + the panel's ✕). */
   toggleInspectorOpen: () => void;
@@ -192,6 +199,10 @@ export const useSettings = create<SettingsStore>((set, get) => {
     markChapterSeen: (chapter) => {
       if (get().seenChapters.includes(chapter)) return; // idempotent — no needless write
       set({ seenChapters: [...get().seenChapters, chapter] });
+      save(persistedOf(get()));
+    },
+    clearOnboarding: () => {
+      set({ seenChapters: [], patternsNudged: false });
       save(persistedOf(get()));
     },
     toggleInspector: () => {

@@ -111,6 +111,26 @@ describe('progression', () => {
     store().startOver();
     expect(store().level).toBe(1);
   });
+
+  it('startOver clears every leftover state — seen intros, the patterns nudge, and install dismissal', () => {
+    // Seed a played-through state: reached level 5, chapter intros dismissed, nudge retired, and the
+    // install banner dismissed at frontier 5.
+    store().loadLevel(5);
+    useSettings.getState().markChapterSeen(1);
+    useSettings.getState().dismissPatternsNudge();
+    localStorage.setItem('magic-color:install-dismissed:v1', '5');
+    expect(useSettings.getState().seenChapters).toContain(1);
+    expect(useSettings.getState().patternsNudged).toBe(true);
+
+    store().startOver();
+
+    // A full reset: nothing remembered from the prior run, so the app re-teaches and re-nudges.
+    expect(store().level).toBe(1);
+    expect(store().furthest).toBe(1);
+    expect(useSettings.getState().seenChapters).toEqual([]);
+    expect(useSettings.getState().patternsNudged).toBe(false);
+    expect(localStorage.getItem('magic-color:install-dismissed:v1')).toBeNull();
+  });
 });
 
 describe('illegal-tap shake signal (U7)', () => {

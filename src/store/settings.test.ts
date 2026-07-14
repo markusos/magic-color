@@ -51,6 +51,28 @@ describe('settings store', () => {
     expect(useSettings.getState().seenChapters.length).toBe(start + 2);
   });
 
+  it('clearOnboarding forgets seen intros and the patterns nudge, keeping preferences', () => {
+    useSettings.getState().markChapterSeen(1);
+    useSettings.getState().markChapterSeen(2);
+    useSettings.getState().dismissPatternsNudge();
+    useSettings.setState({ soundVolume: 0.3, patterns: true });
+    expect(useSettings.getState().seenChapters.length).toBeGreaterThan(0);
+    expect(useSettings.getState().patternsNudged).toBe(true);
+
+    useSettings.getState().clearOnboarding();
+
+    // Onboarding flags reset...
+    expect(useSettings.getState().seenChapters).toEqual([]);
+    expect(useSettings.getState().patternsNudged).toBe(false);
+    expect(persisted()?.seenChapters).toEqual([]);
+    expect(persisted()?.patternsNudged).toBe(false);
+    // ...but real preferences are left alone.
+    expect(useSettings.getState().soundVolume).toBeCloseTo(0.3);
+    expect(useSettings.getState().patterns).toBe(true);
+
+    useSettings.setState({ soundVolume: 0.8, patterns: false }); // restore defaults for other tests
+  });
+
   it('sets music volume and round-trips it to localStorage (only the persisted keys)', () => {
     useSettings.getState().setMusicVolume(0.4);
     expect(useSettings.getState().musicVolume).toBeCloseTo(0.4);

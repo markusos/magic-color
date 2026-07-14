@@ -151,6 +151,19 @@ export function dismissInstallBanner(furthest: number): void {
 }
 
 /**
+ * Forget any past install-banner dismissal, so the banner is offered again from scratch. Called by
+ * "Start Over", which wipes every trace of a prior play-through — a reset player should be re-nudged
+ * to install exactly like a brand-new one.
+ */
+export function clearInstallDismissal(): void {
+  try {
+    localStorage.removeItem(DISMISS_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Whether the home banner is currently suppressed by a past dismissal. Suppression lifts once the
  * player has reached {@link RESHOW_AFTER_LEVELS} more levels than when they dismissed it.
  */

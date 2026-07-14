@@ -41,6 +41,7 @@ import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
 import { useSettings } from './settings';
+import { clearInstallDismissal } from '../install/installState';
 import type { CampaignStats } from './progressStats';
 import { deferAfterPaint } from './deferAfterPaint';
 import { feedback } from '../audio/feedback';
@@ -594,7 +595,12 @@ export const useGameStore = create<GameStore>((set, get) => {
     playDaily,
     reloadBoard,
     startOver: () => {
+      // A full reset to a brand-new state: wipe campaign progress AND every leftover trace of the
+      // prior play-through — the dismissed chapter intros / patterns nudge, and any install-banner
+      // dismissal — so the app re-teaches and re-nudges from scratch, exactly like a fresh install.
       campaign.reset();
+      useSettings.getState().clearOnboarding();
+      clearInstallDismissal();
       loadLevel(1);
     },
     campaignStats: () => campaign.stats(),
