@@ -94,6 +94,15 @@ export interface GameStore {
   /** Currently selected source bottle, or null. */
   selected: number | null;
   /**
+   * The tube most recently tapped as an ILLEGAL pour target (a source was selected but couldn't pour
+   * here), or null. Paired with {@link rejectedNonce}, which bumps on every rejection so the same tube
+   * being rejected twice still re-triggers the shake. Display-only feedback (U7); the move was already
+   * rejected by the rules.
+   */
+  rejectedTube: number | null;
+  /** Monotonic counter that increments on each illegal-pour rejection — the shake's change signal. */
+  rejectedNonce: number;
+  /**
    * The currently-pulsing hint pour (`{ from, to }` tube indices), or null. Set by `requestHint` and
    * cleared on the next tap / undo / restart / new board, so the pulse never lingers onto a stale
    * board. Display-order indices, parallel to `current.bottles`.
@@ -332,6 +341,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       undos: 0,
       newBest: false,
       selected: null,
+      rejectedTube: null,
+      rejectedNonce: 0,
       hint: null,
       hintUsed: false,
       hintLoading: false,
@@ -531,6 +542,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     moves: [],
     undos: 0,
     selected: null,
+    rejectedTube: null,
+    rejectedNonce: 0,
     hint: null,
     hintUsed: false,
     hintLoading: false,
@@ -635,9 +648,18 @@ export const useGameStore = create<GameStore>((set, get) => {
         case 'select':
           set({ selected: plan.selected, hint: null });
           break;
-        case 'deselect':
-          set({ selected: null, hint: null });
+        case 'deselect': {
+          // The core returns `deselect` both for tapping the selected tube again (an ordinary
+          // deselect) and for tapping an illegal target while a source is held. Only the latter — a
+          // real rejected pour — flashes the shake (U7).
+          const illegalTarget = selected !== null && selected !== i;
+          set({
+            selected: null,
+            hint: null,
+            ...(illegalTarget ? { rejectedTube: i, rejectedNonce: get().rejectedNonce + 1 } : {}),
+          });
           break;
+        }
         case 'pour': {
           commit(plan.next, {
             history: [...get().history, current],

@@ -14,6 +14,8 @@ export function GameBoard() {
   const funnels = useGameStore((s) => s.funnels);
   const ice = useGameStore((s) => s.ice);
   const hint = useGameStore((s) => s.hint);
+  const rejectedTube = useGameStore((s) => s.rejectedTube);
+  const rejectedNonce = useGameStore((s) => s.rejectedNonce);
   const patterns = useSettings((s) => s.patterns);
   // Debug cheat (E4): draw concealed cells face-up. Render-only — the store still enforces concealment,
   // so gameplay is unchanged; this just stops passing the per-cell `hidden` mask to the bottles.
@@ -64,6 +66,9 @@ export function GameBoard() {
             hintRole={hint?.from === i ? 'from' : hint?.to === i ? 'to' : undefined}
             isTarget={view.pourTargets[i] ?? false}
             lift={metrics.segmentHeight * 0.7}
+            // Non-zero (and changing) only when THIS tube was the last illegal pour target — drives
+            // the reject shake. Zero for every other tube, so an unrelated rejection never shakes it.
+            shakeToken={rejectedTube === i ? rejectedNonce : 0}
             onTap={() => tapBottle(i)}
           />
         ))}
