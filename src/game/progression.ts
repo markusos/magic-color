@@ -18,7 +18,13 @@ import { DEFAULT_CAPACITY } from './palette';
 import type { FunnelGrid } from './funnels';
 import type { HiddenGrid } from './hidden';
 import type { IceGrid } from './ice';
-import { difficultyForPercentile, type Difficulty, type GeneratedLevel, type Mechanic, type ParMode } from './types';
+import {
+  difficultyForPercentile,
+  type Difficulty,
+  type GeneratedLevel,
+  type Mechanic,
+  type ParMode,
+} from './types';
 
 /** A board footprint the bake draws candidates from. `family` groups shapes for variety rotation. */
 export interface Shape {
