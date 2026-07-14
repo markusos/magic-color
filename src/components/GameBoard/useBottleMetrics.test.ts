@@ -51,4 +51,22 @@ describe('computeMetrics (fixed-column, no-scroll layout)', () => {
     expect(m.width).toBeGreaterThan(0);
     expect(m.columns).toBe(COLS);
   });
+
+  it('lets a 1-row board grow past the old 88px cap on a wide screen (U4), clamped at 120', () => {
+    // A roomy desktop area: a 5-tube board is 1 row, no longer width- or height-bound, so it hits
+    // the max-width clamp. The old cap was 88; it should now reach — but not exceed — 120.
+    const wide = computeMetrics(1280, 700, 5, CAP, COLS).width;
+    expect(wide).toBeGreaterThan(88);
+    expect(wide).toBeLessThanOrEqual(120);
+
+    // An enormous area is clamped exactly at the 120 cap (never larger).
+    expect(computeMetrics(4000, 4000, 5, CAP, COLS).width).toBe(120);
+  });
+
+  it('leaves phone boards unchanged by the wider cap (still width-bound well below it)', () => {
+    // On a phone-width area every tier is width-bound far under 120, so the raised cap is inert.
+    for (const count of [5, 10, 15]) {
+      expect(computeMetrics(AREA_W, AREA_H, count, CAP, COLS).width).toBeLessThan(88);
+    }
+  });
 });
