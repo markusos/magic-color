@@ -165,6 +165,12 @@ export interface GameStore {
   best: number | null;
   /** The player's best star rating for the current level, or null if never solved. */
   bestStars: Stars | null;
+  /**
+   * True only on the win overlay when this attempt beat a PRIOR recorded best (campaign mode). A
+   * first-ever clear is not a "new best" — there was nothing to beat — so this stays false then.
+   * Reset on every fresh board.
+   */
+  newBest: boolean;
   /** Highest level reached (the unlock frontier) — the level selector lists 1..furthest. */
   furthest: number;
   /** Whether every baked campaign level is cleared — the random mode replaces Continue on Home. */
@@ -281,11 +287,21 @@ export const useGameStore = create<GameStore>((set, get) => {
     const { level, moves, undos, optimal, twoStarMax, hintUsed } = get();
     // Undos count toward the rating: the score is the real move count plus undos used.
     const score = moves.length + undos;
+    // The best held BEFORE this attempt is recorded (the field was set at level load and is untouched
+    // during play). Capture it now so the overlay can celebrate beating it — `campaign.complete` below
+    // overwrites the mirrored `best`, so this must be read first.
+    const prevBest = get().best;
     // A hinted solve is capped to 1 star regardless of move count (see `hintUsed`).
     const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
     const record = campaign.complete(level, score, stars);
     // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
-    set({ ...record, levelStars: campaign.levelStars, campaignComplete: campaign.campaignComplete });
+    set({
+      ...record,
+      // Only a genuine improvement over a prior best counts — never the first clear of a level.
+      newBest: prevBest !== null && score < prevBest,
+      levelStars: campaign.levelStars,
+      campaignComplete: campaign.campaignComplete,
+    });
   };
 
   /**
@@ -314,6 +330,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       history: [],
       moves: [],
       undos: 0,
+      newBest: false,
       selected: null,
       hint: null,
       hintUsed: false,
@@ -530,6 +547,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     twoStarMax: first?.twoStarMax ?? 2,
     liveProvenance: first?.liveProvenance ?? null,
     ...campaign.recordFor(startLevel),
+    newBest: false,
     furthest: campaign.furthest,
     campaignComplete: campaign.campaignComplete,
     levelStars: campaign.levelStars,

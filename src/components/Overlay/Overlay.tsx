@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Home, RotateCcw, Share } from 'lucide-react';
+import { Check, Home, RotateCcw, Share, Trophy } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { starsFor } from '../../game/stars';
 import { dailyShareText } from '../../game/daily';
 import { navigate } from '../../useHashRoute';
 import { Stars } from '../Stars/Stars';
+import { Confetti } from '../Confetti/Confetti';
 import styles from './Overlay.module.css';
 
 /**
@@ -22,6 +23,7 @@ export function Overlay() {
   const optimal = useGameStore((s) => s.optimal);
   const twoStarMax = useGameStore((s) => s.twoStarMax);
   const hintUsed = useGameStore((s) => s.hintUsed);
+  const newBest = useGameStore((s) => s.newBest);
   const nextLevel = useGameStore((s) => s.nextLevel);
   const restart = useGameStore((s) => s.restart);
   const mode = useGameStore((s) => s.mode);
@@ -79,6 +81,9 @@ export function Overlay() {
           >
             {status === 'won' ? (
               <>
+                {/* A confetti shower crowns a flawless (3★) clear. Suppressed under reduced-motion
+                    inside the component itself. */}
+                {stars === 3 && <Confetti />}
                 <motion.div
                   className={styles.starsRow}
                   initial={{ scale: 0.6, opacity: 0 }}
@@ -88,6 +93,23 @@ export function Overlay() {
                   <Stars value={stars} size={48} />
                 </motion.div>
                 <h2 className={styles.win}>{praise}</h2>
+                {/* Beating a prior best is the "beat my score" moment — campaign only (live boards
+                    keep no per-level record). */}
+                {newBest && (
+                  <motion.p
+                    className={styles.newBest}
+                    initial={{ scale: 0.7, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 360, damping: 16, delay: 0.25 }}
+                  >
+                    <Trophy size={16} strokeWidth={2.5} aria-hidden />
+                    New best!
+                  </motion.p>
+                )}
+                {/* Score feedback: what you spent vs. the near-optimal target. */}
+                <p className={styles.score}>
+                  {score} {score === 1 ? 'move' : 'moves'} · optimal {optimal}
+                </p>
                 {daily ? (
                   <div className={styles.actions}>
                     {dailyStreak > 0 && (

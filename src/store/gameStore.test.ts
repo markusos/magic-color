@@ -113,6 +113,68 @@ describe('progression', () => {
   });
 });
 
+describe('win: new-best flag (U2)', () => {
+  // Put the store one pour from a win in campaign mode, with a given prior best mirrored in. The
+  // winning pour scores 1 move; `prevBest` is read from the mirrored `best` field before the record.
+  const oneFromWin = (best: number | null) =>
+    useGameStore.setState({
+      mode: 'campaign',
+      level: 1,
+      best,
+      current: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      initial: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+      hidden: [[false, false, false], [false], []],
+      initialHidden: [[false, false, false], [false], []],
+      funnels: [null, null, null],
+      initialFunnels: [null, null, null],
+      ice: [[null, null, null], [null], []],
+      initialIce: [[null, null, null], [null], []],
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      undos: 0,
+      selected: null,
+      status: 'playing',
+      optimal: 1,
+      twoStarMax: 2,
+      hintUsed: false,
+      newBest: false,
+    });
+
+  it('flags newBest when the run beats a prior (suboptimal) best', () => {
+    oneFromWin(5);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().newBest).toBe(true);
+  });
+
+  it('does not flag newBest on a first-ever clear (nothing to beat)', () => {
+    oneFromWin(null);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().newBest).toBe(false);
+  });
+
+  it('does not flag newBest when the run only ties the prior best', () => {
+    oneFromWin(1);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().status).toBe('won');
+    expect(store().newBest).toBe(false);
+  });
+
+  it('clears newBest on the next board load', () => {
+    oneFromWin(5);
+    store().tapBottle(1);
+    store().tapBottle(0);
+    expect(store().newBest).toBe(true);
+    store().loadLevel(1);
+    expect(store().newBest).toBe(false);
+  });
+});
+
 describe('live-level loading state (drives the spinner)', () => {
   it('loads baked levels synchronously with no loading flash', () => {
     store().loadLevel(1); // baked
