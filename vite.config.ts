@@ -56,5 +56,39 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Vitest's default glob also matches `e2e/*.spec.ts` — but those are Playwright specs (run by
+    // `npm run test:e2e`), not vitest. Scope discovery to the app's own unit/component suites.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      // `npm run test:coverage` prints a terminal summary and writes an HTML report under coverage/.
+      reporter: ['text-summary', 'html'],
+      // A LOOSE floor, set well below the current numbers (~82% lines / ~84% branches) so it catches
+      // a real regression — a whole area losing its tests — without flaking on ±1% jitter from an
+      // ordinary change. Ratchet these up as coverage climbs; it's deliberately not a tight gate.
+      thresholds: {
+        lines: 75,
+        statements: 75,
+        functions: 75,
+        branches: 78,
+      },
+      // Measure the shipped app only. The `report/` dev viewer and `scripts/` build tooling are
+      // not part of the product, and the gameplay RULES live in the Rust crate (measured
+      // separately by `cargo test`), so this number reflects real, testable app TS.
+      include: ['src/**'],
+      // Within src/, drop files that carry no logic worth a line count.
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/test/**',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        'src/game/core-pkg/**', // generated wasm-bindgen glue
+        'src/game/levels.data.ts', // baked level blob (data, not code)
+        'src/game/levels.meta.ts',
+        'src/game/levels.provenance.ts',
+        'src/**/*.module.css',
+      ],
+    },
   },
 });

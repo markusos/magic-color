@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Thin launcher for the level bake. The pipeline lives in TypeScript (scripts/levels.ts) so
+# `exe/levels` and `npm run build:levels` share one entry point — just like `exe/test` /
+# `npm run check`. Ensures cargo is on PATH, then hands off.
+#
+# The bake is deterministic (seeded), so with an unchanged core it reproduces the EXACT committed
+# levels — after it runs, `git diff src/game/levels.data.ts` should be empty.
+#
+# Usage: exe/levels
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export PATH="$HOME/.cargo/bin:$PATH"
+exec npx tsx scripts/levels.ts "$@"

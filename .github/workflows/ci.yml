@@ -1,0 +1,62 @@
+name: CI
+
+# Runs the SAME quality gate as `exe/test` / `npm run check` (scripts/gate.ts), so CI and a local
+# run mean exactly the same thing (test parity). Pushes to main are gated by the deploy workflow,
+# which runs the identical gate before publishing.
+#
+# Trigger on PUSH only (not pull_request): a branch push runs the gate once, and its commit status
+# still shows on any PR opened from that branch — so we get PR feedback without the double run that
+# `push` + `pull_request` would cause on every PR commit. (Trade-off: PRs from FORKS aren't covered,
+# since their pushes don't run here — add a `pull_request:` trigger back if you need fork CI.)
+on:
+  push:
+    branches-ignore: [main]
+
+# One run per branch: a new push cancels the previous, still-running gate for that branch instead of
+# letting runs pile up. Free on public repos, but this keeps the queue (and any future metered
+# minutes) tidy.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Run the (Node 20) first-party actions on Node 24, matching the deploy workflow.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Pin where Playwright installs its browser AND where the gate's Chromium probe / the Playwright
+  # config's executablePath look — one path so install and lookup always agree (mirrors the sandbox's
+  # /opt/pw-browsers). Without this they diverge (~/.cache/ms-playwright) and the e2e step would skip.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # Rust toolchain for the core crate's half of the gate (fmt/clippy/tests), cached across runs.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      # Install Chromium (cached) into PLAYWRIGHT_BROWSERS_PATH so the gate's probe finds it and the
+      # e2e step RUNS in CI (parity) instead of auto-skipping.
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers-path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+      # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
+      - run: npm run check
+      # Keep the Playwright report + traces when the gate fails, so a runner-only e2e failure
+      # (timing/fonts differ from local) is debuggable instead of a one-line error.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore

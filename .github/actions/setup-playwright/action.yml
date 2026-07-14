@@ -1,0 +1,38 @@
+name: Setup Playwright browser
+description: >
+  Install the Chromium the Playwright e2e step needs, cached across runs. Used by both ci.yml and
+  deploy.yml so the browser setup can't drift between them. Requires `npm ci` to have run first
+  (npx resolves @playwright/test from node_modules). The install location comes from the calling
+  workflow's PLAYWRIGHT_BROWSERS_PATH env (which the gate's Chromium probe also reads); pass that
+  same value as `browsers-path` so the cache path matches — a composite action's `env` expression
+  context does NOT inherit workflow-level env, so it must be threaded in explicitly.
+
+inputs:
+  browsers-path:
+    description: Directory to cache/install the browser into. Must equal PLAYWRIGHT_BROWSERS_PATH.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Restore the browser binary from cache. Key on the lockfile: a @playwright/test bump changes it,
+    # invalidating the cache so we never restore a browser mismatched to the installed Playwright.
+    - name: Cache Playwright browser
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.browsers-path }}
+        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+    # Cache miss: download the browser AND apt-install its system libraries.
+    - name: Install Chromium + system deps
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install --with-deps chromium
+
+    # Cache hit: the binary is restored, but system libraries live outside the cached path (in
+    # /usr/lib etc.) and don't persist, so (re)install just those.
+    - name: Install Chromium system deps
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: npx playwright install-deps chromium

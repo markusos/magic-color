@@ -6,33 +6,38 @@ description: Run this project's quality gate — lint, typecheck, and tests. Use
 # Running checks for magic-color
 
 The quality gate covers both sides of the codebase — the TypeScript app and the Rust `core`
-crate. It mirrors what CI (`.github/workflows/deploy.yml`) runs on every push to `main`, so
-passing it locally means CI will pass too.
+crate. The orchestration lives in TypeScript (`scripts/gate.ts`, run via `scripts/check.ts`) so the
+SAME steps run locally and in CI: `.github/workflows/ci.yml` runs `npm run check` on every PR, and
+`.github/workflows/deploy.yml` runs the identical gate before publishing from `main`. Passing it
+locally means CI will pass too.
 
 ## The full gate (one command before committing)
 
 ```bash
-npm run check       # → exe/test — the whole gate, JS + Rust, with per-step progress
+npm run check       # → tsx scripts/check.ts — the whole gate, JS + Rust + e2e, with per-step progress
 ```
 
-`npm run check` runs `exe/test`, which is exactly what CI runs. It streams each step's output
-under a header and prints a pass/fail summary at the end:
+`npm run check` runs the TypeScript orchestrator (`exe/test` is a thin shim that calls the same
+thing). Steps run in three concurrent LANES (output is prefixed `[app]` / `[core]` / `[e2e]`), so
+the wall-clock is ~the slowest lane rather than the sum. A per-step pass/fail summary prints at the
+end. Add `--serial` for one-at-a-time, grouped output when a log is easier to read that way
+(`npm run check -- --serial`).
 
 ```
-eslint — lint app + scripts
-typescript — strict typecheck
-vitest — app, store, live generation + wasm adapter (drives the committed .wasm)
-rustfmt — core crate formatting
-clippy — core crate lints
-cargo test — engine, solver, generator + frozen golden-vector replays
-verify — baked levels: golden winning lines + static invariants   (only when bake output exists)
+app  — eslint → typescript → vitest (+coverage)
+core — rustfmt → clippy → cargo test → verify (verify only when bake output exists)
+e2e  — playwright critical-path smokes (only when a Chromium is installed)
 ```
 
 The gameplay rules live only in the Rust core: `cargo test` covers rule correctness (crate unit
 tests + the frozen golden vectors in `vectors/`), while the vitest suite drives the committed
-`.wasm` for everything rule-shaped and includes the freshness guards. The `verify` step is the one
-thing beyond CI: it self-checks emitted level artifacts and runs only when a bake output directory
-is present (`exe/test bake-out`, produced by `npm run build:levels`). All steps must be clean.
+`.wasm` for everything rule-shaped and includes the freshness guards (it runs with V8 coverage —
+it enforces a LOOSE floor — set well below current coverage, so it fails only on a real regression,
+not ±1% jitter). Two steps are conditional: `verify` self-checks emitted level artifacts
+and runs only when a bake output directory is present (`npm run check -- bake-out`, produced by
+`npm run build:levels`); `playwright` drives the built app in a real browser and runs only when a
+Chromium is installed (CI installs one; locally it skips green if absent). Steps can be dropped by id
+with `npm run check -- --skip=e2e`. All non-skipped steps must be clean.
 `npm run build` also runs `tsc --noEmit` first, so a green typecheck means the build's type step
 will pass.
 
@@ -46,9 +51,11 @@ will pass.
 | Lint one file | `npx eslint src/game/solver.ts` |
 | Typecheck | `npm run typecheck` (or `npx tsc --noEmit`) |
 | All tests once | `npm test` |
+| Tests + coverage report | `npm run test:coverage` |
 | Watch tests while editing | `npm run test:watch` |
 | One test file | `npx vitest run src/game/solver.test.ts` |
 | Tests matching a name | `npx vitest run -t "deadlock"` |
+| E2E smokes (real browser) | `npm run test:e2e` (`npm run test:e2e:ui` to debug) |
 | Rust: format check / auto-format | `npm run core:fmt` / `cargo fmt` |
 | Rust: clippy lint | `npm run core:lint` |
 | Rust: tests | `npm run core:test` (or `cargo test`) |

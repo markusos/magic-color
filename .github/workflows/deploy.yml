@@ -20,6 +20,9 @@ concurrency:
 # and matching the runner default coming mid-2026.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # One path for both installing Playwright's browser and the gate's Chromium probe / config lookup,
+  # so the e2e step in `npm run check` runs here too (same gate as CI — test parity before publish).
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
 
 jobs:
   build:
@@ -36,9 +39,28 @@ jobs:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      # One gate for both sides: JS lint/typecheck/tests + Rust fmt/clippy/tests.
+      # Chromium (cached) for the Playwright step, so the deploy gate runs the e2e smokes too —
+      # we push directly to main often, so main gets the FULL gate before publishing (parity w/ CI).
+      - uses: ./.github/actions/setup-playwright
+        with:
+          browsers-path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+      # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
+      # The e2e step's Playwright webServer runs `npm run build` to serve the app, so this ALSO
+      # produces the production dist/ we publish below — no separate build step needed (it would be
+      # an identical second `npm run build`). e2e always runs here (browser installed above), so
+      # dist/ is always present; if it somehow weren't, upload-pages-artifact fails loudly.
       - run: npm run check
-      - run: npm run build
+      # Keep the Playwright report + traces if the gate fails, so a runner-only e2e failure is
+      # debuggable rather than a one-line error.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
       - uses: actions/configure-pages@v5
         # Turn Pages on (and set the source to Actions) automatically on first run,
         # so no manual Settings → Pages toggle is needed.

@@ -46,3 +46,23 @@ if (typeof globalThis.localStorage === 'undefined') {
     writable: true,
   });
 }
+
+// jsdom implements no media queries, but component tests render framer-motion (which probes
+// prefers-reduced-motion) and the install banner (which probes display-mode). Provide a minimal,
+// always-"no-match" matchMedia so those components mount. (Real browsers are unaffected.)
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
