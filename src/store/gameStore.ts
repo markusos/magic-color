@@ -343,21 +343,28 @@ export const useGameStore = create<GameStore>((set, get) => {
     stopAutoSolve: autoSolver.stop,
   });
 
-  /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
-  const applyLevel = (level: number) => {
+  /**
+   * Install a freshly generated board: end any auto-solve run, display it under a fresh random
+   * palette (`freshBoardState` keeps `initial`/`initial*` in the generator's canonical colors so each
+   * Restart re-rolls the hues — see `restart`), and commit it with the reset session state plus the
+   * caller's `mode`-specific fields. The single skeleton behind `applyLevel`/`applyRandom`/`applyDaily`.
+   */
+  const installBoard = (generated: LoadedLevel, modeFields: Partial<GameStore>) => {
     autoSolver.stop(); // a board change ends any auto-solve run
-    const generated = getLevel(level);
-    // Replaying an earlier level must not lower the unlock frontier.
-    campaign.reach(level);
-    // Display the board under a fresh random palette; `freshBoardState` keeps `initial`/`initialFunnels`
-    // in the generator's canonical colors so each Restart re-rolls the hues (see `restart`).
     const { board, overlays } = recolorBoard(generated.state, {
       hidden: generated.hidden,
       funnels: generated.funnels,
       ice: generated.ice,
     });
-    commit(board, {
-      ...freshBoardState(generated, board, overlays),
+    commit(board, { ...freshBoardState(generated, board, overlays), ...modeFields });
+  };
+
+  /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
+  const applyLevel = (level: number) => {
+    const generated = getLevel(level);
+    // Replaying an earlier level must not lower the unlock frontier.
+    campaign.reach(level);
+    installBoard(generated, {
       mode: 'campaign',
       level,
       ...campaign.recordFor(level),
@@ -367,34 +374,18 @@ export const useGameStore = create<GameStore>((set, get) => {
     });
   };
 
-  /** Generate and commit a fresh random board (endless mode). Mirrors `applyLevel`. */
+  /** Generate and commit a fresh random board (endless mode). */
   const applyRandom = (seed: number) => {
-    autoSolver.stop();
-    const generated = generateRandomLevel(seed);
-    const { board, overlays } = recolorBoard(generated.state, {
-      hidden: generated.hidden,
-      funnels: generated.funnels,
-      ice: generated.ice,
-    });
-    commit(board, {
-      ...freshBoardState(generated, board, overlays),
+    installBoard(generateRandomLevel(seed), {
       mode: 'endless',
       best: null, // random boards have no per-level best/stars
       bestStars: null,
     });
   };
 
-  /** Generate and commit the date-seeded daily board. Mirrors `applyRandom` (no per-level records). */
+  /** Generate and commit the date-seeded daily board (no per-level records). */
   const applyDaily = (key: string) => {
-    autoSolver.stop();
-    const generated = generateDailyLevel(key);
-    const { board, overlays } = recolorBoard(generated.state, {
-      hidden: generated.hidden,
-      funnels: generated.funnels,
-      ice: generated.ice,
-    });
-    commit(board, {
-      ...freshBoardState(generated, board, overlays),
+    installBoard(generateDailyLevel(key), {
       mode: 'daily',
       dailyKey: key,
       best: null, // the daily has no per-level best/stars

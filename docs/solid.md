@@ -160,12 +160,17 @@ hypothesis, not a verdict.
 
 #### M1 — Unify the three board-install paths (DRY)
 
-`applyLevel`, `applyRandom`, and `applyDaily` share one skeleton: `stopAutoSolve()` → generate →
-`recolorBoard(...)` → `commit(freshBoardState(...), { mode-specific fields })`. The differences are
-only the generator call and the mode fields. Collapse into a single
-`installBoard(generated, modeFields)` helper; each caller passes its generator result and the
-`{ mode, best, bestStars, ... }` overrides. Removes ~40 lines of near-identical code and one place
-to forget a field when a new per-board field is added. (Pairs naturally with H1.)
+> **Status: addressed.** Extracted `installBoard(generated, modeFields)` in `gameStore.ts` — the
+> shared `autoSolver.stop()` → `recolorBoard(...)` → `commit(freshBoardState(...), …)` skeleton.
+> `applyLevel`/`applyRandom`/`applyDaily` are now thin callers passing only their generator result
+> and mode fields. Behavior-preserving (all 304 vitest tests pass); ~20 lines removed and one
+> place, not three, to update when a per-board field is added.
+
+`applyLevel`, `applyRandom`, and `applyDaily` shared one skeleton: `autoSolver.stop()` → generate →
+`recolorBoard(...)` → `commit(freshBoardState(...), { mode-specific fields })`. The differences were
+only the generator call and the mode fields. Collapsed into a single `installBoard(generated,
+modeFields)` helper; each caller passes its generator result and the `{ mode, best, bestStars, ... }`
+overrides.
 
 #### M2 — The render path allocates a full wasm round-trip per `GameBoard` render
 
