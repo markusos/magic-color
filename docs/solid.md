@@ -91,32 +91,21 @@ new code.
 > controllers in and delegates its `requestHint` / `autoSolve` / `cancelAutoSolve` actions to them.
 > Behavior-preserving: typecheck, lint, all 304 vitest tests, and the production build pass unchanged.
 
-`src/store/gameStore.ts` is the repo's God-object. It currently owns at least four separately
-motivated concerns:
+`src/store/gameStore.ts` was the repo's God-object, owning four separately motivated concerns:
 
 - **Board lifecycle** — `loadLevel`/`applyLevel`/`applyRandom`/`applyDaily`/`reloadBoard`/`commit`/
   `freshBoardState`, plus the resume-board construction in the initializer.
 - **The tap/undo/restart game loop** — `tapBottle`, `undo`, `restart`.
-- **Hint orchestration** — worker lifecycle (`getHintWorker`), the `hintPending` guard, the
-  spinner-delay timer, the worker-vs-sync fallback, `recordHint`.
-- **The auto-solve state machine** — `autoSolveGen` generation counter, `autoSolveTimer` /
-  `autoSolveNoticeTimer`, per-move wall-clock timeout, `live()` liveness checks, cancellation.
+- **Hint orchestration** — worker lifecycle, the in-flight guard, the spinner-delay timer, the
+  worker-vs-sync fallback, `recordHint`.
+- **The auto-solve state machine** — a generation counter, two timers, a per-move wall-clock
+  timeout, liveness checks, cancellation.
 
-The auto-solve and hint blocks alone are ~230 lines of closure-captured mutable state
-(`hintPending`, `autoSolveGen`, three timer handles). They are only reachable — and only
-testable — *through the store*, which is why they're hard to unit-test in isolation.
-
-**Recommendation.** Extract the two solver-orchestration concerns into their own modules that own
-their worker + timers and expose a small imperative API the store calls:
-
-- `store/solverWorker.ts` — the single `getHintWorker()` + a `solve(request): Promise<HintMove|null>`
-  that encapsulates the worker/sync fallback (used by both hint and auto-solve).
-- `store/autoSolve.ts` — a controller created with `(get, set, solve)` that holds the generation
-  counter and timers and exposes `start()/stop()`.
-
-The store shrinks to progression + persistence + the pour loop (its documented job), and the two
-controllers become independently testable. This is a maintainability/testability win, not a bug
-fix — sequence it as a deliberate refactor with the existing store tests as the safety net.
+The auto-solve and hint blocks alone were ~230 lines of closure-captured mutable state, reachable —
+and testable — only *through* the store. The two solver-orchestration concerns were the extraction
+target; the board lifecycle, pour loop, and persistence are the store's proper job and stayed. The
+status note above records where each extracted piece landed (`solverWorker` / `hint` / `autoSolve`),
+with the existing store tests as the safety net.
 
 #### H2 — Per-node heap allocation in the Rust search core (efficiency) — investigated, not pursued
 
@@ -256,17 +245,28 @@ captured above.
   (see H2). The structures are appropriate as-is; a real speedup would be algorithmic, and there's
   no budget pressure to justify that risk today.
 
-## Suggested sequencing
+## Status & what's left
 
-1. ~~**H1** — extract the hint/auto-solve controllers from `gameStore.ts`.~~ **Done.**
-2. ~~**H2** — the allocation change.~~ **Investigated and rejected on measurement** (see H2).
-3. **M1** — unify the three board-install paths (pairs naturally with the H1 refactor already landed).
-4. **M3 / M4** — mechanical cleanups, do anytime.
-5. **M2 / L\*** — only if profiling or further growth justifies them.
+Everything with real value has been implemented this pass:
+
+- ~~**H1**~~ store decomposition — **done** (`solverWorker` / `hint` / `autoSolve`).
+- ~~**H2**~~ search allocation — **investigated and rejected on measurement** (see H2 for the data).
+- ~~**M1**~~ unify board-install paths — **done** (`installBoard`).
+- ~~**M2**~~ memoize the `viewOf` wasm crossing — **done** (the `useMemo`; the structural split
+  deliberately not built).
+- ~~**M3** phase bucketer~~ — **done** (`difficultyForPercentile`). The **Rust `encode_cells` dedup
+  is deferred** — bundle it with the next substantive `core/` change so the committed wasm/bake
+  rebuild is justified, rather than churning artifacts for a cosmetic edit.
+- ~~**M4**~~ ice-art extraction — **done** (`iceGeometry.ts`).
+
+Remaining (all explicitly "not worth doing on their own today"): the deferred Rust `encode_cells`
+dedup, and **L1 / L2 / L3** — take them up only if the relevant module grows or profiling flags the
+path. Every completed change was validated against the full `npm run check` gate.
 
 ## Scope note
 
 This review covers architecture, SOLID, algorithms, and code quality. It is **not** a security or
-dependency-audit pass. H1 has since been implemented and H2 investigated (both validated against the
-gate and, for H2, a native benchmark); the remaining recommendations are behavior-preserving and
-should be validated through the existing gate (`npm run check`) and the golden vectors.
+dependency-audit pass. H1, M1, M2, M3 (the TS phase-bucketer half), and M4 have since been
+implemented and H2 investigated — all validated against the full `npm run check` gate (and, for H2,
+a native benchmark). The remaining items (the deferred Rust dedup and the L-items) are behavior-
+preserving and should be validated through the gate and the golden vectors when taken up.
