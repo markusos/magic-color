@@ -49,6 +49,17 @@ jobs:
           browsers-path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
       # One gate for both sides: JS lint/typecheck/tests(+coverage) + Rust fmt/clippy/tests + e2e.
       - run: npm run check
+      # Publish the vitest HTML coverage report (coverage/, written by test:coverage) so a run near
+      # the coverage floor is inspectable — which files lost tests — instead of just a threshold
+      # number in the log. Uploaded even on failure (the vitest step still runs the whole app lane);
+      # skipped quietly if the app lane never got to vitest.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
       # Keep the Playwright report + traces when the gate fails, so a runner-only e2e failure
       # (timing/fonts differ from local) is debuggable instead of a one-line error.
       - uses: actions/upload-artifact@v4
