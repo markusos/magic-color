@@ -24,8 +24,12 @@ function chromiumExecutable(): string | undefined {
     .sort((a, b) => Number(a.slice('chromium-'.length)) - Number(b.slice('chromium-'.length)))
     .reverse();
   for (const rev of revs) {
-    const bin = `${root}/${rev}/chrome-linux/chrome`;
-    if (existsSync(bin)) return bin;
+    // Playwright's "Chrome for Testing" builds extract to `chrome-linux64/` on linux-x64; older
+    // revisions and linux-arm64 use `chrome-linux/`. Check both, newest layout first.
+    for (const sub of ['chrome-linux64', 'chrome-linux']) {
+      const bin = `${root}/${rev}/${sub}/chrome`;
+      if (existsSync(bin)) return bin;
+    }
   }
   return undefined;
 }
