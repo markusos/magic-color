@@ -141,3 +141,24 @@ and as-built notes live in the memory notes, the README "Architecture" section, 
     for every debug tool. Provenance loads via an on-demand dynamic import (its own ~67 kB lazy chunk,
     fetched only when an admin opens the inspector) rather than being DCE'd from production; the inspector
     shows full metrics whenever the admin inspector is enabled, in any build.
+- **Track E5–E9 — bake tooling completed via Track F / F5** — **E5** (single-level/chapter bake fast path)
+  shipped as the native bake's `--chapter N` / `--level N` slice flags; **E6** (curve viz) + build-history
+  shipped as the React report app (above); **E7** (solvability/quality gate) became the release gate's
+  native `verify` self-check; **E9** (diagnostics readout) shipped with F5 — Settings admin shows active
+  core + wasm version, last board load, cache sizes, and live budget (`loadDiagnostics()`). Only **E8**
+  (an automated golden-snapshot vitest test) remains open — see [PLAN.md](PLAN.md).
+- **Track F — native + WASM core port** (2026-07-03 → 2026-07-05) — the pure level-generation/evaluation
+  core (engine rules, the three mechanics, solver/search, generator, difficulty scoring, progression, rng)
+  rewritten from TypeScript into **one Rust crate** (`core/`) compiled to two targets: a native arm64 CLI
+  for the offline bake and a `.wasm` worker for the deployed app (hints, auto-solve, stuck-detection, and
+  live generation). Packed-integer state replaced the string-keyed JS hot loop; the full 240-level bake
+  dropped from ~8–10 min to ~2 min (~5×). Landed F0 (scaffolding) → F6 (gameplay rules behind the WASM
+  boundary) plus the F′ SOLID cleanup. **The Rust bake reproduced the committed JS bake byte-identically**
+  (all 240 boards + overlays + star data), so cutover was a player no-op — no board churn, no daily change.
+  The JS solver/search/generator/difficulty/engine were **deleted entirely** at F5/F6 (not kept as oracles);
+  the rules now live in exactly ONE place, so the dual-implementation drift hazard is gone structurally and
+  the cross-language drift gate retired. `build:levels` shells the native bake (`scripts/levels.ts` →
+  `bake --out bake-out` → `emit-baked-from-rust.ts`); the release gate (`scripts/gate.ts` / `npm run check`)
+  runs G1 vector conformance + G3/G4 native `verify` self-check + G5 artifact freshness. Committed `.wasm`
+  and `levels.data.ts` are both stamped with the crate-source hash (`levelVersion` delegates to
+  `coreVersion`). See the Track F memory notes + git history for phase-by-phase as-built detail.

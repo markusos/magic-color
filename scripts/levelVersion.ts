@@ -6,8 +6,8 @@
  * longer matches — i.e. someone changed the generator/curve/selection (in `core/`) without
  * re-running `npm run build:levels`. Cheap (a hash, no search), so it's safe in CI.
  *
- * The pre-F5 version hashed the JS bake sources; those are test-only oracles now and no
- * longer determine the committed boards.
+ * The pre-F5 version hashed the JS bake sources; those were deleted with the JS core at
+ * F5/F6, so the crate hash is the single source of truth for the committed boards.
  */
 import { currentCoreVersion } from './coreVersion';
 
