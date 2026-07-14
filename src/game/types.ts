@@ -58,6 +58,17 @@ export interface Move {
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
 /**
+ * Bucket a curve percentile (0..1) into its difficulty label — the shared thirds split behind both
+ * the campaign's `phaseForLevel` and the load path's `phaseForTarget`. Pure and bake-irrelevant, so
+ * it lives here with the domain types rather than being copied into either module.
+ */
+export function difficultyForPercentile(p: number): Difficulty {
+  if (p < 1 / 3) return 'easy';
+  if (p < 2 / 3) return 'normal';
+  return 'hard';
+}
+
+/**
  * Optional board mechanics layered on by later chapters (cumulative). Empty in chapter 0
  * (the base game); `hidden` (covered segments) is chapter 1; `funnel` (color-locked tubes) is
  * chapter 2; `ice` (frozen tubes that thaw when a trigger color is capped) is chapter 3.

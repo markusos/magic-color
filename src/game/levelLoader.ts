@@ -28,7 +28,7 @@ import {
   targetPercentile,
 } from './progression';
 import type { LiveProvenance } from './provenance';
-import { type Difficulty, type GameState, toColors } from './types';
+import { difficultyForPercentile, type GameState, toColors } from './types';
 
 /**
  * A loaded board. For LIVE boards (random/endless, daily, un-baked tail) it carries the difficulty
@@ -217,17 +217,6 @@ const RANDOM_SHAPES = SHAPES.filter(
 const RANDOM_TARGET_MIN = 0.45;
 const RANDOM_TARGET_MAX = 0.95;
 
-/**
- * The difficulty bucket for a raw curve percentile (0..1). Mirrors `phaseForLevel`'s thirds, but
- * lives here (the load path) rather than `progression.ts` so deriving a random board's phase doesn't
- * touch the bake-hashed config and force a campaign re-bake.
- */
-function phaseForTarget(p: number): Difficulty {
-  if (p < 1 / 3) return 'easy';
-  if (p < 2 / 3) return 'normal';
-  return 'hard';
-}
-
 /** A deterministic fraction in [0, 1) from `seed`, decorrelated per `stream` so independent draws don't track each other. */
 function seedFraction(seed: number, stream: number): number {
   let h = (seed ^ Math.imul(stream, 0x9e3779b1)) >>> 0;
@@ -259,7 +248,7 @@ export function generateRandomLevel(seed: number): LoadedLevel {
   const plan: LevelPlan = {
     level: 0, // sentinel — random boards are not campaign levels
     chapter: chapterForLevel(CHAPTER_LEN * 1_000_000),
-    phase: phaseForTarget(target),
+    phase: difficultyForPercentile(target),
     colors: shape.colors,
     bottles: shape.bottles,
     capacity: shape.capacity,
@@ -310,7 +299,7 @@ export function generateDailyLevel(key: string): LoadedLevel {
   const plan: LevelPlan = {
     level: 0, // sentinel — the daily is not a campaign level
     chapter: chapterForLevel(CAMPAIGN_LENGTH),
-    phase: phaseForTarget(target),
+    phase: difficultyForPercentile(target),
     colors: shape.colors,
     bottles: shape.bottles,
     capacity: shape.capacity,

@@ -18,7 +18,7 @@ import { DEFAULT_CAPACITY } from './palette';
 import type { FunnelGrid } from './funnels';
 import type { HiddenGrid } from './hidden';
 import type { IceGrid } from './ice';
-import type { Difficulty, GeneratedLevel, Mechanic, ParMode } from './types';
+import { difficultyForPercentile, type Difficulty, type GeneratedLevel, type Mechanic, type ParMode } from './types';
 
 /** A board footprint the bake draws candidates from. `family` groups shapes for variety rotation. */
 export interface Shape {
@@ -214,10 +214,7 @@ export function targetPercentile(level: number): number {
  * from tube count (v2). A pure function of the level, so the bake and the live path agree.
  */
 export function phaseForLevel(level: number): Difficulty {
-  const p = targetPercentile(level);
-  if (p < 1 / 3) return 'easy';
-  if (p < 2 / 3) return 'normal';
-  return 'hard';
+  return difficultyForPercentile(targetPercentile(level));
 }
 
 /** The recipe for generating a level LIVE: a footprint plus chapter/phase, seed, and par knobs. */

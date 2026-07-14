@@ -192,23 +192,25 @@ Measure before investing beyond the `useMemo`.
 
 #### M3 — Small logic duplications worth consolidating
 
-- **Phase bucketing.** `phaseForTarget` (levelLoader.ts:225) literally re-implements the
-  `< 1/3 → easy, < 2/3 → normal` split from `phaseForLevel` (progression.ts:216). The duplication
-  is *deliberate* (to keep the load path out of the bake hash), but the pure bucketer
-  `(p: number) => Difficulty` is itself bake-irrelevant. Extract it to a tiny shared,
-  non-hashed module and have both call it — you keep the bake-hash boundary and delete the copy.
-- **Rust cell encoding.** `generate_live` (wasm.rs:444) re-inlines the exact body of `encode_cells`
-  (wasm.rs:342). Call the helper. (There's a third "board → flat cells" in `State::to_board`; the
-  wasm boundary layout and the `Board` layout differ enough that unifying all three isn't worth it,
-  but the two in `wasm.rs` are identical.)
+- **Phase bucketing — addressed.** The pure thirds bucketer now lives once as
+  `difficultyForPercentile(p): Difficulty` in `types.ts` (bake-irrelevant, alongside the `Difficulty`
+  type); `phaseForLevel` (progression) and the load path's random/daily phase both call it, and the
+  duplicated `phaseForTarget` is gone.
+- **Rust cell encoding — deferred (deliberately).** `generate_live` (wasm.rs) re-inlines the body of
+  `encode_cells`. It's a genuine ~6-line dedup, but any edit under `core/` trips the shared
+  crate-source hash and forces rebuilding the committed 119 KB `.wasm` **and** a re-bake — and a wasm
+  rebuild in an ad-hoc environment can differ from the maintainer's toolchain byte-for-byte. That
+  artifact churn is out of proportion to a cosmetic dedup, so it should ride along with the *next*
+  substantive `core/` change (e.g. a real algorithmic improvement), not land on its own.
 
 #### M4 — Move the ice-art data out of `Bottle.tsx`
 
-`Bottle.tsx` is 404 lines, but ~100 of them are static SVG geometry tables (`ICE_FACETS`,
-`ICE_CRACKS`, `ICE_BUBBLES`, `ICE_CROWN`, …) with long authoring comments. That's asset data, not
-component logic. Lift it into `components/Bottle/iceGeometry.ts` (data + the `coverScaleX` helper).
-The component drops to a readable ~300 lines and the "how the crystal is authored" commentary lives
-next to the data it documents. Pure SRP/readability; no behavior change.
+> **Status: addressed.** The five static SVG geometry tables (`ICE_FACETS`, `ICE_CRACKS`,
+> `ICE_BUBBLES`, `ICE_CROWN`, `ICE_CROWN_CRACKS`) and their authoring comments moved to
+> `components/Bottle/iceGeometry.ts`; `Bottle.tsx` imports them and dropped 404 → 332 lines. No
+> behavior change (all 304 tests + the production build pass). `coverScaleX`/`TILT_DEG` stayed in the
+> component — `TILT_DEG` is also the tilt spring's target, so it belongs with the component logic
+> rather than the art data.
 
 ### LOW
 
