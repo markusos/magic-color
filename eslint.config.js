@@ -30,6 +30,11 @@ export default tseslint.config(
       // wasm-pack build output (Track F core); generated JS/dts, nothing to lint.
       'core/pkg',
       'src/game/core-pkg',
+      // Rust build output (workspace `target/`). Nothing to lint, and — critically — the gate runs
+      // the app (eslint) and core (cargo) lanes concurrently, so cargo churns `target/debug/deps`
+      // with transient `.rmeta` temp files while `eslint .` walks the tree. Without this ignore that
+      // race makes ESLint's directory scan hit a just-deleted file and crash (ENOENT).
+      'target',
     ],
   },
   {
