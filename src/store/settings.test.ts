@@ -27,6 +27,20 @@ describe('settings store', () => {
     expect(useSettings.getState().patterns).toBe(false);
   });
 
+  it('retires the patterns nudge when dismissed, and when the setting is toggled', () => {
+    // The store is a singleton shared across tests, so start from a known "not yet nudged" state.
+    useSettings.setState({ patternsNudged: false });
+    useSettings.getState().dismissPatternsNudge();
+    expect(useSettings.getState().patternsNudged).toBe(true);
+    expect(persisted()?.patternsNudged).toBe(true);
+
+    // Toggling the setting also retires the nudge (the player has discovered it).
+    useSettings.setState({ patternsNudged: false });
+    useSettings.getState().togglePatterns();
+    expect(useSettings.getState().patternsNudged).toBe(true);
+    useSettings.getState().togglePatterns(); // restore patterns off
+  });
+
   it('records seen chapter intros idempotently and round-trips them', () => {
     const start = useSettings.getState().seenChapters.length;
     useSettings.getState().markChapterSeen(1);
@@ -46,6 +60,7 @@ describe('settings store', () => {
       'inspector',
       'musicVolume',
       'patterns',
+      'patternsNudged',
       'seenChapters',
       'soundVolume',
     ]);

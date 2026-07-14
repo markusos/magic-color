@@ -1,0 +1,77 @@
+/* Calm, dismissible discovery card for the Color Patterns aid. Sits with the Home actions; a quiet
+   panel, not an alarm. */
+.nudge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: min(320px, 100%);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  text-align: left;
+}
+
+.icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.body {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.25;
+}
+
+/* Compact gold action. */
+.enable {
+  flex: none;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2a1a4a;
+  background: var(--accent);
+  border-color: var(--accent-strong);
+  border-radius: var(--radius-sm);
+}
+
+.enable:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-strong-hover);
+}
+
+.close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+}
+
+.close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}

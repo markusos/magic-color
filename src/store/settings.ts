@@ -28,6 +28,11 @@ interface Persisted {
   haptics: boolean;
   /** Colorblind aid: fill each color with a distinct texture/pattern. Off by default. */
   patterns: boolean;
+  /**
+   * Whether the one-time "try Color Patterns" nudge has been retired (U6) — set once the player has
+   * either acted on it or toggled the patterns setting at all, so the hint never nags again.
+   */
+  patternsNudged: boolean;
   /** Debug (Track E1): overlay the active board's difficulty metrics. Hidden behind the admin hatch, off by default. */
   inspector: boolean;
   /**
@@ -47,6 +52,7 @@ function defaults(): Persisted {
     musicVolume: 0,
     haptics: true,
     patterns: false,
+    patternsNudged: false,
     inspector: false,
     seenChapters: [],
   };
@@ -75,6 +81,8 @@ function load(): Persisted {
       musicVolume: readVolume(p.musicVolume, p.music, 0.6, 0),
       haptics: typeof p.haptics === 'boolean' ? p.haptics : true,
       patterns: typeof p.patterns === 'boolean' ? p.patterns : false,
+      // Additive field — older saves lack it and default to "not yet nudged".
+      patternsNudged: typeof p.patternsNudged === 'boolean' ? p.patternsNudged : false,
       inspector: typeof p.inspector === 'boolean' ? p.inspector : false,
       // Additive field — older saves lack it and default to "nothing seen yet". Keep only finite
       // integers so a corrupt blob can't poison the set.
@@ -114,6 +122,8 @@ interface SettingsStore extends Persisted {
   setMusicVolume: (v: number) => void;
   toggleHaptics: () => void;
   togglePatterns: () => void;
+  /** Retire the one-time "try Color Patterns" nudge without changing the setting. */
+  dismissPatternsNudge: () => void;
   /** Record that the player has dismissed a chapter's mechanic-intro card (idempotent). */
   markChapterSeen: (chapter: number) => void;
   toggleInspector: () => void;
@@ -129,6 +139,7 @@ const persistedOf = (s: SettingsStore): Persisted => ({
   musicVolume: s.musicVolume,
   haptics: s.haptics,
   patterns: s.patterns,
+  patternsNudged: s.patternsNudged,
   inspector: s.inspector,
   seenChapters: s.seenChapters,
 });
@@ -168,8 +179,14 @@ export const useSettings = create<SettingsStore>((set, get) => {
     },
     togglePatterns: () => {
       // Purely a render-layer flag (read by LiquidSegment/Bottle) — no audio module to notify.
+      // Touching the setting at all also retires the discovery nudge (the player has found it).
       const patterns = !get().patterns;
-      set({ patterns });
+      set({ patterns, patternsNudged: true });
+      save(persistedOf(get()));
+    },
+    dismissPatternsNudge: () => {
+      if (get().patternsNudged) return; // idempotent — no needless write
+      set({ patternsNudged: true });
       save(persistedOf(get()));
     },
     markChapterSeen: (chapter) => {
