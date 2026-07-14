@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cssColor, patternFor } from '../../theme/colors';
 import styles from './LiquidSegment.module.css';
 
@@ -31,6 +32,18 @@ export function LiquidSegment({ color, isBottom, isTop, hidden, patterns, fillDe
   const spring = { type: 'spring', stiffness: 500, damping: 32 } as const;
   // Colorblind aid: a per-color texture overlay (only when enabled and the band isn't concealed).
   const pattern = patterns && !hidden ? patternFor(color) : '';
+
+  // Reveal (U5): when a cell goes from concealed to revealed (a pour exposed it), briefly lay the
+  // frosted cover back over the now-visible color and fade it out, so the color melts into view
+  // rather than snapping. Reduced-motion users get the instant swap.
+  const reduceMotion = useReducedMotion();
+  const prevHidden = useRef(hidden);
+  const [revealing, setRevealing] = useState(false);
+  useEffect(() => {
+    if (prevHidden.current && !hidden && !reduceMotion) setRevealing(true);
+    prevHidden.current = hidden;
+  }, [hidden, reduceMotion]);
+
   return (
     <motion.div
       initial={{ scaleY: 0, opacity: 0 }}
@@ -49,6 +62,16 @@ export function LiquidSegment({ color, isBottom, isTop, hidden, patterns, fillDe
       style={hidden ? undefined : { backgroundColor: cssColor(color) }}
     >
       {pattern && <div className="cb-pattern" data-cb={pattern} aria-hidden />}
+      {revealing && (
+        <motion.div
+          className={styles.revealCover}
+          aria-hidden
+          initial={{ opacity: 1 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.45, ease: 'easeOut' }}
+          onAnimationComplete={() => setRevealing(false)}
+        />
+      )}
     </motion.div>
   );
 }

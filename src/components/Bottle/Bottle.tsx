@@ -174,22 +174,25 @@ export function Bottle({
           {/* Concealed "?" marks live here, in the tube's frame (not the counter-rotated liquid), so
             they stay centred on the tube's axis and tilt with it. Drawing them inside the liquid
             instead pins them to the liquid's vertical centre-line, which drifts off-axis as the
-            tube tilts. Positioned by band index from the bottom. */}
-          {segments.some((_, i) => hidden?.[i]) && (
-            <div className={styles.marks} aria-hidden>
+            tube tilts. Positioned by band index from the bottom. Wrapped in AnimatePresence (with
+            `initial={false}` so they don't fade IN on a fresh board) so that when a cell reveals, its
+            "?" fades out in step with the segment's frosted cover (U5). */}
+          <div className={styles.marks} aria-hidden>
+            <AnimatePresence initial={false}>
               {segments.map((_, i) =>
                 hidden?.[i] ? (
-                  <span
+                  <motion.span
                     key={i}
                     className={styles.mark}
                     style={{ bottom: `calc(${i} * var(--segment-height))` }}
+                    exit={{ opacity: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
                   >
                     ?
-                  </span>
+                  </motion.span>
                 ) : null,
               )}
-            </div>
-          )}
+            </AnimatePresence>
+          </div>
 
           {/* Funnel collar: a tinted band at the tube neck marking the only color this tube accepts,
             capped by a crisp "lock line" at its base. Lives in the glass (clipped to the rim) and so
