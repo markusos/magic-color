@@ -41,7 +41,6 @@ import { cueForTap, deriveStatus, type GameStatus, planTap } from './session';
 import type { Difficulty, GameState, Mechanic, Move } from '../game/types';
 import { createCampaign } from './campaign';
 import { useSettings } from './settings';
-import { clearInstallDismissal } from '../install/installState';
 import type { CampaignStats } from './progressStats';
 import { deferAfterPaint } from './deferAfterPaint';
 import { feedback } from '../audio/feedback';
@@ -595,12 +594,18 @@ export const useGameStore = create<GameStore>((set, get) => {
     playDaily,
     reloadBoard,
     startOver: () => {
-      // A full reset to a brand-new state: wipe campaign progress AND every leftover trace of the
-      // prior play-through — the dismissed chapter intros / patterns nudge, and any install-banner
-      // dismissal — so the app re-teaches and re-nudges from scratch, exactly like a fresh install.
-      campaign.reset();
-      useSettings.getState().clearOnboarding();
-      clearInstallDismissal();
+      // Clean slate: wipe ALL persisted site state in one shot — every `magic-color:*` key (campaign
+      // progress, settings, the "already seen" intros/nudge, the install-banner dismissal) plus any
+      // other stray key — then reset every in-memory store to its factory defaults so the app is
+      // indistinguishable from a first-ever launch. loadLevel(1) below re-persists a fresh default
+      // progress blob as play resumes; nothing from the prior run survives.
+      try {
+        localStorage.clear();
+      } catch {
+        // Storage unavailable (private mode) — nothing was persisted, so there's nothing to wipe.
+      }
+      campaign.reset(); // reload the (now-empty) progress → defaults
+      useSettings.getState().resetAll(); // reset the settings store's in-memory state → defaults
       loadLevel(1);
     },
     campaignStats: () => campaign.stats(),

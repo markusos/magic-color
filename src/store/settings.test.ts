@@ -51,26 +51,28 @@ describe('settings store', () => {
     expect(useSettings.getState().seenChapters.length).toBe(start + 2);
   });
 
-  it('clearOnboarding forgets seen intros and the patterns nudge, keeping preferences', () => {
+  it('resetAll factory-resets every setting to its default (a clean-slate Start Over)', () => {
+    // Dirty a spread of state: both preferences and onboarding flags.
+    useSettings.getState().setSoundVolume(0.3);
+    useSettings.getState().setMusicVolume(0.5);
+    useSettings.setState({ patterns: true, inspector: true, revealHidden: true, freePour: true });
     useSettings.getState().markChapterSeen(1);
     useSettings.getState().markChapterSeen(2);
     useSettings.getState().dismissPatternsNudge();
-    useSettings.setState({ soundVolume: 0.3, patterns: true });
-    expect(useSettings.getState().seenChapters.length).toBeGreaterThan(0);
-    expect(useSettings.getState().patternsNudged).toBe(true);
 
-    useSettings.getState().clearOnboarding();
+    useSettings.getState().resetAll();
 
-    // Onboarding flags reset...
-    expect(useSettings.getState().seenChapters).toEqual([]);
-    expect(useSettings.getState().patternsNudged).toBe(false);
-    expect(persisted()?.seenChapters).toEqual([]);
-    expect(persisted()?.patternsNudged).toBe(false);
-    // ...but real preferences are left alone.
-    expect(useSettings.getState().soundVolume).toBeCloseTo(0.3);
-    expect(useSettings.getState().patterns).toBe(true);
-
-    useSettings.setState({ soundVolume: 0.8, patterns: false }); // restore defaults for other tests
+    const s = useSettings.getState();
+    expect(s.soundVolume).toBeCloseTo(0.8);
+    expect(s.musicVolume).toBe(0);
+    expect(s.haptics).toBe(true);
+    expect(s.patterns).toBe(false);
+    expect(s.patternsNudged).toBe(false);
+    expect(s.seenChapters).toEqual([]);
+    expect(s.inspector).toBe(false);
+    // Ephemeral debug cheats are dropped too, so none linger.
+    expect(s.revealHidden).toBe(false);
+    expect(s.freePour).toBe(false);
   });
 
   it('sets music volume and round-trips it to localStorage (only the persisted keys)', () => {

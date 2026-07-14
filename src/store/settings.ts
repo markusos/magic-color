@@ -37,8 +37,8 @@ interface Persisted {
   inspector: boolean;
   /**
    * Chapter indices whose one-time mechanic-intro card the player has dismissed (U1). "Start Over"
-   * clears this (via {@link SettingsStore.clearOnboarding}) so a full reset re-teaches every
-   * mechanic from scratch, just like a fresh install.
+   * clears this (via {@link SettingsStore.resetAll}, alongside a full storage wipe) so a reset
+   * re-teaches every mechanic from scratch, just like a fresh install.
    */
   seenChapters: number[];
 }
@@ -127,12 +127,13 @@ interface SettingsStore extends Persisted {
   /** Record that the player has dismissed a chapter's mechanic-intro card (idempotent). */
   markChapterSeen: (chapter: number) => void;
   /**
-   * Forget every "already seen" onboarding flag — the dismissed chapter intros and the retired
-   * Color Patterns nudge — so a "Start Over" re-teaches the mechanics from scratch. Deliberately
-   * leaves the player's actual preferences (volumes, haptics, patterns, inspector) untouched: those
-   * are choices, not progress.
+   * Factory-reset every setting to its default — the in-memory half of "Start Over"'s clean-slate
+   * wipe (the storage half is a full `localStorage.clear()` in the caller). Re-syncs the feedback
+   * modules to the default volumes/haptics and drops the ephemeral debug cheats so nothing lingers.
+   * Does NOT persist: storage has just been cleared, and these defaults are exactly what a fresh
+   * load would produce, so the site is left indistinguishable from a first-ever launch.
    */
-  clearOnboarding: () => void;
+  resetAll: () => void;
   toggleInspector: () => void;
   /** Expand/collapse the inspector overlay without disabling it (the ⓘ button + the panel's ✕). */
   toggleInspectorOpen: () => void;
@@ -201,9 +202,15 @@ export const useSettings = create<SettingsStore>((set, get) => {
       set({ seenChapters: [...get().seenChapters, chapter] });
       save(persistedOf(get()));
     },
-    clearOnboarding: () => {
-      set({ seenChapters: [], patternsNudged: false });
-      save(persistedOf(get()));
+    resetAll: () => {
+      const d = defaults();
+      // Push the defaults into the feedback modules (they self-gate on these) before flipping state.
+      setSoundVolume(d.soundVolume);
+      setHapticsEnabled(d.haptics);
+      setMusicVolume(d.musicVolume);
+      // Reset persisted fields to defaults and clear the ephemeral debug cheats. No save() — the
+      // caller has just wiped storage, and an absent key already loads as these defaults.
+      set({ ...d, inspectorOpen: false, revealHidden: false, freePour: false });
     },
     toggleInspector: () => {
       // Debug inspector enable flag (read by the ⓘ button). Toggling it always leaves the popover
