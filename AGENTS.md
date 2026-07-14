@@ -12,8 +12,9 @@ matching `npm run` alias that invokes the exact same module, so use whichever yo
 | Do this | Command | Notes |
 | --- | --- | --- |
 | Run the quality gate | `exe/test` (or `npm run check`) | The full gate — **run before every commit.** |
-| Start the dev server | `exe/run` (or `npm run dev`) | Vite + hot reload at http://localhost:5173. Args pass through (`exe/run --port 3000`). |
-| Auto-rebuild wasm on core edits | `npm run dev:core` | Watches `core/src`, re-runs `core:wasm` on each `.rs` save. Run alongside `npm run dev` when editing rules. |
+| Start the dev server | `exe/run` (or `npm run dev`) | Vite + hot reload at http://localhost:5173. Frontend-only — no Rust toolchain needed. Args pass through (`exe/run --port 3000`). |
+| Dev server **+** wasm watcher | `exe/dev` (or `npm run dev:all`) | Vite AND auto-rebuild of the wasm on every `core/src` edit, under one command (Ctrl-C stops both). Use when editing rules + app together; needs cargo + wasm-pack. Args pass to Vite. |
+| Wasm watcher only | `npm run dev:core` | Just the watcher (no server): re-runs `core:wasm` on each `.rs` save. Pair with a separate `npm run dev` if you prefer split terminals. |
 | Re-bake the levels | `exe/levels` (or `npm run build:levels`) | Deterministic native bake → `levels.data.ts`. Slow (minutes) + all-cores. |
 | Production build | `npm run build` | `tsc --noEmit && vite build` → `dist/`. |
 
@@ -64,7 +65,7 @@ src/            React app (components/, store/, game/, theme/, audio/)  — game
 core/           Rust crate: the rules (engine, solver, generator, difficulty, mechanics) + the bake binary
 e2e/            Playwright browser smokes
 scripts/        gate.ts (quality gate), run.ts (dev), levels.ts (bake), + bake-pipeline glue
-exe/            thin launchers: test → scripts/check.ts, run → scripts/run.ts, levels → scripts/levels.ts
+exe/            thin launchers: test → check.ts, run → run.ts, dev → dev-all.ts (server+wasm watch), levels → levels.ts
 ```
 
 ## Commits & PRs

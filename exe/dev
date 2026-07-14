@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Full dev loop: the Vite dev server + the wasm watcher (rebuild the core wasm on core/src edits)
+# under one command, for when you're editing the Rust core and the app together. The logic lives in
+# TypeScript (scripts/dev-all.ts) so `exe/dev` and `npm run dev:all` share one entry point — just
+# like `exe/run` / `npm run dev`.
+#
+# Unlike `exe/run` (plain Vite, no toolchain needed), this rebuilds wasm, so it needs cargo +
+# wasm-pack; this shim ensures cargo is on PATH, then hands off. Extra args pass through to Vite.
+#
+# Usage: exe/dev [vite args]     e.g. exe/dev --port 3000
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export PATH="$HOME/.cargo/bin:$PATH"
+exec npx tsx scripts/dev-all.ts "$@"
