@@ -51,6 +51,30 @@ describe('settings store', () => {
     expect(useSettings.getState().seenChapters.length).toBe(start + 2);
   });
 
+  it('resetAll factory-resets every setting to its default (a clean-slate Start Over)', () => {
+    // Dirty a spread of state: both preferences and onboarding flags.
+    useSettings.getState().setSoundVolume(0.3);
+    useSettings.getState().setMusicVolume(0.5);
+    useSettings.setState({ patterns: true, inspector: true, revealHidden: true, freePour: true });
+    useSettings.getState().markChapterSeen(1);
+    useSettings.getState().markChapterSeen(2);
+    useSettings.getState().dismissPatternsNudge();
+
+    useSettings.getState().resetAll();
+
+    const s = useSettings.getState();
+    expect(s.soundVolume).toBeCloseTo(0.8);
+    expect(s.musicVolume).toBe(0);
+    expect(s.haptics).toBe(true);
+    expect(s.patterns).toBe(false);
+    expect(s.patternsNudged).toBe(false);
+    expect(s.seenChapters).toEqual([]);
+    expect(s.inspector).toBe(false);
+    // Ephemeral debug cheats are dropped too, so none linger.
+    expect(s.revealHidden).toBe(false);
+    expect(s.freePour).toBe(false);
+  });
+
   it('sets music volume and round-trips it to localStorage (only the persisted keys)', () => {
     useSettings.getState().setMusicVolume(0.4);
     expect(useSettings.getState().musicVolume).toBeCloseTo(0.4);

@@ -111,6 +111,42 @@ describe('progression', () => {
     store().startOver();
     expect(store().level).toBe(1);
   });
+
+  it('startOver is a clean-slate reset — wipes ALL storage and resets every in-memory store', () => {
+    // Seed a thoroughly played-through, customized state across every storage key.
+    store().loadLevel(5);
+    useSettings.getState().markChapterSeen(1);
+    useSettings.getState().dismissPatternsNudge();
+    useSettings.getState().setSoundVolume(0.2);
+    useSettings.getState().setMusicVolume(0.5);
+    localStorage.setItem('magic-color:install-dismissed:v1', '5');
+    localStorage.setItem('some-other-key', 'x'); // even a non-namespaced key is wiped
+    expect(useSettings.getState().seenChapters).toContain(1);
+
+    store().startOver();
+
+    // Back at the very beginning...
+    expect(store().level).toBe(1);
+    expect(store().furthest).toBe(1);
+    // ...with only a fresh default progress blob left in storage (re-persisted as level 1 loads);
+    // every other key — settings, install dismissal, the stray key — is gone.
+    expect(localStorage.getItem('magic-color:settings:v1')).toBeNull();
+    expect(localStorage.getItem('magic-color:install-dismissed:v1')).toBeNull();
+    expect(localStorage.getItem('some-other-key')).toBeNull();
+    const progress = JSON.parse(localStorage.getItem('magic-color:v1') ?? '{}') as {
+      current: number;
+      best: Record<number, number>;
+    };
+    expect(progress.current).toBe(1);
+    expect(progress.best).toEqual({});
+    // ...and every in-memory setting is back to its factory default, preferences included.
+    const s = useSettings.getState();
+    expect(s.seenChapters).toEqual([]);
+    expect(s.patternsNudged).toBe(false);
+    expect(s.soundVolume).toBeCloseTo(0.8);
+    expect(s.musicVolume).toBe(0);
+    expect(s.patterns).toBe(false);
+  });
 });
 
 describe('illegal-tap shake signal (U7)', () => {

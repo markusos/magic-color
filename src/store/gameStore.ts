@@ -594,7 +594,18 @@ export const useGameStore = create<GameStore>((set, get) => {
     playDaily,
     reloadBoard,
     startOver: () => {
-      campaign.reset();
+      // Clean slate: wipe ALL persisted site state in one shot — every `magic-color:*` key (campaign
+      // progress, settings, the "already seen" intros/nudge, the install-banner dismissal) plus any
+      // other stray key — then reset every in-memory store to its factory defaults so the app is
+      // indistinguishable from a first-ever launch. loadLevel(1) below re-persists a fresh default
+      // progress blob as play resumes; nothing from the prior run survives.
+      try {
+        localStorage.clear();
+      } catch {
+        // Storage unavailable (private mode) — nothing was persisted, so there's nothing to wipe.
+      }
+      campaign.reset(); // reload the (now-empty) progress → defaults
+      useSettings.getState().resetAll(); // reset the settings store's in-memory state → defaults
       loadLevel(1);
     },
     campaignStats: () => campaign.stats(),
