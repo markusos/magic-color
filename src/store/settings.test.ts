@@ -27,6 +27,16 @@ describe('settings store', () => {
     expect(useSettings.getState().patterns).toBe(false);
   });
 
+  it('records seen chapter intros idempotently and round-trips them', () => {
+    const start = useSettings.getState().seenChapters.length;
+    useSettings.getState().markChapterSeen(1);
+    useSettings.getState().markChapterSeen(1); // idempotent — no duplicate
+    expect(useSettings.getState().seenChapters.filter((c) => c === 1)).toEqual([1]);
+    expect(persisted()?.seenChapters).toContain(1);
+    useSettings.getState().markChapterSeen(2);
+    expect(useSettings.getState().seenChapters.length).toBe(start + 2);
+  });
+
   it('sets music volume and round-trips it to localStorage (only the persisted keys)', () => {
     useSettings.getState().setMusicVolume(0.4);
     expect(useSettings.getState().musicVolume).toBeCloseTo(0.4);
@@ -36,6 +46,7 @@ describe('settings store', () => {
       'inspector',
       'musicVolume',
       'patterns',
+      'seenChapters',
       'soundVolume',
     ]);
     useSettings.getState().setMusicVolume(0); // restore default

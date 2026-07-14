@@ -30,13 +30,26 @@ interface Persisted {
   patterns: boolean;
   /** Debug (Track E1): overlay the active board's difficulty metrics. Hidden behind the admin hatch, off by default. */
   inspector: boolean;
+  /**
+   * Chapter indices whose one-time mechanic-intro card the player has dismissed (U1). Kept here,
+   * separate from campaign `progress`, so "Start Over" replays the campaign without re-teaching
+   * mechanics the player already knows.
+   */
+  seenChapters: number[];
 }
 
 // Track F5 note: the F3/F4 `wasmCore` A/B flag was removed with the JS core it toggled — the
 // Rust core is the only solver/generator now (a stale persisted key is simply ignored).
 
 function defaults(): Persisted {
-  return { soundVolume: DEFAULT_SOUND, musicVolume: 0, haptics: true, patterns: false, inspector: false };
+  return {
+    soundVolume: DEFAULT_SOUND,
+    musicVolume: 0,
+    haptics: true,
+    patterns: false,
+    inspector: false,
+    seenChapters: [],
+  };
 }
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
@@ -63,6 +76,11 @@ function load(): Persisted {
       haptics: typeof p.haptics === 'boolean' ? p.haptics : true,
       patterns: typeof p.patterns === 'boolean' ? p.patterns : false,
       inspector: typeof p.inspector === 'boolean' ? p.inspector : false,
+      // Additive field — older saves lack it and default to "nothing seen yet". Keep only finite
+      // integers so a corrupt blob can't poison the set.
+      seenChapters: Array.isArray(p.seenChapters)
+        ? p.seenChapters.filter((n): n is number => typeof n === 'number' && Number.isInteger(n))
+        : [],
     };
   } catch {
     return defaults();
@@ -96,6 +114,8 @@ interface SettingsStore extends Persisted {
   setMusicVolume: (v: number) => void;
   toggleHaptics: () => void;
   togglePatterns: () => void;
+  /** Record that the player has dismissed a chapter's mechanic-intro card (idempotent). */
+  markChapterSeen: (chapter: number) => void;
   toggleInspector: () => void;
   /** Expand/collapse the inspector overlay without disabling it (the ⓘ button + the panel's ✕). */
   toggleInspectorOpen: () => void;
@@ -110,6 +130,7 @@ const persistedOf = (s: SettingsStore): Persisted => ({
   haptics: s.haptics,
   patterns: s.patterns,
   inspector: s.inspector,
+  seenChapters: s.seenChapters,
 });
 
 export const useSettings = create<SettingsStore>((set, get) => {
@@ -149,6 +170,11 @@ export const useSettings = create<SettingsStore>((set, get) => {
       // Purely a render-layer flag (read by LiquidSegment/Bottle) — no audio module to notify.
       const patterns = !get().patterns;
       set({ patterns });
+      save(persistedOf(get()));
+    },
+    markChapterSeen: (chapter) => {
+      if (get().seenChapters.includes(chapter)) return; // idempotent — no needless write
+      set({ seenChapters: [...get().seenChapters, chapter] });
       save(persistedOf(get()));
     },
     toggleInspector: () => {

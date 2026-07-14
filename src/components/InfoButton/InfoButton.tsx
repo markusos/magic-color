@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info } from 'lucide-react';
+import { useGameStore } from '../../store/gameStore';
 import { useSettings } from '../../store/settings';
 import { InspectorPanel } from '../Debug/InspectorPanel';
+import { MECHANIC_INFO } from '../mechanicInfo';
 import styles from './InfoButton.module.css';
 
 /** Spring used by both popovers so the inspector matches the how-to-play feel exactly. */
@@ -21,6 +23,9 @@ const POP_VARIANTS = {
  */
 export function InfoButton() {
   const [open, setOpen] = useState(false);
+  // The mechanics active on the current board — listed under the base rules so re-opening help
+  // always explains what's actually in play (U1), not just the base game.
+  const mechanics = useGameStore((s) => s.mechanics);
   const inspectorEnabled = useSettings((s) => s.inspector);
   const inspectorOpen = useSettings((s) => s.inspectorOpen);
   const toggleInspectorOpen = useSettings((s) => s.toggleInspectorOpen);
@@ -64,6 +69,24 @@ export function InfoButton() {
                 Tap a bottle to pick it up, then tap another to pour the top color onto a matching color or an
                 empty tube. Sort until every bottle is a single shade.
               </p>
+              {mechanics.length > 0 && (
+                <ul className={styles.mechanics}>
+                  {mechanics.map((m) => {
+                    const info = MECHANIC_INFO[m];
+                    return (
+                      <li key={m} className={styles.mechanic}>
+                        <span className={styles.mechanicIcon}>
+                          <info.Icon size={16} strokeWidth={2} aria-hidden />
+                        </span>
+                        <span>
+                          <strong className={styles.mechanicName}>{info.title}</strong>
+                          <span className={styles.mechanicBlurb}>{info.blurb}</span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </motion.div>
           </>
         )}
