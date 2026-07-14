@@ -22,6 +22,23 @@ The two highest-value changes are both self-contained UI work:
 Everything here is presentational. None of it changes a board, a rule, or the generator, so none
 of it forces a campaign re-bake or touches the Rust core.
 
+## Status
+
+**Shipped: U1–U7** (Phases 1–3), each behind the quality gate with tests. **U8** (optional move
+counter, Phase 4) is intentionally not built pending appetite — the minimalist header is a
+deliberate choice. Notes on partial outcomes are inline under each item.
+
+| Item | State |
+| --- | --- |
+| U1 — Mechanic onboarding | ✅ Shipped |
+| U2 — Win celebration + score feedback | ✅ Shipped |
+| U3 — Funnel (Color Lock) legibility | ✅ Shipped |
+| U4 — Board dead space / sizing | ✅ Shipped (wide-screen sizing + stage glow; phone few-row space is an inherent grid trade-off — see U4) |
+| U5 — Concealed-cell texture + reveal | ✅ Shipped |
+| U6 — Surface the colorblind aid | ✅ Shipped |
+| U7 — Illegal-tap feedback | ✅ Shipped |
+| U8 — Optional move counter | ⏸️ Deferred (optional) |
+
 ---
 
 ## What we're doing well (protect these)
@@ -107,6 +124,14 @@ a narrow centered column in a wide empty field.
   headroom math (`LIFT_ROOM_F`, `ROW_GAP_F`) after any size change.
 - **Note:** the current centering is ergonomically fine (board sits in thumb reach); this is about
   visual density, so treat it as tuning, not a rewrite.
+- **Outcome (shipped):** raised `MAX_WIDTH` 88 → 120, which lets 1-row boards fill wide screens
+  (desktop 5-tube grew 88 → 120px; phones are width-bound far below the cap, so unchanged), and
+  added an ambient "stage" glow behind the board for grounding. The phone few-row void turned out to
+  be **inherent to the fixed 5-per-row, no-ragged-row grid** (a deliberate existing choice): a
+  5-tube board is one short row, and making its tubes bigger would require reflowing into ragged
+  rows or pushing the board out of thumb reach. Left as-is by design rather than fought; the glow
+  softens the perception. Repositioning/`App.module.css` gap-tightening was evaluated and dropped
+  (hurts reach for negligible gain).
 
 #### U5 — Soften and animate the concealed cells
 **Effort: S–M · Files: `Bottle.tsx` (`.mark`), `LiquidSegment.tsx`, relevant CSS**
@@ -151,25 +176,25 @@ Ordered for **shippable increments**, each independently mergeable and reversibl
 front-load the two highest-impact items (they're self-contained and unblock nothing), then batch the
 cheap high-clarity wins, then the layout tuning that needs the most QA.
 
-### Phase 1 — Highest impact, self-contained (do first)
+### Phase 1 — Highest impact, self-contained (do first) ✅ done
 1. **U2 — Win celebration + score feedback.** Smallest blast radius, biggest emotional payoff, uses
    only existing data. Good warm-up that touches one screen.
 2. **U1 — Mechanic onboarding.** Largest experience gap. Slightly bigger (new component +
    per-chapter "seen" persistence + chapter-aware help), so it follows U2.
 
-### Phase 2 — Cheap clarity wins (batch together)
+### Phase 2 — Cheap clarity wins (batch together) ✅ done
 3. **U3 — Funnel collar.** Small CSS/markup change; big legibility gain for Color Locks.
 4. **U6 — Surface the colorblind aid.** Small; pairs naturally with clarity work.
 5. **U7 — Illegal-tap shake.** Small; rounds out the feedback loop started by U3.
 
-### Phase 3 — Depth & density (more QA)
+### Phase 3 — Depth & density (more QA) ✅ done
 6. **U5 — Concealed-cell texture + reveal.** Visual richness; needs care around the `.cb-pattern`
    overlay and the reveal timing.
 7. **U4 — Board sizing / dead space.** Do last: it's the highest-QA item (re-tune lift/tilt headroom
    across phone sizes and desktop, verify no scroll/clip regressions) and benefits from the other
    changes being settled so layout is only tuned once.
 
-### Phase 4 — Optional
+### Phase 4 — Optional ⏸️ not started
 8. **U8 — Move counter option.** Ship only if there's appetite; it slightly complicates the
    deliberately minimal header.
 
