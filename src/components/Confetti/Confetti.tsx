@@ -5,9 +5,9 @@ import styles from './Confetti.module.css';
 /** Vibrant confetti colors — a subset of the game palette, picked to read on the dark overlay. */
 const COLORS = ['#e02438', '#f2b50c', '#1aa346', '#1c9fe0', '#9b6bf0', '#f7799b', '#0bc6c2', '#ef6d1a'];
 
-export type ConfettiVariant = 'grand' | 'subtle';
+export type ConfettiVariant = 'grand' | 'subtle' | 'meager';
 
-/** Tuning per celebration tier: a big 3★ blowout vs. a modest 2★ nod. */
+/** Tuning per celebration tier: a big 3★ blowout, a modest 2★ nod, a sad little 1★ puff. */
 const VARIANTS: Record<
   ConfettiVariant,
   {
@@ -22,6 +22,7 @@ const VARIANTS: Record<
 > = {
   grand: { count: 90, spread: 24, peakMin: 55, peakRange: 40, sizeMin: 8, sizeRange: 8, delayRange: 0.5 },
   subtle: { count: 10, spread: 12, peakMin: 30, peakRange: 22, sizeMin: 6, sizeRange: 4, delayRange: 0.2 },
+  meager: { count: 4, spread: 6, peakMin: 14, peakRange: 10, sizeMin: 5, sizeRange: 3, delayRange: 0.15 },
 };
 
 interface Piece {
@@ -43,7 +44,7 @@ interface Piece {
  * intercepts the panel buttons.
  *
  * `variant` picks the tier: `grand` (default) is the dense 3★ blowout; `subtle` is a small
- * handful of pieces for a 2★ clear.
+ * handful of pieces for a 2★ clear; `meager` is a sad three-or-four-piece puff for a 1★ scrape.
  *
  * Respects `prefers-reduced-motion`: when set, the burst is suppressed entirely (renders nothing).
  * Mount it only when you want the burst to play — it animates once on mount and does not loop.
