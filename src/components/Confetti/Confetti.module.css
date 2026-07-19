@@ -1,5 +1,5 @@
 /* Full-overlay confetti layer. Sits above the win panel but never blocks it (pointer-events: none),
-   so the shower rains over the celebration while the buttons stay tappable. */
+   so the burst arcs over the celebration while the buttons stay tappable. */
 .layer {
   position: fixed;
   inset: 0;
@@ -10,7 +10,7 @@
 
 .piece {
   position: absolute;
-  top: 0;
+  bottom: 0;
   display: block;
   will-change: transform, opacity;
 }

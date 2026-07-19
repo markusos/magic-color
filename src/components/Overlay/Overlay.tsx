@@ -81,9 +81,10 @@ export function Overlay() {
           >
             {status === 'won' ? (
               <>
-                {/* A confetti shower crowns a flawless (3★) clear. Suppressed under reduced-motion
-                    inside the component itself. */}
-                {stars === 3 && <Confetti />}
+                {/* A grand confetti burst crowns a flawless (3★) clear; a 2★ clear gets a small
+                    handful. Suppressed under reduced-motion inside the component itself. */}
+                {stars === 3 && <Confetti variant="grand" />}
+                {stars === 2 && <Confetti variant="subtle" />}
                 <motion.div
                   className={styles.starsRow}
                   initial={{ scale: 0.6, opacity: 0 }}
