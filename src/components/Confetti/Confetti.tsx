@@ -21,7 +21,7 @@ const VARIANTS: Record<
   }
 > = {
   grand: { count: 90, spread: 24, peakMin: 55, peakRange: 40, sizeMin: 8, sizeRange: 8, delayRange: 0.5 },
-  subtle: { count: 10, spread: 12, peakMin: 30, peakRange: 22, sizeMin: 6, sizeRange: 4, delayRange: 0.2 },
+  subtle: { count: 20, spread: 14, peakMin: 38, peakRange: 24, sizeMin: 6, sizeRange: 4, delayRange: 0.3 },
   meager: { count: 4, spread: 6, peakMin: 14, peakRange: 10, sizeMin: 5, sizeRange: 3, delayRange: 0.15 },
 };
 
