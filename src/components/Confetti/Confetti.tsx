@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import styles from './Confetti.module.css';
 
@@ -72,7 +73,10 @@ export function Confetti({ variant = 'grand' }: { variant?: ConfettiVariant }) {
 
   if (reduce) return null;
 
-  return (
+  // Portal to <body>: the layer is `position: fixed`, and a transformed or filtered ancestor
+  // (e.g. the win panel's spring scale, or the backdrop's blur) would otherwise become its
+  // containing block — snapping every piece to a new origin mid-flight when the transform ends.
+  return createPortal(
     <div className={styles.layer} aria-hidden>
       {pieces.map((p, i) => (
         <motion.span
@@ -104,6 +108,7 @@ export function Confetti({ variant = 'grand' }: { variant?: ConfettiVariant }) {
           }}
         />
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
