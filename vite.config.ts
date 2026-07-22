@@ -37,8 +37,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Precache every built asset (incl. the solver Web Worker chunk) for offline play.
-        globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2}'],
+        // Precache every built asset (incl. the solver Web Worker chunk AND the Rust core wasm)
+        // for offline play. The wasm matters doubly: boot awaits its instantiation (levelLoader),
+        // so if it isn't precached every launch fetches it over the network — and on a stalled
+        // mobile connection that fetch hangs the app on the background gradient indefinitely.
+        globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,wasm}'],
       },
     }),
   ],
