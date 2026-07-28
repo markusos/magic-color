@@ -48,8 +48,10 @@ export function LevelSelect() {
           <ChevronLeft size={26} strokeWidth={2} aria-hidden />
         </button>
         <h1 className={styles.title}>{chapterName(page)}</h1>
+        {/* `end` is the last UNLOCKED level on this page, not the chapter's last: the frontier page
+            is usually partial, and naming the full 30-level span above 7 tiles just reads as a bug. */}
         <span className={styles.subtitle}>
-          Chapter {page + 1} · Levels {start}–{page * PAGE_SIZE + PAGE_SIZE}
+          Chapter {page + 1} · Levels {start}–{end}
         </span>
       </header>
 

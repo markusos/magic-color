@@ -36,6 +36,20 @@ describe('level grid', () => {
     expect(screen.queryByRole('button', { name: /^6\b/ })).not.toBeInTheDocument();
   });
 
+  // The subtitle has to agree with the grid: the frontier page is usually partial, and claiming the
+  // full chapter span above a handful of tiles just reads as a bug.
+  it('the subtitle names the levels actually shown, not the full chapter span', () => {
+    setState({ furthest: 5 });
+    render(<LevelSelect />);
+    expect(screen.getByText(`Chapter 1 · Levels 1–5`)).toBeInTheDocument();
+  });
+
+  it('names the full span once the chapter is fully unlocked', () => {
+    setState({ furthest: CHAPTER_LEN });
+    render(<LevelSelect />);
+    expect(screen.getByText(`Chapter 1 · Levels 1–${CHAPTER_LEN}`)).toBeInTheDocument();
+  });
+
   it('tapping a level loads it and routes to play', async () => {
     const loadLevel = vi.fn();
     setState({ furthest: 5, loadLevel });

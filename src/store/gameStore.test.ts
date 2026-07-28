@@ -120,7 +120,10 @@ describe('progression', () => {
     useSettings.getState().setSoundVolume(0.2);
     useSettings.getState().setMusicVolume(0.5);
     localStorage.setItem('magic-color:install-dismissed:v1', '5');
-    localStorage.setItem('some-other-key', 'x'); // even a non-namespaced key is wiped
+    // A key belonging to somebody else on the same origin — the app is built with `base: './'`, so it
+    // can be served from a shared origin, and resetting OUR progress must not take a co-tenant's
+    // data with it.
+    localStorage.setItem('some-other-key', 'x');
     expect(useSettings.getState().seenChapters).toContain(1);
 
     store().startOver();
@@ -128,11 +131,12 @@ describe('progression', () => {
     // Back at the very beginning...
     expect(store().level).toBe(1);
     expect(store().furthest).toBe(1);
-    // ...with only a fresh default progress blob left in storage (re-persisted as level 1 loads);
-    // every other key — settings, install dismissal, the stray key — is gone.
+    // ...with only a fresh default progress blob left in our namespace (re-persisted as level 1
+    // loads); every other key we own — settings, install dismissal — is gone, while the foreign key
+    // is untouched.
     expect(localStorage.getItem('magic-color:settings:v1')).toBeNull();
     expect(localStorage.getItem('magic-color:install-dismissed:v1')).toBeNull();
-    expect(localStorage.getItem('some-other-key')).toBeNull();
+    expect(localStorage.getItem('some-other-key')).toBe('x');
     const progress = JSON.parse(localStorage.getItem('magic-color:v1') ?? '{}') as {
       current: number;
       best: Record<number, number>;
@@ -442,6 +446,49 @@ describe('daily challenge mode', () => {
     expect(store().status).toBe('won');
     expect(store().dailyResult).toEqual({ stars: 3, moves: 1 });
     expect(store().dailyStreak).toBe(1);
+  });
+
+  // `dailyResult`/`dailyStreak` are date-derived but the store is built once, and an installed PWA
+  // can sit through 00:00 UTC — after which the snapshot describes YESTERDAY, so Home keeps showing
+  // a ✓ "solved today" for a day the player hasn't touched.
+  it('refreshDaily re-reads the record after a UTC rollover', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2025-03-14T12:00:00Z'));
+      const solvedKey = todayKey();
+      useGameStore.setState({
+        mode: 'daily',
+        dailyKey: solvedKey,
+        dailyResult: null,
+        dailyStreak: 0,
+        current: board([['ruby', 'ruby', 'ruby'], ['ruby'], []], 4),
+        hidden: [[false, false, false], [false], []],
+        funnels: [null, null, null],
+        ice: [[null, null, null], [null], []],
+        history: [],
+        hiddenHistory: [],
+        moves: [],
+        undos: 0,
+        selected: null,
+        status: 'playing',
+        hintUsed: false,
+        optimal: 1,
+        twoStarMax: 3,
+      });
+      store().tapBottle(1);
+      store().tapBottle(0);
+      expect(store().dailyResult).toEqual({ stars: 3, moves: 1 }); // solved on the 27th
+
+      // Midnight UTC passes with the app still open: the 15th's daily is untouched. (Dates well
+      // away from the real "today", so a sibling spec's real-dated daily win can't collide.)
+      vi.setSystemTime(new Date('2025-03-15T00:30:00Z'));
+      expect(todayKey()).not.toBe(solvedKey);
+      store().refreshDaily();
+      expect(store().dailyResult).toBeNull(); // no ✓ for a day that hasn't been played
+      expect(store().dailyStreak).toBe(1); // …but yesterday still carries the streak
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('nextLevel is a no-op in daily mode (the win overlay offers Share/Home instead)', () => {

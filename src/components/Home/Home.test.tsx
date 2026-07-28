@@ -19,6 +19,7 @@ function setState(overrides: Partial<Parameters<typeof useGameStore.setState>[0]
     loadLevel: vi.fn(),
     playRandom: vi.fn(),
     playDaily: vi.fn(),
+    refreshDaily: vi.fn(),
     ...overrides,
   });
 }

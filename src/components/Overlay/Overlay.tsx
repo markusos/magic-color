@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Home, RotateCcw, Share, Trophy } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
@@ -49,15 +49,23 @@ export function Overlay() {
           ? 'Nicely done!'
           : 'Level Complete!';
 
-  // Copy the shareable daily result to the clipboard (backendless sharing — see PLAN.md B2). The
-  // "Copied" confirmation reverts after a moment so a second share reads clearly.
+  // Revert the "Copied" confirmation after a moment so a second share reads clearly. An effect
+  // rather than a bare timeout in the handler: the panel can be dismissed (Home, Next Level) inside
+  // those two seconds, and the cleanup cancels the pending reset instead of leaving it to fire
+  // against an unmounted component.
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  // Copy the shareable daily result to the clipboard (backendless sharing — see PLAN.md B2).
   const onShare = async () => {
     if (!dailyKey) return;
     const text = dailyShareText(dailyKey, { stars, moves: score });
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard unavailable (insecure context / denied) — leave the button in its default state.
     }

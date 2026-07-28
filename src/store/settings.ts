@@ -14,8 +14,9 @@ import { create } from 'zustand';
 import { playSound, setSoundVolume } from '../audio/sound';
 import { setHapticsEnabled, vibrate } from '../audio/haptics';
 import { setMusicVolume } from '../audio/music';
+import { storageKey } from '../storage';
 
-const KEY = 'magic-color:settings:v1';
+const KEY = storageKey('settings:v1');
 
 /** Default level for sound effects when nothing is persisted. */
 const DEFAULT_SOUND = 0.8;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, Check, Flame, Settings as SettingsIcon, Share } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { navigate } from '../../useHashRoute';
@@ -23,8 +23,31 @@ export function Home() {
   const dailyStreak = useGameStore((s) => s.dailyStreak);
   const dailyDone = useGameStore((s) => s.dailyResult !== null);
   const campaignComplete = useGameStore((s) => s.campaignComplete);
+  const refreshDaily = useGameStore((s) => s.refreshDaily);
   const fresh = furthest <= 1;
   const [copied, setCopied] = useState(false);
+
+  // The daily rolls over at 00:00 UTC, and an installed PWA can sit on this screen right through it —
+  // so re-read the stored result whenever Home is shown, rather than trusting the snapshot the store
+  // took at boot. Without this the card keeps claiming today is solved (and hides the streak flame)
+  // on the strength of yesterday's play.
+  useEffect(() => {
+    refreshDaily();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshDaily();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshDaily]);
+
+  // Revert the "copied" confirmation after a moment. An effect rather than a bare timeout in the
+  // handler: tapping Play inside those two seconds unmounts Home, and the cleanup cancels the
+  // pending reset instead of leaving it to fire against an unmounted component.
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   // Share the game: the native share sheet on phones, a clipboard copy of the link elsewhere.
   const onShare = async () => {
@@ -33,10 +56,7 @@ export function Home() {
       text: 'Sort the colors. One tube at a time.',
       url: GAME_URL,
     });
-    if (outcome === 'copied') {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    if (outcome === 'copied') setCopied(true);
   };
 
   // Resume the campaign frontier. Only preserve the in-progress board when we're already in

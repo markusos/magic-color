@@ -16,6 +16,7 @@
  * own localStorage key (separate from campaign progress) and degrading to "not dismissed" if
  * storage is unavailable.
  */
+import { storageKey } from '../storage';
 
 /** Which install affordance to surface, or `null` when there's nothing to offer. */
 export type InstallPlatform = 'android' | 'ios';
@@ -121,8 +122,9 @@ export function currentInstallPlatform(): InstallPlatform | null {
 }
 
 // --- Home-banner dismissal persistence --------------------------------------------------------
+// Namespaced like every other key the app owns, so "Start Over" reaches it (see src/storage.ts).
 
-const DISMISS_KEY = 'magic-color:install-dismissed:v1';
+const DISMISS_KEY = storageKey('install-dismissed:v1');
 /**
  * After the player dismisses the home banner, re-show it once they've reached this many *more*
  * levels — a gentle second nudge for engaged players who haven't installed yet.

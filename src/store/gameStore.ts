@@ -46,6 +46,7 @@ import { deferAfterPaint } from './deferAfterPaint';
 import { feedback } from '../audio/feedback';
 import { createAutoSolve } from './autoSolve';
 import { createHint } from './hint';
+import { clearOwnedStorage } from '../storage';
 
 export type { GameStatus };
 
@@ -209,6 +210,12 @@ export interface GameStore {
   loadRandom: (seed: number) => void;
   /** Start today's daily challenge (the date-seeded showcase board). */
   playDaily: () => void;
+  /**
+   * Re-read today's stored daily result and streak (UTC). The daily rolls over at 00:00 UTC and an
+   * installed PWA can stay resident across that boundary, so these two fields — snapshotted when the
+   * store was built — go stale. Cheap and idempotent; call it wherever the daily's state is shown.
+   */
+  refreshDaily: () => void;
   /** Admin/testing: re-generate the current board (re-rolls in endless; deterministic reload otherwise). */
   reloadBoard: () => void;
   /** Wipe saved progress and return to level 1. */
@@ -527,12 +534,27 @@ export const useGameStore = create<GameStore>((set, get) => {
   };
 
   /**
+   * Re-read today's daily record + streak from the campaign. Both are date-derived, but the store is
+   * built once and an installed PWA can sit through 00:00 UTC — after which the snapshot describes
+   * YESTERDAY: Home keeps showing a ✓ "solved today" for a day the player hasn't touched, and hides
+   * the streak flame. No-ops when nothing moved, so it's safe to call on every visibility change.
+   */
+  const refreshDaily = () => {
+    const today = todayKey();
+    const dailyResult = campaign.dailyResult(today);
+    const dailyStreak = campaign.dailyStreak(today);
+    if (get().dailyResult === dailyResult && get().dailyStreak === dailyStreak) return;
+    set({ dailyResult, dailyStreak });
+  };
+
+  /**
    * Enter today's daily challenge: flip on the spinner (the daily is always live) and generate the
    * date-seeded board on the next macrotask. `phase` is a provisional spinner-header label; `applyDaily`
    * sets the board's real phase. Always for today (UTC) so the board matches every other device.
    */
   const playDaily = () => {
     const key = todayKey();
+    refreshDaily(); // the board is for `key`; make sure the record beside it is too
     beginLoad({
       mode: 'daily',
       dailyKey: key,
@@ -622,18 +644,17 @@ export const useGameStore = create<GameStore>((set, get) => {
     playRandom,
     loadRandom,
     playDaily,
+    refreshDaily,
     reloadBoard,
     startOver: () => {
-      // Clean slate: wipe ALL persisted site state in one shot — every `magic-color:*` key (campaign
-      // progress, settings, the "already seen" intros/nudge, the install-banner dismissal) plus any
-      // other stray key — then reset every in-memory store to its factory defaults so the app is
-      // indistinguishable from a first-ever launch. loadLevel(1) below re-persists a fresh default
-      // progress blob as play resumes; nothing from the prior run survives.
-      try {
-        localStorage.clear();
-      } catch {
-        // Storage unavailable (private mode) — nothing was persisted, so there's nothing to wipe.
-      }
+      // Clean slate: drop every `magic-color:*` key (campaign progress, settings, the "already seen"
+      // intros/nudge, the install-banner dismissal), then reset every in-memory store to its factory
+      // defaults so the app is indistinguishable from a first-ever launch. loadLevel(1) below
+      // re-persists a fresh default progress blob as play resumes; nothing from the prior run
+      // survives. Scoped to the namespace rather than `localStorage.clear()` on purpose — `base:
+      // './'` means this can also be served from a shared origin, and no reset of OUR progress should
+      // take a co-tenant's data with it. Every key we write carries the prefix, so it is still total.
+      clearOwnedStorage();
       campaign.reset(); // reload the (now-empty) progress → defaults
       useSettings.getState().resetAll(); // reset the settings store's in-memory state → defaults
       loadLevel(1);

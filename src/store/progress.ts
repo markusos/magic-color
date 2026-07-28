@@ -6,8 +6,9 @@
  */
 import type { DailyRecord } from '../game/daily';
 import type { Stars } from '../game/stars';
+import { storageKey } from '../storage';
 
-const KEY = 'magic-color:v1';
+const KEY = storageKey('v1');
 const VERSION = 1;
 
 export interface Progress {
