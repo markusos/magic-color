@@ -79,7 +79,9 @@
 }
 
 /* Labeled on/off setting row (Sound, Haptics), styled as a card like the install block. */
-.toggleRow {
+/* Slider rows share the toggle row's card treatment (see ToggleRow.module.css) — the two sit in the
+   same group and must line up — but own their own rule now that the switch lives in its own module. */
+.sliderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -89,51 +91,10 @@
   border-radius: var(--radius-md);
 }
 
-.toggleLabel {
+.sliderLabel {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text);
-}
-
-/* iOS-style switch: a pill track with a sliding knob, driven by aria-checked. */
-.switch {
-  position: relative;
-  flex-shrink: 0;
-  width: 46px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  transition: background 0.18s ease;
-  cursor: pointer;
-}
-
-.switch[aria-checked='true'] {
-  background: var(--accent);
-}
-
-.knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  transition: transform 0.18s ease;
-}
-
-.switch[aria-checked='true'] .knob {
-  transform: translateX(18px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .switch,
-  .knob {
-    transition: none;
-  }
 }
 
 /* Volume slider: a pill track (filled with an inline gradient set per value in Settings.tsx) and a
@@ -194,67 +155,6 @@
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--text-dim);
-}
-
-/* Hidden admin panel, revealed only by the secret title gesture. */
-.admin {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: min(360px, 100%);
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-4);
-  border: 0.5px dashed rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-}
-
-.adminTitle {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-dim);
-}
-
-.adminRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* A button that shares the row evenly with its siblings (the mode/reload button group). */
-.adminBtnFlex {
-  flex: 1;
-}
-
-.adminInput {
-  flex: 1;
-  min-width: 0;
-  padding: var(--space-2) var(--space-3);
-  font-size: 1rem;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-  border: 0.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-md);
-}
-
-.adminBtn {
-  padding: var(--space-2) var(--space-4);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
-  border: 0.5px solid rgba(255, 255, 255, 0.25);
-  border-radius: var(--radius-md);
-}
-
-.adminBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.adminBtn:disabled {
-  opacity: 0.4;
 }
 
 /* Build/version footer — a quiet, always-visible line so the active level build is easy to read off. */

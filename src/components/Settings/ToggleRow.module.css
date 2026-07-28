@@ -1,0 +1,57 @@
+/* The switch row shared by the settings screen and the admin panel (see ToggleRow.tsx). */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+  border: 0.5px solid var(--panel-border);
+  border-radius: var(--radius-md);
+}
+
+.toggleLabel {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* iOS-style switch: a pill track with a sliding knob, driven by aria-checked. */
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 0.18s ease;
+  cursor: pointer;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s ease;
+}
+
+.switch[aria-checked='true'] .knob {
+  transform: translateX(18px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .knob {
+    transition: none;
+  }
+}

@@ -1,0 +1,70 @@
+/* The hidden admin console (see AdminPanel.tsx), split out of Settings.module.css with it. */
+/* Hidden admin panel, revealed only by the secret title gesture. */
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(360px, 100%);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px dashed rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.adminTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.adminRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* A button that shares the row evenly with its siblings (the mode/reload button group). */
+.adminBtnFlex {
+  flex: 1;
+}
+
+.adminInput {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 1rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.adminBtn {
+  padding: var(--space-2) var(--space-4);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-md);
+}
+
+.adminBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.adminBtn:disabled {
+  opacity: 0.4;
+}
+
+/* Explanatory line under a control — same treatment as the settings screen. */
+.hint {
+  margin: 0;
+  padding: 0 var(--space-1);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+}

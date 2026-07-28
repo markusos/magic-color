@@ -1,21 +1,17 @@
-import { useEffect, useId, useState } from 'react';
+import { useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Home, RotateCcw, Share, Trophy } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { starsFor } from '../../game/stars';
-import { dailyShareText } from '../../game/daily';
-import { navigate } from '../../useHashRoute';
-import { Stars } from '../Stars/Stars';
-import { Confetti } from '../Confetti/Confetti';
 import { useModalDialog } from '../useModalDialog';
+import { WinPanel } from './WinPanel';
+import { DeadEndPanel } from './DeadEndPanel';
 import styles from './Overlay.module.css';
 
 /**
- * Modal overlays for end-of-attempt states: a celebratory win panel, and a terminal game-over
- * alert for both dead ends — a hard wall (`deadlocked`, no legal move) and a `stuck` loop (moves
- * remain but every reachable board has already been seen). Both end the attempt with Restart;
- * a loop is deliberately NOT offered a step-by-step Undo, which would leak how far back the player
- * went wrong.
+ * The end-of-attempt modal: the shell both end states share — the backdrop, the dialog itself, and
+ * when it is up — plus the attempt's final score, which is the one thing both panels need. The two
+ * outcomes then render their own contents ({@link WinPanel} / {@link DeadEndPanel}); they have
+ * almost nothing in common beyond sitting in this frame.
  */
 export function Overlay() {
   const status = useGameStore((s) => s.status);
@@ -24,57 +20,16 @@ export function Overlay() {
   const optimal = useGameStore((s) => s.optimal);
   const twoStarMax = useGameStore((s) => s.twoStarMax);
   const hintUsed = useGameStore((s) => s.hintUsed);
-  const newBest = useGameStore((s) => s.newBest);
-  const nextLevel = useGameStore((s) => s.nextLevel);
-  const restart = useGameStore((s) => s.restart);
-  const mode = useGameStore((s) => s.mode);
-  const endlessStreak = useGameStore((s) => s.endlessStreak);
-  const dailyKey = useGameStore((s) => s.dailyKey);
-  const dailyStreak = useGameStore((s) => s.dailyStreak);
-  const [copied, setCopied] = useState(false);
   const titleId = useId();
   // No `onDismiss`: the attempt is over and the panel exists to make the player choose what happens
   // next (Next Level / Restart / Share), so there is nothing sensible for Escape to do.
   const panelRef = useModalDialog({ open: status !== 'playing' });
 
-  const endless = mode === 'endless';
-  const daily = mode === 'daily';
   const visible = status === 'won' || status === 'deadlocked' || status === 'stuck';
   // The score (and thus the rating) counts undos used; a hinted solve is capped to 1 star — both
   // mirror the live Stats preview and the recorded result.
   const score = moves.length + undos;
   const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
-  const praise = daily
-    ? 'Daily Complete!'
-    : endless
-      ? `Streak ${endlessStreak}!`
-      : stars === 3
-        ? 'Perfect!'
-        : stars === 2
-          ? 'Nicely done!'
-          : 'Level Complete!';
-
-  // Revert the "Copied" confirmation after a moment so a second share reads clearly. An effect
-  // rather than a bare timeout in the handler: the panel can be dismissed (Home, Next Level) inside
-  // those two seconds, and the cleanup cancels the pending reset instead of leaving it to fire
-  // against an unmounted component.
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  // Copy the shareable daily result to the clipboard (backendless sharing — see PLAN.md B2).
-  const onShare = async () => {
-    if (!dailyKey) return;
-    const text = dailyShareText(dailyKey, { stars, moves: score });
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      // Clipboard unavailable (insecure context / denied) — leave the button in its default state.
-    }
-  };
 
   return (
     <AnimatePresence>
@@ -99,87 +54,9 @@ export function Overlay() {
             transition={{ type: 'spring', stiffness: 300, damping: 24 }}
           >
             {status === 'won' ? (
-              <>
-                {/* A grand confetti burst crowns a flawless (3★) clear; a 2★ clear gets a small
-                    handful; a 1★ scrape gets a sad little puff. Suppressed under reduced-motion
-                    inside the component itself. */}
-                {stars === 3 && <Confetti variant="grand" />}
-                {stars === 2 && <Confetti variant="subtle" />}
-                {stars === 1 && <Confetti variant="meager" />}
-                <motion.div
-                  className={styles.starsRow}
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 360, damping: 18, delay: 0.1 }}
-                >
-                  <Stars value={stars} size={48} />
-                </motion.div>
-                <h2 className={styles.win} id={titleId}>
-                  {praise}
-                </h2>
-                {/* Beating a prior best is the "beat my score" moment — campaign only (live boards
-                    keep no per-level record). */}
-                {newBest && (
-                  <motion.p
-                    className={styles.newBest}
-                    initial={{ scale: 0.7, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 360, damping: 16, delay: 0.25 }}
-                  >
-                    <Trophy size={16} strokeWidth={2.5} aria-hidden />
-                    New best!
-                  </motion.p>
-                )}
-                {/* Score feedback: what you spent vs. the near-optimal target. */}
-                <p className={styles.score}>
-                  {score} {score === 1 ? 'move' : 'moves'} · optimal {optimal}
-                </p>
-                {daily ? (
-                  <div className={styles.actions}>
-                    {dailyStreak > 0 && (
-                      <p className={styles.sub}>
-                        {dailyStreak} day{dailyStreak === 1 ? '' : 's'} in a row
-                      </p>
-                    )}
-                    <button className={styles.primary} onClick={() => void onShare()}>
-                      {copied ? (
-                        <>
-                          <Check size={18} strokeWidth={2} aria-hidden />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Share size={18} strokeWidth={2} aria-hidden />
-                          Share Result
-                        </>
-                      )}
-                    </button>
-                    <button className={styles.secondary} onClick={() => navigate('home')}>
-                      <Home size={18} strokeWidth={2} aria-hidden />
-                      Home
-                    </button>
-                  </div>
-                ) : (
-                  <button className={styles.primary} onClick={nextLevel}>
-                    {endless ? 'Next Board' : 'Next Level'}
-                  </button>
-                )}
-              </>
+              <WinPanel stars={stars} score={score} titleId={titleId} />
             ) : (
-              <>
-                <h2 className={styles.fail} id={titleId}>
-                  {status === 'stuck' ? 'No way forward' : 'No moves left'}
-                </h2>
-                <p className={styles.sub}>
-                  {status === 'stuck'
-                    ? 'Every move just loops back — restart to try again.'
-                    : 'This board is stuck — restart to try again.'}
-                </p>
-                <button className={styles.primary} onClick={restart}>
-                  <RotateCcw size={18} strokeWidth={2} aria-hidden />
-                  Restart Level
-                </button>
-              </>
+              <DeadEndPanel stuck={status === 'stuck'} titleId={titleId} />
             )}
           </motion.div>
         </motion.div>

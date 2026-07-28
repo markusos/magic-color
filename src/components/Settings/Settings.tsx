@@ -1,34 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { previewSound, useSettings } from '../../store/settings';
 import { hapticsSupported } from '../../audio/haptics';
 import { navigate } from '../../useHashRoute';
 import { useInstall } from '../../install/useInstall';
-import { coreWasmVersion, initCoreWasm } from '../../game/coreWasm';
-import { BAKED_LEVEL_COUNT, loadDiagnostics } from '../../game/levelLoader';
+import { BAKED_LEVEL_COUNT } from '../../game/levelLoader';
 import { GENERATOR_VERSION } from '../../game/levels.meta';
 import { InstallInstructions } from '../InstallBanner/InstallInstructions';
+import { AdminPanel } from './AdminPanel';
+import { ToggleRow } from './ToggleRow';
 import styles from './Settings.module.css';
-
-/** A labeled on/off switch row (an accessible toggle button). */
-function ToggleRow({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
-  return (
-    <div className={styles.toggleRow}>
-      <span className={styles.toggleLabel}>{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        className={styles.switch}
-        onClick={onToggle}
-      >
-        <span className={styles.knob} />
-      </button>
-    </div>
-  );
-}
 
 /**
  * A labeled volume slider row (0–100%). The filled portion of the track is drawn with an inline
@@ -48,8 +30,8 @@ function SliderRow({
 }) {
   const pct = Math.round(value * 100);
   return (
-    <div className={styles.toggleRow}>
-      <span className={styles.toggleLabel}>{label}</span>
+    <div className={styles.sliderRow}>
+      <span className={styles.sliderLabel}>{label}</span>
       <input
         type="range"
         min={0}
@@ -70,51 +52,32 @@ function SliderRow({
   );
 }
 
-/** Number of rapid title taps that reveals the hidden admin level-unlock panel. */
+/** Number of rapid title taps that reveals the hidden admin panel. */
 const ADMIN_TAP_COUNT = 7;
 /** Taps must land within this window (ms) of each other to count toward the streak. */
 const ADMIN_TAP_WINDOW = 600;
-/** Admin unlock tops out at the full baked campaign — there are no numbered levels past it. */
-const MAX_LEVEL = BAKED_LEVEL_COUNT;
 
 /**
- * Settings screen: app-level actions ("Start Over"), plus a hidden admin hatch for testing.
+ * Settings screen: the player's feedback and accessibility preferences, plus app-level actions
+ * ("Start Over").
  *
- * The admin panel — which unlocks every level up to a chosen number — is intentionally
- * undiscoverable: it appears only after tapping the "Settings" title {@link ADMIN_TAP_COUNT}
- * times in quick succession (the classic "tap to enable developer mode" gesture). There is no
- * visible affordance, so ordinary players never stumble into it.
+ * It also owns the reveal gesture for the hidden admin panel — which is intentionally
+ * undiscoverable: it appears only after tapping the "Settings" title {@link ADMIN_TAP_COUNT} times
+ * in quick succession (the classic "tap to enable developer mode" gesture). There is no visible
+ * affordance, so ordinary players never stumble into it. The panel's own contents live in
+ * {@link AdminPanel} — this screen only decides whether to show it.
  */
 export function Settings() {
   const furthest = useGameStore((s) => s.furthest);
   const startOver = useGameStore((s) => s.startOver);
-  const unlockUpTo = useGameStore((s) => s.unlockUpTo);
-  const loadLevel = useGameStore((s) => s.loadLevel);
-  const playRandom = useGameStore((s) => s.playRandom);
-  const loadRandom = useGameStore((s) => s.loadRandom);
-  const playDaily = useGameStore((s) => s.playDaily);
-  const reloadBoard = useGameStore((s) => s.reloadBoard);
   const soundVolume = useSettings((s) => s.soundVolume);
   const musicVolume = useSettings((s) => s.musicVolume);
   const haptics = useSettings((s) => s.haptics);
   const patterns = useSettings((s) => s.patterns);
-  const inspector = useSettings((s) => s.inspector);
   const setSoundVolume = useSettings((s) => s.setSoundVolume);
   const setMusicVolume = useSettings((s) => s.setMusicVolume);
   const toggleHaptics = useSettings((s) => s.toggleHaptics);
   const togglePatterns = useSettings((s) => s.togglePatterns);
-  const toggleInspector = useSettings((s) => s.toggleInspector);
-  // E9 diagnostics: the core version, resolved once the module finishes loading.
-  const [coreVersion, setCoreVersion] = useState<string | null>(coreWasmVersion());
-  useEffect(() => {
-    let cancelled = false;
-    void initCoreWasm().then(() => {
-      if (!cancelled) setCoreVersion(coreWasmVersion());
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   // Surface the same install affordance as the home banner, but always (no dismissal) when the app
   // isn't already installed and the platform can offer it.
   const { platform, install } = useInstall();
@@ -123,10 +86,6 @@ export function Settings() {
   const fresh = furthest <= 1;
 
   const [adminOpen, setAdminOpen] = useState(false);
-  const [target, setTarget] = useState('');
-  const [unlockedTo, setUnlockedTo] = useState<number | null>(null);
-  const [jump, setJump] = useState('');
-  const [seed, setSeed] = useState('');
   const tapCount = useRef(0);
   const lastTap = useRef(0);
 
@@ -146,33 +105,6 @@ export function Settings() {
       tapCount.current = 0;
       setAdminOpen(true);
     }
-  };
-
-  const parsed = Number(target);
-  const valid = Number.isInteger(parsed) && parsed >= 1 && parsed <= MAX_LEVEL;
-
-  const onUnlock = () => {
-    if (!valid) return;
-    unlockUpTo(parsed);
-    setUnlockedTo(parsed);
-  };
-
-  // Admin navigation: load a board and jump straight to play. Level may exceed the baked range (the tail
-  // generates live); the seed reproduces an exact random board.
-  // `Number('')` is 0, so guard against the empty string explicitly (else "Play seed" enables on a blank field).
-  const jumpN = Number(jump);
-  const jumpValid = jump.trim() !== '' && Number.isInteger(jumpN) && jumpN >= 1;
-  const seedN = Number(seed);
-  const seedValid = seed.trim() !== '' && Number.isInteger(seedN) && seedN >= 0;
-  const enter = (action: () => void) => {
-    action();
-    navigate('play');
-  };
-  const onJump = () => {
-    if (jumpValid) enter(() => loadLevel(jumpN));
-  };
-  const onSeed = () => {
-    if (seedValid) enter(() => loadRandom(seedN));
   };
 
   return (
@@ -223,104 +155,7 @@ export function Settings() {
           </p>
         </section>
 
-        {adminOpen && (
-          <section className={styles.admin}>
-            <h2 className={styles.adminTitle}>Admin · Unlock levels</h2>
-            <div className={styles.adminRow}>
-              <input
-                className={styles.adminInput}
-                type="number"
-                min={1}
-                max={MAX_LEVEL}
-                inputMode="numeric"
-                placeholder={`1–${MAX_LEVEL}`}
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                aria-label="Level to unlock up to"
-              />
-              <button className={styles.adminBtn} onClick={onUnlock} disabled={!valid}>
-                Unlock
-              </button>
-            </div>
-            <p className={styles.hint}>
-              {unlockedTo !== null
-                ? `Unlocked levels 1–${unlockedTo}. Frontier is now ${furthest}.${
-                    unlockedTo >= MAX_LEVEL ? ' Play Random is unlocked.' : ''
-                  }`
-                : `Unlock every level up to and including this number (frontier is currently ${furthest}). Unlock to ${MAX_LEVEL} to open Play Random.`}
-            </p>
-            <ToggleRow label="Level Inspector" checked={inspector} onToggle={toggleInspector} />
-            <p className={styles.hint}>
-              Overlay the active board's difficulty metrics while playing (plus baked provenance in dev
-              builds).
-            </p>
-            <p className={styles.hint}>
-              Core: {coreVersion ? `wasm ${coreVersion}` : 'wasm (loading…)'}
-              {(() => {
-                // E9 diagnostics: what the last board load did + the live generator's state.
-                const d = loadDiagnostics();
-                const last = d.last ? ` · last load ${d.last.label} (${d.last.source}, ${d.last.ms}ms)` : '';
-                return `${last} · live cache ${d.liveCacheSize} · pool ${d.config.poolSize}/${d.config.finalists}`;
-              })()}
-            </p>
-
-            <h2 className={styles.adminTitle}>Admin · Navigate</h2>
-            <div className={styles.adminRow}>
-              <input
-                className={styles.adminInput}
-                type="number"
-                min={1}
-                inputMode="numeric"
-                placeholder="Level #"
-                value={jump}
-                onChange={(e) => setJump(e.target.value)}
-                aria-label="Level to jump to"
-              />
-              <button className={styles.adminBtn} onClick={onJump} disabled={!jumpValid}>
-                Go
-              </button>
-            </div>
-            <div className={styles.adminRow}>
-              <input
-                className={styles.adminInput}
-                type="number"
-                min={0}
-                inputMode="numeric"
-                placeholder="Random seed"
-                value={seed}
-                onChange={(e) => setSeed(e.target.value)}
-                aria-label="Random board seed"
-              />
-              <button className={styles.adminBtn} onClick={onSeed} disabled={!seedValid}>
-                Play seed
-              </button>
-            </div>
-            <div className={styles.adminRow}>
-              <button
-                className={`${styles.adminBtn} ${styles.adminBtnFlex}`}
-                onClick={() => enter(playRandom)}
-              >
-                Endless
-              </button>
-              <button
-                className={`${styles.adminBtn} ${styles.adminBtnFlex}`}
-                onClick={() => enter(playDaily)}
-              >
-                Daily
-              </button>
-              <button
-                className={`${styles.adminBtn} ${styles.adminBtnFlex}`}
-                onClick={() => enter(reloadBoard)}
-              >
-                Reload
-              </button>
-            </div>
-            <p className={styles.hint}>
-              Jump to any level (past {BAKED_LEVEL_COUNT} generates live), reproduce a random board by seed,
-              enter Endless/Daily directly, or reload the current board.
-            </p>
-          </section>
-        )}
+        {adminOpen && <AdminPanel />}
 
         <footer className={styles.footer}>
           <span>Level build {GENERATOR_VERSION}</span>
