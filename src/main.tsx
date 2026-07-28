@@ -48,7 +48,7 @@ function Boot({ phase }: { phase: BootPhase }) {
   if (phase === 'quiet') return null;
   return (
     <div className={styles.boot} role="status" aria-live="polite">
-      {phase !== 'failed' && <div className={styles.spinner} aria-hidden />}
+      {phase !== 'failed' && <div className={`spinner-ring ${styles.spinner}`} aria-hidden />}
       {phase === 'slow' && (
         <p className={styles.message}>Still loading — this can take a while on a weak connection.</p>
       )}

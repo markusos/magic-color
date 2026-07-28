@@ -4,7 +4,7 @@ import styles from './Loader.module.css';
 export function Loader() {
   return (
     <div className={styles.loader} role="status" aria-live="polite">
-      <div className={styles.spinner} aria-hidden />
+      <div className={`spinner-ring ${styles.spinner}`} aria-hidden />
       <span className={styles.label}>Generating level…</span>
     </div>
   );

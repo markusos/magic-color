@@ -65,6 +65,38 @@ body {
 }
 
 
+/* The one spin used by every spinner in the app — the level loader, the hint button, the auto-solve
+   chip and the boot fallback each had their own identical copy under a different name. Global (not a
+   CSS module) so all four can reference it, and because tokens.css is already in the entry chunk it
+   costs the boot spinner nothing. Pure `transform`, so it runs on the compositor and keeps turning
+   through main-thread-blocking work like level generation. */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The one spinner ring used across the app. The level loader, the hint button, the auto-solve chip
+   and the boot fallback each carried their own byte-identical copy of this rule plus its own
+   differently-named keyframes. A GLOBAL class (like `cb-pattern`) rather than a CSS-module one for
+   two reasons: a module can't reference a keyframe it doesn't declare (css-modules rewrites the name
+   to a scoped one that doesn't exist), and the boot fallback lives in the entry chunk, which
+   tokens.css is already part of. Callers set their size and, where it differs, the vars below.
+
+   Reduced motion SLOWS the spin rather than stopping it — a frozen spinner reads as a hung app. */
+.spinner-ring {
+  border-radius: 50%;
+  border: var(--spinner-width, 4px) solid var(--spinner-track, var(--panel-border));
+  border-top-color: var(--spinner-accent, var(--accent));
+  animation: spin var(--spinner-speed, 0.9s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner-ring {
+    animation-duration: calc(var(--spinner-speed, 0.9s) * 2.2);
+  }
+}
+
 /* Base button styling, shared across the app. */
 button {
   /* Suppress the double-tap-to-zoom gesture on anything tappable — during a fast run of pours, two

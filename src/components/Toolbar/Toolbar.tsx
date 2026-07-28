@@ -42,7 +42,7 @@ export function Toolbar() {
           title="Show a hint"
         >
           {hintLoading ? (
-            <span className={styles.spinner} aria-hidden />
+            <span className={`spinner-ring ${styles.spinner}`} aria-hidden />
           ) : (
             <Lightbulb size={18} strokeWidth={2} aria-hidden />
           )}

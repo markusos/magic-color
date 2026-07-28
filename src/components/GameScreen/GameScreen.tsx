@@ -66,7 +66,7 @@ export function GameScreen() {
 
       {autoSolving && (
         <div className={styles.autoSolve} role="status">
-          <span className={styles.autoSolveSpinner} aria-hidden />
+          <span className={`spinner-ring ${styles.autoSolveSpinner}`} aria-hidden />
           <span>Solving…</span>
           <button className={styles.autoSolveStop} onClick={cancelAutoSolve}>
             Stop

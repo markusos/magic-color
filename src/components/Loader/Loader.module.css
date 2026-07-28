@@ -12,13 +12,10 @@
   gap: var(--space-4);
 }
 
+/* Ring + spin come from the shared global `.spinner-ring` (tokens.css); size only here. */
 .spinner {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  border: 4px solid var(--panel-border);
-  border-top-color: var(--accent);
-  animation: spin 0.9s linear infinite;
 }
 
 .label {
@@ -26,14 +23,4 @@
   font-size: 0.95rem;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation-duration: 2s;
-  }
-}
