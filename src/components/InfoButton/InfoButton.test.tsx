@@ -1,10 +1,28 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InfoButton } from './InfoButton';
 import { useSettings } from '../../store/settings';
 import { useGameStore } from '../../store/gameStore';
 import { board } from '../../test/board';
+
+describe('InfoButton dialog behaviour', () => {
+  // Both popovers sit over a full-screen backdrop, so they need the keyboard equivalent of tapping
+  // that backdrop: Escape closes, and focus goes into the popover rather than staying on the board.
+  it('the how-to popover takes focus and closes on Escape', async () => {
+    render(<InfoButton />);
+    await userEvent.click(screen.getByRole('button', { name: 'How to play' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName('How to play');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    // Focus returns to the button that opened it, so the keyboard doesn't lose its place.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'How to play' }));
+  });
+});
 
 describe('InfoButton', () => {
   beforeEach(() => {

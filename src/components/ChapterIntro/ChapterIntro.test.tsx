@@ -55,6 +55,19 @@ describe('ChapterIntro visibility', () => {
     expect(screen.queryByText('New mechanic')).not.toBeInTheDocument();
   });
 
+  // The card blocks the board, so it has to behave like a modal for keyboard players too: named,
+  // focused, and closable with Escape the same way tapping the backdrop already closed it.
+  it('is a dialog that takes focus and closes on Escape', async () => {
+    render(<ChapterIntro />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName('Hidden Colors');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Got it' }));
+
+    await userEvent.keyboard('{Escape}');
+    expect(useSettings.getState().seenChapters).toContain(1); // chapter 1 = Hidden Colors
+  });
+
   it('dismissing marks the chapter seen and hides the card', async () => {
     const user = userEvent.setup();
     render(<ChapterIntro />);

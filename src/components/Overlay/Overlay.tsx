@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Home, RotateCcw, Share, Trophy } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
@@ -7,6 +7,7 @@ import { dailyShareText } from '../../game/daily';
 import { navigate } from '../../useHashRoute';
 import { Stars } from '../Stars/Stars';
 import { Confetti } from '../Confetti/Confetti';
+import { useModalDialog } from '../useModalDialog';
 import styles from './Overlay.module.css';
 
 /**
@@ -31,6 +32,10 @@ export function Overlay() {
   const dailyKey = useGameStore((s) => s.dailyKey);
   const dailyStreak = useGameStore((s) => s.dailyStreak);
   const [copied, setCopied] = useState(false);
+  const titleId = useId();
+  // No `onDismiss`: the attempt is over and the panel exists to make the player choose what happens
+  // next (Next Level / Restart / Share), so there is nothing sensible for Escape to do.
+  const panelRef = useModalDialog({ open: status !== 'playing' });
 
   const endless = mode === 'endless';
   const daily = mode === 'daily';
@@ -82,6 +87,12 @@ export function Overlay() {
         >
           <motion.div
             className={styles.panel}
+            // A real dialog: focus moves in, Tab stays in, and the heading names it. See useModalDialog.
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
+            ref={panelRef}
             initial={{ scale: 0.8, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0 }}
@@ -103,7 +114,9 @@ export function Overlay() {
                 >
                   <Stars value={stars} size={48} />
                 </motion.div>
-                <h2 className={styles.win}>{praise}</h2>
+                <h2 className={styles.win} id={titleId}>
+                  {praise}
+                </h2>
                 {/* Beating a prior best is the "beat my score" moment — campaign only (live boards
                     keep no per-level record). */}
                 {newBest && (
@@ -154,7 +167,9 @@ export function Overlay() {
               </>
             ) : (
               <>
-                <h2 className={styles.fail}>{status === 'stuck' ? 'No way forward' : 'No moves left'}</h2>
+                <h2 className={styles.fail} id={titleId}>
+                  {status === 'stuck' ? 'No way forward' : 'No moves left'}
+                </h2>
                 <p className={styles.sub}>
                   {status === 'stuck'
                     ? 'Every move just loops back — restart to try again.'

@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%icon.svg" />
     <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- Pinch-zoom is deliberately LEFT ENABLED (no maximum-scale / user-scalable=no): blocking it
+         fails WCAG 1.4.4, and low-vision players need it to read a board of small tubes. The reason
+         it used to be blocked — double-tap-to-zoom firing during rapid tapping — is handled properly
+         in CSS instead, via `touch-action: manipulation` on the things you tap (see tokens.css). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#2a1a4a" />
     <title>Magic Color</title>
 

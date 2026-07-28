@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { useSettings } from '../../store/settings';
 import { InspectorPanel } from '../Debug/InspectorPanel';
 import { MECHANIC_INFO } from '../mechanicInfo';
+import { useModalDialog } from '../useModalDialog';
 import styles from './InfoButton.module.css';
 
 /** Spring used by both popovers so the inspector matches the how-to-play feel exactly. */
@@ -40,6 +41,12 @@ export function InfoButton() {
       : 'Show level inspector'
     : 'How to play';
 
+  // Both popovers sit over a full-screen backdrop, so they behave as modals: focus moves in, Tab
+  // stays in, Escape closes (as tapping the backdrop already did), and focus returns to the ⓘ button.
+  const howToId = useId();
+  const howToRef = useModalDialog({ open: showHowTo, onDismiss: () => setOpen(false) });
+  const inspectorRef = useModalDialog({ open: showInspector, onDismiss: toggleInspectorOpen });
+
   return (
     <>
       <button
@@ -59,12 +66,19 @@ export function InfoButton() {
             <div className={styles.backdrop} onClick={() => setOpen(false)} />
             <motion.div
               className={styles.popover}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={howToId}
+              tabIndex={-1}
+              ref={howToRef}
               initial={POP_VARIANTS.initial}
               animate={POP_VARIANTS.animate}
               exit={POP_VARIANTS.exit}
               transition={POP_SPRING}
             >
-              <h2 className={styles.title}>How to play</h2>
+              <h2 className={styles.title} id={howToId}>
+                How to play
+              </h2>
               <p className={styles.body}>
                 Tap a bottle to pick it up, then tap another to pour the top color onto a matching color or an
                 empty tube. Sort until every bottle is a single shade.
@@ -96,6 +110,11 @@ export function InfoButton() {
             <div className={styles.backdrop} onClick={toggleInspectorOpen} />
             <motion.div
               className={`${styles.popover} ${styles.inspectorPopover}`}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Level inspector"
+              tabIndex={-1}
+              ref={inspectorRef}
               initial={POP_VARIANTS.initial}
               animate={POP_VARIANTS.animate}
               exit={POP_VARIANTS.exit}

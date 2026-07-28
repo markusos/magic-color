@@ -57,6 +57,7 @@ export function GameBoard() {
             key={`${boardNonce}-${i}`}
             bottle={bottle}
             capacity={current.capacity}
+            index={i + 1}
             hidden={revealHidden ? undefined : hidden[i]}
             funnel={funnels[i] ?? null}
             frozen={bottle.map((_, j) => (view.frozen[i]?.[j] ? (ice[i]?.[j] ?? null) : null))}

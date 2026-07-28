@@ -44,7 +44,8 @@ describe('InspectorPanel', () => {
       liveProvenance: null,
     });
     render(<InspectorPanel />);
-    expect(screen.getByLabelText('Level inspector')).toBeInTheDocument();
+    // The panel no longer names itself — the ⓘ dialog that contains it does (see InfoButton), so its
+    // own identity here is just its heading.
     expect(screen.getByText('Inspector · L1')).toBeInTheDocument();
     expect(screen.getByText('16 / 18')).toBeInTheDocument();
     expect(screen.getByText('hidden')).toBeInTheDocument();

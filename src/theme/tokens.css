@@ -67,6 +67,11 @@ body {
 
 /* Base button styling, shared across the app. */
 button {
+  /* Suppress the double-tap-to-zoom gesture on anything tappable — during a fast run of pours, two
+     quick taps on neighbouring tubes would otherwise read as a zoom gesture and cost ~300ms of
+     click delay. `manipulation` kills only double-tap and the delay; pinch-zoom (which the viewport
+     meta deliberately allows for accessibility) still works everywhere. */
+  touch-action: manipulation;
   font: inherit;
   color: var(--text);
   background: var(--panel);

@@ -86,8 +86,10 @@ export function InspectorPanel() {
   const view = baked ? prov : liveProv;
   const m = view?.metrics;
 
+  // Deliberately unlabelled: this only ever renders inside the ⓘ popover, which is the dialog and
+  // carries the "Level inspector" name. A nested group repeating it is pure screen-reader noise.
   return (
-    <div className={styles.readout} role="group" aria-label="Level inspector">
+    <div className={styles.readout}>
       <h2 className={styles.title}>Inspector · {label}</h2>
 
       <Row label="source" value={source} />

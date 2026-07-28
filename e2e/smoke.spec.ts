@@ -33,7 +33,7 @@ test('starts a level and renders a playable board', async ({ page }) => {
   await expect(page).toHaveURL(/#\/play$/);
   // The board loads (baked levels are instant; the live tail shows a spinner first) — either way a
   // bottle becomes visible. Bottles expose an accessible label, so no test ids are needed.
-  await expect(page.getByLabel(/bottle with/i).first()).toBeVisible();
+  await expect(page.getByLabel(/^bottle \d/i).first()).toBeVisible();
 
   // The in-game Home control returns to the start screen.
   await page.getByRole('button', { name: 'Home' }).click();

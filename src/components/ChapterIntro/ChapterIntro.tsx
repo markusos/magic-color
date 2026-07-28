@@ -1,9 +1,11 @@
+import { useId } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { useSettings } from '../../store/settings';
 import { chapterForLevel, signatureMechanic } from '../../game/progression';
 import { chapterName } from '../../game/chapters';
 import { MECHANIC_INFO } from '../mechanicInfo';
+import { useModalDialog } from '../useModalDialog';
 import styles from './ChapterIntro.module.css';
 
 /**
@@ -36,6 +38,12 @@ export function ChapterIntro() {
     !seenChapters.includes(chapter);
 
   const info = mechanic ? MECHANIC_INFO[mechanic] : null;
+  const titleId = useId();
+  // Dismissable, so Escape closes it exactly like the backdrop and the "Got it" button do.
+  const panelRef = useModalDialog({
+    open: visible && info !== null,
+    onDismiss: () => markChapterSeen(chapter),
+  });
 
   return (
     <AnimatePresence>
@@ -51,6 +59,11 @@ export function ChapterIntro() {
             className={styles.panel}
             // Stop a tap on the card itself from dismissing (only the backdrop / button do).
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
+            ref={panelRef}
             initial={{ scale: 0.85, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.85, opacity: 0 }}
@@ -65,7 +78,9 @@ export function ChapterIntro() {
               <info.Icon size={34} strokeWidth={2} aria-hidden />
             </motion.div>
             <p className={styles.eyebrow}>New mechanic</p>
-            <h2 className={styles.title}>{chapterName(chapter)}</h2>
+            <h2 className={styles.title} id={titleId}>
+              {chapterName(chapter)}
+            </h2>
             <p className={styles.blurb}>{info.blurb}</p>
             <button className={styles.primary} onClick={() => markChapterSeen(chapter)}>
               Got it

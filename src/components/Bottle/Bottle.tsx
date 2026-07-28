@@ -17,6 +17,8 @@ import styles from './Bottle.module.css';
 interface Props {
   bottle: BottleData;
   capacity: number;
+  /** 1-based position on the board, so the label can name which tube this is. */
+  index: number;
   /** Per-segment concealment (bottom-first), for the hidden-colors mechanic. */
   hidden?: boolean[];
   /** Funnel tint (funnel mechanic): the only color this tube accepts, or null for an ordinary tube. */
@@ -67,10 +69,50 @@ function coverScaleX(capacity: number): number {
   return Math.cos(tilt) + aspect * Math.sin(tilt) + 0.05;
 }
 
+/**
+ * The tube's accessible description. A sighted player reads a tube's state straight off the glass —
+ * the cap, the collar tint, the ice block, the highlight — so a label that only counts filled
+ * segments leaves a screen-reader player unable to plan a single pour. Name the tube, what is on top
+ * (the only thing that can be poured out), and every modifier that changes what is legal.
+ */
+function bottleLabel({
+  index,
+  bottle,
+  capacity,
+  hidden,
+  funnel,
+  frozenCount,
+  iceTint,
+  capped,
+  isTarget,
+}: Pick<Props, 'index' | 'bottle' | 'capacity' | 'hidden' | 'funnel' | 'capped' | 'isTarget'> & {
+  frozenCount: number;
+  iceTint: Color | null;
+}): string {
+  if (capped) return `bottle ${index}, complete, ${bottle[0] ?? ''}`;
+
+  const parts = [`bottle ${index}`];
+  if (bottle.length === 0) {
+    parts.push('empty');
+  } else {
+    parts.push(`${bottle.length} of ${capacity} filled`);
+    // The top band is the pourable one — concealed cells stay concealed here too, or the label
+    // would hand out exactly the information the hidden-colors mechanic exists to withhold.
+    parts.push(hidden?.[bottle.length - 1] ? 'top hidden' : `top ${bottle[bottle.length - 1]}`);
+  }
+  if (funnel != null) parts.push(`only accepts ${funnel}`);
+  if (frozenCount > 0 && iceTint != null) {
+    parts.push(`${frozenCount} frozen, thaws when ${iceTint} is complete`);
+  }
+  if (isTarget) parts.push('valid target');
+  return parts.join(', ');
+}
+
 /** A test tube of stacked liquid segments. Lifts and tilts slightly when selected. */
 export function Bottle({
   bottle,
   capacity,
+  index,
   hidden,
   funnel,
   frozen,
@@ -141,7 +183,19 @@ export function Bottle({
         hintRole ? `${styles.hint} ${hintRole === 'from' ? styles.hintFrom : styles.hintTo}` : ''
       }`}
       onClick={onTap}
-      aria-label={`bottle with ${bottle.length} of ${capacity} filled`}
+      aria-label={bottleLabel({
+        index,
+        bottle,
+        capacity,
+        hidden,
+        funnel,
+        frozenCount,
+        iceTint,
+        capped,
+        isTarget,
+      })}
+      // A tube is a toggle: tap to pick it up as the pour source, tap again to put it down.
+      aria-pressed={selected}
       animate={{ y: selected ? -lift : 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 26 }}
       whileTap={{ scale: 0.96 }}

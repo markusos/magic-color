@@ -25,7 +25,7 @@ test('auto-solves a level to a win, driving the real board + win overlay', async
   await page.getByRole('button', { name: 'Play' }).click();
 
   // The board renders (baked level 1 is instant), then open the inspector and auto-solve.
-  await expect(page.getByLabel(/bottle with/i).first()).toBeVisible();
+  await expect(page.getByLabel(/^bottle \d/i).first()).toBeVisible();
   await page.getByRole('button', { name: 'Show level inspector' }).click();
   await page.getByRole('button', { name: 'auto-solve' }).click();
 
@@ -36,4 +36,12 @@ test('auto-solves a level to a win, driving the real board + win overlay', async
   // The overlay shows the earned rating. Scope to the overlay panel (the button's parent) — an
   // identical live-preview star rating also lives in the header.
   await expect(nextLevel.locator('..').getByRole('img', { name: /of 3 stars/ })).toBeVisible();
+
+  // The win panel is a real modal dialog, not just a div over a backdrop: a keyboard player lands
+  // inside it rather than on the board behind, and Tab can't walk back out to the tubes.
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+  await expect(nextLevel).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(dialog.locator(':focus')).toHaveCount(1);
 });

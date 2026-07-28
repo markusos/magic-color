@@ -40,6 +40,33 @@ describe('Overlay visibility', () => {
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
+  // The panel used to be a plain div over a backdrop: visually modal, but focus stayed on the board
+  // behind it, Tab walked straight out, and a screen-reader player was never told the attempt ended.
+  it('is a real dialog: named by its heading, and it takes focus', () => {
+    render(<Overlay />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName('Perfect!');
+    // Focus lands on the action the player is meant to take, not behind the backdrop.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Next Level/ }));
+  });
+
+  it('keeps Tab inside the panel', async () => {
+    setState({ status: 'deadlocked' });
+    render(<Overlay />);
+    const restart = screen.getByRole('button', { name: /Restart Level/ });
+    expect(document.activeElement).toBe(restart);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(restart); // the sole control — Tab cycles back to it
+  });
+
+  // No Escape here on purpose: the attempt is over and the panel exists to make the player choose.
+  it('does not close on Escape', async () => {
+    render(<Overlay />);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
   it('shows on win, deadlock and stuck', () => {
     for (const status of ['won', 'deadlocked', 'stuck'] as const) {
       setState({ status });
