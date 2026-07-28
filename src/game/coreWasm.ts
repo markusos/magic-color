@@ -39,12 +39,28 @@ export interface HintMove {
   to: number;
 }
 
-/** The hint worker's request message (`coreHintWorker.ts`). */
+/** A solve request: the board to search and the node budget to spend on it. */
 export interface HintRequest {
   state: GameState;
   hidden: HiddenGrid;
   overlays: Overlays;
   maxNodes: number;
+}
+
+/**
+ * The hint worker's request message (`coreHintWorker.ts`) — a {@link HintRequest} plus the
+ * correlation id `solveMove` mints for it. The worker is shared and reused, so replies must say
+ * which request they answer; without that, an answer to a superseded solve is indistinguishable
+ * from the answer the current caller is waiting for.
+ */
+export interface HintWorkerRequest extends HintRequest {
+  id: number;
+}
+
+/** The hint worker's reply — the answer, tagged with the id of the request it belongs to. */
+export interface HintWorkerReply {
+  id: number;
+  move: HintMove | null;
 }
 
 /** The core's "no color" sentinel (see core `types::NO_COLOR`). */

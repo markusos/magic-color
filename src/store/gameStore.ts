@@ -765,6 +765,11 @@ export const useGameStore = create<GameStore>((set, get) => {
         moves: [],
         undos: 0,
         selected: null,
+        // Disarm the reject shake with the rest of the attempt. Restart bumps `boardNonce`, which
+        // remounts every tube — and a tube that mounts holding a non-zero `shakeToken` plays the
+        // shake on sight, so a stale rejection would make a random tube twitch on the fresh board.
+        rejectedTube: null,
+        rejectedNonce: 0,
         hint: null,
         hintUsed: false,
         hintLoading: false,

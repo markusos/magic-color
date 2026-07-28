@@ -4,12 +4,19 @@
  * to initialize, every request answers `null` ("no hint") — the store already treats that as
  * unavailable.
  */
-import { initCoreWasm, wasmHintMove, type HintMove, type HintRequest } from './coreWasm';
+import {
+  initCoreWasm,
+  wasmHintMove,
+  type HintMove,
+  type HintWorkerReply,
+  type HintWorkerRequest,
+} from './coreWasm';
 
-self.onmessage = (e: MessageEvent<HintRequest>) => {
-  const { state, hidden, overlays, maxNodes } = e.data;
+self.onmessage = (e: MessageEvent<HintWorkerRequest>) => {
+  const { id, state, hidden, overlays, maxNodes } = e.data;
   void initCoreWasm().then((ok) => {
     const move: HintMove | null = ok ? wasmHintMove(state, hidden, overlays, maxNodes) : null;
-    (self as unknown as Worker).postMessage(move);
+    // Echo the request id so the caller can tell this answer from a superseded solve's.
+    (self as unknown as Worker).postMessage({ id, move } satisfies HintWorkerReply);
   });
 };

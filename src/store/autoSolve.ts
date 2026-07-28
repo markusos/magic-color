@@ -148,16 +148,22 @@ export function createAutoSolve({ get, set, commit }: AutoSolveDeps): AutoSolveC
       const overlays = { funnels, ice };
       const t0 = performance.now();
       let settled = false;
-      const done = (move: HintMove | null, timedOut = false) => {
+      const done = (move: HintMove | null, reason?: 'timeout' | 'superseded') => {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        // A hint (or a newer run) claimed the shared worker — this solve has no answer coming. End
+        // the run silently: it was superseded, not stopped by a real failure, so no notice fires.
+        if (reason === 'superseded') {
+          finishRun();
+          return;
+        }
         if (!live()) {
           finishRun();
           return;
         }
         if (!move) {
-          halt(timedOut ? 'Solver timed out' : 'No further moves');
+          halt(reason === 'timeout' ? 'Solver timed out' : 'No further moves');
           return;
         }
         // Per-move timing at debug level, so the default console stays minimal (start/end only).
@@ -166,8 +172,10 @@ export function createAutoSolve({ get, set, commit }: AutoSolveDeps): AutoSolveC
         );
         apply(move.from, move.to);
       };
-      const timeout = setTimeout(() => done(null, true), AUTO_SOLVE_MOVE_TIMEOUT_MS);
-      solveMove({ state: current, hidden, overlays, maxNodes: AUTO_SOLVE_NODE_BUDGET }, (move) => done(move));
+      const timeout = setTimeout(() => done(null, 'timeout'), AUTO_SOLVE_MOVE_TIMEOUT_MS);
+      solveMove({ state: current, hidden, overlays, maxNodes: AUTO_SOLVE_NODE_BUDGET }, (move, superseded) =>
+        done(move, superseded ? 'superseded' : undefined),
+      );
     };
 
     step(); // first move computed immediately; the rest follow every AUTO_SOLVE_DELAY_MS

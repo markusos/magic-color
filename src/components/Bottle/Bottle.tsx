@@ -118,8 +118,14 @@ export function Bottle({
   // (glass + liquid together), independent of the tilt rotation, so the two never fight.
   const reduceMotion = useReducedMotion();
   const shakeX = useMotionValue(0);
+  // Only a token that CHANGES while mounted is a fresh rejection. A tube that MOUNTS already holding
+  // a non-zero token is re-entering a board that was left mid-rejection (Home → Continue remounts the
+  // whole board; so does any board-nonce remount), and must not twitch on sight.
+  const prevShakeRef = useRef(shakeToken);
   useEffect(() => {
-    if (!shakeToken || reduceMotion) return;
+    const isNewRejection = prevShakeRef.current !== shakeToken;
+    prevShakeRef.current = shakeToken;
+    if (!isNewRejection || !shakeToken || reduceMotion) return;
     const amp = Math.max(3, lift * 0.24);
     const controls = animate(shakeX, [0, -amp, amp, -amp * 0.7, amp * 0.7, -amp * 0.4, 0], {
       duration: 0.4,

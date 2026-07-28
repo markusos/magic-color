@@ -71,11 +71,18 @@ export function createHint({ get, set, recordHint, stopAutoSolve }: HintDeps): H
     // Settle one request: stop the spinner timer, then either pulse the move or pop the
     // "no hint" notice. Optimal *from the current board* (after any undos / partial solve) under the
     // live overlays — not necessarily the baked solution's next move.
-    const finish = (move: HintMove | null) => {
+    const finish = (move: HintMove | null, superseded?: boolean) => {
       pending = false;
       if (spinnerTimer) {
         clearTimeout(spinnerTimer);
         spinnerTimer = null;
+      }
+      // An auto-solve run claimed the shared worker before this hint was answered. There is no
+      // verdict to report — just stand down quietly (no "no hint" popover, no cue), leaving the
+      // button live so the player can simply ask again.
+      if (superseded) {
+        set({ hintLoading: false });
+        return;
       }
       if (move) {
         // Taking a hint caps this attempt's rating to 1 star (see `hintUsed`) and adds to the

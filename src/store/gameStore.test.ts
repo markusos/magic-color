@@ -779,6 +779,18 @@ describe('undo / restart', () => {
     // metadata is untouched by restart, asserted above via loadLevel).
     expect(solveViaHints(store().current, store().hidden)).not.toBeNull();
   });
+
+  // Restart bumps `boardNonce`, which remounts every tube — and a tube mounts shaking if it's still
+  // holding a non-zero reject token, so a rejection left over from the previous attempt would make a
+  // random tube twitch on the fresh board.
+  it('restart disarms a pending reject shake', () => {
+    useGameStore.setState({ rejectedTube: 2, rejectedNonce: 3 });
+    const nonceBefore = store().boardNonce;
+    store().restart();
+    expect(store().boardNonce).toBe(nonceBefore + 1); // the tubes really do remount
+    expect(store().rejectedTube).toBeNull();
+    expect(store().rejectedNonce).toBe(0);
+  });
 });
 
 describe('hint', () => {
