@@ -260,13 +260,68 @@ export interface GameStore {
 // they init explicitly via `initCoreWasmSync` (see src/test/setup.ts).
 if (typeof Worker !== 'undefined') void initCoreWasm();
 
+/**
+ * The per-attempt fields, cleared.
+ *
+ * FOUR paths start or abandon an attempt — installing a fresh board, restarting, beginning a load,
+ * and constructing the store — and each one used to re-type this list by hand. Keeping four copies in
+ * step is exactly the kind of bookkeeping that quietly fails: the copy in `restart` was missing the
+ * reject-shake token, so a rejection left over from the previous attempt made a tube twitch on the
+ * brand-new board. One list, spread everywhere.
+ *
+ * A function, not a constant: the empty arrays must not be shared between two live states. Typed as
+ * an exact `Pick` rather than `Partial`, so it can also build the store's initial state — and so
+ * adding a per-attempt field to {@link GameStore} is a compile error until it is reset here too.
+ */
+type ClearedAttempt = Pick<
+  GameStore,
+  | 'history'
+  | 'hiddenHistory'
+  | 'moves'
+  | 'undos'
+  | 'newBest'
+  | 'selected'
+  | 'rejectedTube'
+  | 'rejectedNonce'
+  | 'hint'
+  | 'hintUsed'
+  | 'hintLoading'
+  | 'hintUnavailable'
+  | 'autoSolving'
+  | 'autoSolveNotice'
+>;
+
+const clearedAttempt = (): ClearedAttempt => ({
+  history: [],
+  hiddenHistory: [],
+  moves: [],
+  undos: 0,
+  newBest: false,
+  selected: null,
+  rejectedTube: null,
+  rejectedNonce: 0,
+  hint: null,
+  hintUsed: false,
+  hintLoading: false,
+  hintUnavailable: false,
+  autoSolving: false,
+  autoSolveNotice: null,
+});
+
 export const useGameStore = create<GameStore>((set, get) => {
   // The persisted campaign — the sole owner of progress + localStorage.
   const campaign = createCampaign();
 
+  /** This attempt's score and rating: undos count toward the score, and a hint caps it to 1 star. */
+  const attemptResult = (): { score: number; stars: Stars } => {
+    const { moves, undos, optimal, twoStarMax, hintUsed } = get();
+    const score = moves.length + undos;
+    return { score, stars: hintUsed ? 1 : starsFor(score, optimal, twoStarMax) };
+  };
+
   /**
-   * Commit a new board: set the synchronously-known status. On a win, record the best result for
-   * the current level via the campaign and mirror it into the reactive fields.
+   * Commit a new board: set the synchronously-known status, and on a win let the active mode record
+   * whatever it keeps (see {@link MODES}).
    */
   const commit = (current: GameState, extra: Partial<GameStore>) => {
     const hidden = extra.hidden ?? get().hidden;
@@ -279,54 +334,16 @@ export const useGameStore = create<GameStore>((set, get) => {
     const status = deriveStatus(current, { hidden, funnels, ice });
     set({ current, status, ...extra });
 
-    if (status !== 'won') return;
-
-    if (get().mode === 'endless') {
-      // Endless: count the win toward the streak and keep the longest seen (no per-level records).
-      const streak = get().endlessStreak + 1;
-      set({ endlessStreak: streak, endlessBestStreak: campaign.recordRandomHard(streak) });
-      return;
-    }
-
-    if (get().mode === 'daily') {
-      // Daily: record today's result (best kept) and refresh the streak. No per-level/campaign record.
-      const { dailyKey, moves, undos, optimal, twoStarMax, hintUsed } = get();
-      if (dailyKey) {
-        const score = moves.length + undos;
-        const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
-        const record = campaign.recordDaily(dailyKey, stars, score);
-        set({ dailyResult: record, dailyStreak: campaign.dailyStreak(todayKey()) });
-      }
-      return;
-    }
-
-    const { level, moves, undos, optimal, twoStarMax, hintUsed } = get();
-    // Undos count toward the rating: the score is the real move count plus undos used.
-    const score = moves.length + undos;
-    // The best held BEFORE this attempt is recorded (the field was set at level load and is untouched
-    // during play). Capture it now so the overlay can celebrate beating it — `campaign.complete` below
-    // overwrites the mirrored `best`, so this must be read first.
-    const prevBest = get().best;
-    // A hinted solve is capped to 1 star regardless of move count (see `hintUsed`).
-    const stars = hintUsed ? 1 : starsFor(score, optimal, twoStarMax);
-    const record = campaign.complete(level, score, stars);
-    // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
-    set({
-      ...record,
-      // Only a genuine improvement over a prior best counts — never the first clear of a level.
-      newBest: prevBest !== null && score < prevBest,
-      levelStars: campaign.levelStars,
-      campaignComplete: campaign.campaignComplete,
-    });
+    if (status === 'won') MODES[get().mode].recordWin();
   };
 
   /**
    * The reset fields shared by every "install a freshly generated board" path (`applyLevel`,
-   * `applyRandom`): clear the in-progress attempt (history / moves / undos / selection, and re-seed
-   * the core-side visited registry), install the recolored `board`/`funnels` alongside the canonical `initial`/`initial*`
-   * (kept generator-canonical so Restart re-rolls the hues), carry the board's level metadata, clear
-   * `loading`, and bump the remount nonce. The mode-specific fields (campaign records vs. the endless
-   * reset) are spread on top by each caller.
+   * `applyRandom`): clear the in-progress attempt (see {@link clearedAttempt}, and re-seed the
+   * core-side visited registry), install the recolored `board`/`funnels` alongside the canonical
+   * `initial`/`initial*` (kept generator-canonical so Restart re-rolls the hues), carry the board's
+   * level metadata, clear `loading`, and bump the remount nonce. The mode-specific fields (campaign
+   * records vs. the endless reset) are spread on top by each caller.
    */
   const freshBoardState = (
     generated: LoadedLevel,
@@ -335,6 +352,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   ): Partial<GameStore> => {
     wasmStuck.reset(board); // re-seed the core-side visited registry with the new board
     return {
+      ...clearedAttempt(),
       initial: generated.state,
       hidden: display.hidden,
       initialHidden: generated.hidden,
@@ -342,20 +360,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       initialFunnels: generated.funnels,
       ice: display.ice,
       initialIce: generated.ice,
-      hiddenHistory: [],
-      history: [],
-      moves: [],
-      undos: 0,
-      newBest: false,
-      selected: null,
-      rejectedTube: null,
-      rejectedNonce: 0,
-      hint: null,
-      hintUsed: false,
-      hintLoading: false,
-      hintUnavailable: false,
-      autoSolving: false,
-      autoSolveNotice: null,
       boardNonce: get().boardNonce + 1,
       loading: false,
       phase: generated.phase,
@@ -410,24 +414,7 @@ export const useGameStore = create<GameStore>((set, get) => {
    */
   const beginLoad = (pending: Partial<GameStore>) => {
     autoSolver.stop(); // the outgoing board is gone — don't let a run apply another move to it
-    set({
-      loading: true,
-      status: 'playing',
-      history: [],
-      hiddenHistory: [],
-      moves: [],
-      undos: 0,
-      newBest: false,
-      selected: null,
-      rejectedTube: null,
-      rejectedNonce: 0,
-      hint: null,
-      hintUsed: false,
-      hintLoading: false,
-      hintUnavailable: false,
-      autoSolveNotice: null,
-      ...pending,
-    });
+    set({ loading: true, status: 'playing', ...clearedAttempt(), ...pending });
   };
 
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
@@ -513,24 +500,7 @@ export const useGameStore = create<GameStore>((set, get) => {
    */
   const reloadBoard = () => {
     resetLiveGenerator();
-    const { mode, level, dailyKey } = get();
-    if (mode === 'endless') {
-      beginLoad({});
-      deferAfterPaint(() => applyRandom(randomSeed()));
-      return;
-    }
-    if (mode === 'daily') {
-      const key = dailyKey ?? todayKey();
-      beginLoad({});
-      deferAfterPaint(() => applyDaily(key));
-      return;
-    }
-    if (hasBakedLevel(level)) {
-      applyLevel(level); // deterministic + synchronous — no spinner needed
-      return;
-    }
-    beginLoad({});
-    deferAfterPaint(() => applyLevel(level));
+    MODES[get().mode].reload();
   };
 
   /**
@@ -564,6 +534,101 @@ export const useGameStore = create<GameStore>((set, get) => {
     deferAfterPaint(() => applyDaily(key));
   };
 
+  /**
+   * Everything that differs BETWEEN MODES, in one table.
+   *
+   * The three modes diverge in exactly three places — what a win records, what "next" means, and what
+   * reloading regenerates — and each of those used to be its own `if (mode === 'endless') … if (mode
+   * === 'daily') … else campaign` ladder in a different function. Adding a fourth mode meant finding
+   * all three ladders and remembering the shape each one expected. Here a mode is a single entry and
+   * the type names the three things it owes; everything the modes SHARE (the spinner reset, the
+   * recolor, the commit) stays in the shared path above, which is the point.
+   *
+   * Declared after the loaders it dispatches to: no entry runs while the store is being built — every
+   * one is reached from a user action or a deferred load — so the ordering costs nothing.
+   */
+  interface ModeBehavior {
+    /** Persist the win that just landed. Each mode keeps a different record — or none. */
+    recordWin: () => void;
+    /** Advance past a finished board. */
+    next: () => void;
+    /** Re-generate the CURRENT board (admin/debug), the way this mode produced it. */
+    reload: () => void;
+  }
+
+  const MODES: Record<GameMode, ModeBehavior> = {
+    campaign: {
+      recordWin: () => {
+        const { level, best: prevBest } = get();
+        const { score, stars } = attemptResult();
+        // `prevBest` is the best held BEFORE this attempt (set at level load, untouched during play).
+        // Read it before `campaign.complete`, which overwrites the mirrored `best`.
+        const record = campaign.complete(level, score, stars);
+        // Completing the last baked level flips `campaignComplete`, unlocking the random mode on Home.
+        set({
+          ...record,
+          // Only a genuine improvement over a prior best counts — never the first clear of a level.
+          newBest: prevBest !== null && score < prevBest,
+          levelStars: campaign.levelStars,
+          campaignComplete: campaign.campaignComplete,
+        });
+      },
+      next: () => {
+        // Past the last baked level the campaign doesn't continue — flow into the random mode.
+        if (get().level >= BAKED_LEVEL_COUNT) {
+          playRandom();
+          return;
+        }
+        loadLevel(get().level + 1);
+      },
+      reload: () => {
+        const { level } = get();
+        if (hasBakedLevel(level)) {
+          applyLevel(level); // deterministic + synchronous — no spinner needed
+          return;
+        }
+        beginLoad({});
+        deferAfterPaint(() => applyLevel(level));
+      },
+    },
+
+    endless: {
+      // Count the win toward the streak and keep the longest seen (no per-level records).
+      recordWin: () => {
+        const streak = get().endlessStreak + 1;
+        set({ endlessStreak: streak, endlessBestStreak: campaign.recordRandomHard(streak) });
+      },
+      // Keep the streak going (beginLoad leaves `endlessStreak` alone); just re-roll a new board.
+      next: () => {
+        const seed = randomSeed();
+        beginLoad({});
+        deferAfterPaint(() => applyRandom(seed));
+      },
+      reload: () => {
+        beginLoad({});
+        deferAfterPaint(() => applyRandom(randomSeed()));
+      },
+    },
+
+    daily: {
+      // Record today's result (best kept) and refresh the streak. No per-level/campaign record.
+      recordWin: () => {
+        const { dailyKey } = get();
+        if (!dailyKey) return;
+        const { score, stars } = attemptResult();
+        const record = campaign.recordDaily(dailyKey, stars, score);
+        set({ dailyResult: record, dailyStreak: campaign.dailyStreak(todayKey()) });
+      },
+      // One board per day — there is no "next" (the win overlay offers Share / Home instead).
+      next: () => {},
+      reload: () => {
+        const key = get().dailyKey ?? todayKey();
+        beginLoad({});
+        deferAfterPaint(() => applyDaily(key));
+      },
+    },
+  };
+
   // Initial level: resume where the player left off. The displayed board gets fresh random hues;
   // `initial` stays canonical so Restart re-rolls them. A baked start loads instantly; a tail start
   // shows the spinner and generates on the next macrotask (mirrors `loadLevel`).
@@ -589,19 +654,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     initialFunnels: firstInitialFunnels,
     ice: firstDisplay.ice,
     initialIce: firstInitialIce,
-    hiddenHistory: [],
-    history: [],
-    moves: [],
-    undos: 0,
-    selected: null,
-    rejectedTube: null,
-    rejectedNonce: 0,
-    hint: null,
-    hintUsed: false,
-    hintLoading: false,
-    hintUnavailable: false,
-    autoSolving: false,
-    autoSolveNotice: null,
+    ...clearedAttempt(),
     boardNonce: 0,
     status: first ? deriveStatus(firstBoard, firstDisplay) : 'playing',
     loading: !startBaked,
@@ -612,7 +665,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     twoStarMax: first?.twoStarMax ?? 2,
     liveProvenance: first?.liveProvenance ?? null,
     ...campaign.recordFor(startLevel),
-    newBest: false,
     furthest: campaign.furthest,
     campaignComplete: campaign.campaignComplete,
     levelStars: campaign.levelStars,
@@ -624,23 +676,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     dailyStreak: campaign.dailyStreak(todayKey()),
 
     loadLevel,
-    nextLevel: () => {
-      // The daily is a single board per day — there's no "next" (the win overlay offers Share/Home).
-      if (get().mode === 'daily') return;
-      if (get().mode === 'endless') {
-        // Keep the streak going (beginLoad leaves `endlessStreak` alone); just re-roll a new board.
-        const seed = randomSeed();
-        beginLoad({});
-        deferAfterPaint(() => applyRandom(seed));
-        return;
-      }
-      // Past the last baked level the campaign doesn't continue — flow into the random mode.
-      if (get().level >= BAKED_LEVEL_COUNT) {
-        playRandom();
-        return;
-      }
-      loadLevel(get().level + 1);
-    },
+    nextLevel: () => MODES[get().mode].next(),
     playRandom,
     loadRandom,
     playDaily,
@@ -778,23 +814,10 @@ export const useGameStore = create<GameStore>((set, get) => {
       const { board, overlays } = recolorBoard(shuffled.state, shuffled.overlays);
       wasmStuck.reset(board); // restart = a fresh attempt: re-seed the visited registry
       commit(board, {
-        history: [],
-        hiddenHistory: [],
+        ...clearedAttempt(),
         hidden: overlays.hidden,
         funnels: overlays.funnels,
         ice: overlays.ice,
-        moves: [],
-        undos: 0,
-        selected: null,
-        // Disarm the reject shake with the rest of the attempt. Restart bumps `boardNonce`, which
-        // remounts every tube — and a tube that mounts holding a non-zero `shakeToken` plays the
-        // shake on sight, so a stale rejection would make a random tube twitch on the fresh board.
-        rejectedTube: null,
-        rejectedNonce: 0,
-        hint: null,
-        hintUsed: false,
-        hintLoading: false,
-        hintUnavailable: false,
         boardNonce: get().boardNonce + 1,
       });
     },
