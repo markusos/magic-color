@@ -387,6 +387,42 @@ export const useGameStore = create<GameStore>((set, get) => {
     commit(board, { ...freshBoardState(generated, board, overlays), ...modeFields });
   };
 
+  /**
+   * The reset applied the MOMENT a board replacement starts — before the replacement exists. Raises
+   * the spinner, ends any auto-solve run, and retires the outgoing attempt: its terminal `status`,
+   * its history/moves/undos, and every transient badge.
+   *
+   * Clearing `status` here is what keeps the win / game-over overlay from sitting on top of the
+   * spinner for the whole generation (a live board takes ~1–2s, so "Next Board" otherwise reads as
+   * a dead button); clearing the attempt is what stops the toolbar and the live star preview from
+   * describing — and acting on — a board that has already been replaced.
+   *
+   * The BOARD fields themselves deliberately stay put: nothing renders them while `loading` is up,
+   * and `installBoard` replaces them wholesale via {@link freshBoardState}. Callers pass the
+   * mode/header fields the spinner should already show (level, phase, mechanics).
+   */
+  const beginLoad = (pending: Partial<GameStore>) => {
+    autoSolver.stop(); // the outgoing board is gone — don't let a run apply another move to it
+    set({
+      loading: true,
+      status: 'playing',
+      history: [],
+      hiddenHistory: [],
+      moves: [],
+      undos: 0,
+      newBest: false,
+      selected: null,
+      rejectedTube: null,
+      rejectedNonce: 0,
+      hint: null,
+      hintUsed: false,
+      hintLoading: false,
+      hintUnavailable: false,
+      autoSolveNotice: null,
+      ...pending,
+    });
+  };
+
   /** Synchronously generate/load `level` and commit it as the active board (clears `loading`). */
   const applyLevel = (level: number) => {
     const generated = getLevel(level);
@@ -434,9 +470,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       applyLevel(level);
       return;
     }
-    set({
-      loading: true,
-      selected: null,
+    beginLoad({
       mode: 'campaign',
       level,
       phase: phaseForLevel(level),
@@ -452,9 +486,7 @@ export const useGameStore = create<GameStore>((set, get) => {
    * `playRandom` rolls a fresh seed; the admin hatch uses this directly to reproduce a reported board.
    */
   const loadRandom = (seed: number) => {
-    set({
-      loading: true,
-      selected: null,
+    beginLoad({
       mode: 'endless',
       endlessStreak: 0,
       phase: 'hard',
@@ -476,13 +508,13 @@ export const useGameStore = create<GameStore>((set, get) => {
     resetLiveGenerator();
     const { mode, level, dailyKey } = get();
     if (mode === 'endless') {
-      set({ loading: true, selected: null });
+      beginLoad({});
       deferAfterPaint(() => applyRandom(randomSeed()));
       return;
     }
     if (mode === 'daily') {
       const key = dailyKey ?? todayKey();
-      set({ loading: true, selected: null });
+      beginLoad({});
       deferAfterPaint(() => applyDaily(key));
       return;
     }
@@ -490,7 +522,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       applyLevel(level); // deterministic + synchronous — no spinner needed
       return;
     }
-    set({ loading: true, selected: null });
+    beginLoad({});
     deferAfterPaint(() => applyLevel(level));
   };
 
@@ -501,9 +533,7 @@ export const useGameStore = create<GameStore>((set, get) => {
    */
   const playDaily = () => {
     const key = todayKey();
-    set({
-      loading: true,
-      selected: null,
+    beginLoad({
       mode: 'daily',
       dailyKey: key,
       phase: 'hard',
@@ -576,9 +606,9 @@ export const useGameStore = create<GameStore>((set, get) => {
       // The daily is a single board per day — there's no "next" (the win overlay offers Share/Home).
       if (get().mode === 'daily') return;
       if (get().mode === 'endless') {
-        // Keep the streak going; just re-roll a new random board.
+        // Keep the streak going (beginLoad leaves `endlessStreak` alone); just re-roll a new board.
         const seed = randomSeed();
-        set({ loading: true, selected: null });
+        beginLoad({});
         deferAfterPaint(() => applyRandom(seed));
         return;
       }

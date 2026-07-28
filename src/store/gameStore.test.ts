@@ -288,6 +288,69 @@ describe('live-level loading state (drives the spinner)', () => {
     expect(store().loading).toBe(false);
     expect(store().current.bottles.length).toBeGreaterThan(0);
   });
+
+  // The overlay is driven by `status` alone, so a terminal status surviving into the spinner window
+  // leaves the win / game-over panel sitting on top of the spinner for the whole ~1–2s generation —
+  // "Next Board" then reads as a dead button. The attempt fields have to go with it: the toolbar and
+  // the live star preview would otherwise describe (and act on) the board that was just replaced.
+  it('retires the outgoing attempt the moment a live load starts', () => {
+    useGameStore.setState({
+      status: 'won',
+      moves: [{ from: 0, to: 1 }] as never,
+      undos: 2,
+      history: [store().current],
+      hiddenHistory: [store().hidden],
+      hintUsed: true,
+      hintUnavailable: true,
+      newBest: true,
+      rejectedTube: 1,
+      rejectedNonce: 4,
+    });
+    store().loadLevel(LIVE_HIDDEN);
+
+    expect(store().loading).toBe(true);
+    expect(store().status).toBe('playing'); // no stale overlay over the spinner
+    expect(store().moves).toEqual([]);
+    expect(store().undos).toBe(0);
+    expect(store().history).toEqual([]);
+    expect(store().hiddenHistory).toEqual([]);
+    expect(store().hintUsed).toBe(false);
+    expect(store().hintUnavailable).toBe(false);
+    expect(store().newBest).toBe(false);
+    expect(store().rejectedTube).toBeNull();
+    expect(store().rejectedNonce).toBe(0);
+  });
+
+  it('clears a won status when the endless mode re-rolls, without dropping the streak', async () => {
+    useGameStore.setState({ mode: 'endless', endlessStreak: 3, status: 'won' });
+    store().nextLevel();
+    expect(store().loading).toBe(true);
+    expect(store().status).toBe('playing');
+    expect(store().endlessStreak).toBe(3); // the streak survives the re-roll
+    await flushLoad();
+    expect(store().loading).toBe(false);
+  });
+
+  it('clears a won status when the daily starts behind the spinner', () => {
+    useGameStore.setState({ status: 'won' });
+    store().playDaily();
+    expect(store().loading).toBe(true);
+    expect(store().status).toBe('playing');
+  });
+
+  // Every path that raises the spinner must retire the status with it — one missed path is one
+  // route back to a win panel stranded over the loader.
+  it.each([
+    ['playRandom', () => store().playRandom()],
+    ['loadRandom', () => store().loadRandom(7)],
+    ['reloadBoard (live)', () => store().reloadBoard()],
+  ])('%s clears a terminal status behind the spinner', (_label, act) => {
+    store().loadLevel(LIVE_HIDDEN); // put a LIVE board in play so reloadBoard takes the spinner path
+    useGameStore.setState({ status: 'deadlocked', loading: false });
+    act();
+    expect(store().loading).toBe(true);
+    expect(store().status).toBe('playing');
+  });
 });
 
 describe('post-campaign "Play Random" mode', () => {

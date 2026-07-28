@@ -12,6 +12,7 @@ function setState(overrides: Partial<Parameters<typeof useGameStore.setState>[0]
     dismissHintUnavailable: vi.fn(),
     moves: [],
     status: 'playing',
+    loading: false,
     hintLoading: false,
     hintUnavailable: false,
     ...overrides,
@@ -55,6 +56,16 @@ describe('Toolbar controls', () => {
     act(() => setState({ hintLoading: false, status: 'won' }));
     rerender(<Toolbar />);
     expect(screen.getByRole('button', { name: /hint/i })).toBeDisabled();
+  });
+
+  // While a live board generates, the bar sits under the spinner with no board to act on — every
+  // control would target the level that has already been replaced.
+  it('disables every control while a board is generating', () => {
+    setState({ loading: true, moves: [{ from: 0, to: 1 }] as never });
+    render(<Toolbar />);
+    expect(screen.getByRole('button', { name: /undo/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /hint/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /restart/i })).toBeDisabled();
   });
 });
 

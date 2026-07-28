@@ -10,6 +10,9 @@ export function Toolbar() {
   const requestHint = useGameStore((s) => s.requestHint);
   const moves = useGameStore((s) => s.moves);
   const status = useGameStore((s) => s.status);
+  // While a live board generates, the bar sits under the spinner with no board to act on — every
+  // control would target the level that's already been replaced. Disable the lot until it lands.
+  const loading = useGameStore((s) => s.loading);
   const hintLoading = useGameStore((s) => s.hintLoading);
   const hintUnavailable = useGameStore((s) => s.hintUnavailable);
   const dismissHintUnavailable = useGameStore((s) => s.dismissHintUnavailable);
@@ -23,7 +26,7 @@ export function Toolbar() {
 
   return (
     <div className={styles.toolbar}>
-      <button onClick={undo} disabled={moves.length === 0} title="Undo">
+      <button onClick={undo} disabled={loading || moves.length === 0} title="Undo">
         <Undo2 size={18} strokeWidth={2} aria-hidden />
         Undo
       </button>
@@ -33,7 +36,11 @@ export function Toolbar() {
             No hint available
           </div>
         )}
-        <button onClick={requestHint} disabled={status !== 'playing' || hintLoading} title="Show a hint">
+        <button
+          onClick={requestHint}
+          disabled={loading || status !== 'playing' || hintLoading}
+          title="Show a hint"
+        >
           {hintLoading ? (
             <span className={styles.spinner} aria-hidden />
           ) : (
@@ -42,7 +49,7 @@ export function Toolbar() {
           Hint
         </button>
       </div>
-      <button onClick={restart} title="Restart this level">
+      <button onClick={restart} disabled={loading} title="Restart this level">
         <RotateCcw size={18} strokeWidth={2} aria-hidden />
         Restart
       </button>
