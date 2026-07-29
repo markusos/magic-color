@@ -44,15 +44,30 @@ export type LoadedLevel = PlayableLevel & { liveProvenance?: LiveProvenance };
  * evaluation: anything importing this loader — notably the game store, which builds the resume board
  * at construction — won't finish initializing until the data is in, so `getLevel` and friends below
  * stay fully synchronous. The data is fetched once during boot (and precached by the service worker).
+ *
+ * ## Why this stays a top-level await
+ *
+ * These two awaits ARE the app's boot cost, so they attract "make the dependency explicit" — an
+ * exported `await initGame()` that `main.tsx` calls before importing the app graph. Weighed and
+ * rejected: the top-level await is a guarantee the module system ENFORCES, and the alternative is a
+ * convention nobody enforces. Every consumer here is synchronous and unconditional — `getLevel`,
+ * `hasBakedLevel`, and `BAKED_LEVEL_COUNT`, which the game store and the admin panel both read at
+ * MODULE scope. Deferring initialization turns that constant into a call that returns 0 until
+ * someone remembers to initialize first, and silently mis-sizes the campaign if they don't.
+ *
+ * The real problem these awaits once caused — a stalled fetch hanging the whole page on a bare
+ * background gradient — is fixed where it belongs: the wasm is precached (vite.config.ts) so a warm
+ * launch makes no boot-critical request at all, and `main.tsx` imports the app graph dynamically
+ * behind a boot fallback with a retry. Revisit only if the synchronous `getLevel` contract goes.
  */
 const { BAKED_LEVELS } = await import('./levels.data');
 
-// Live generation runs in the Rust core — the ONLY rules implementation (the JS twin was
-// retired) — so instantiate the wasm before any `getLevel` can need it. Module evaluation
-// already awaits the baked-data import above, so this adds one small parallel-ish await to
-// boot. In tests the setup file has already `initCoreWasmSync`'d, making this a no-op; if it
-// ever genuinely fails (blocked fetch), baked levels still load and the live path throws a
-// clear error instead of silently degrading.
+// Live generation runs in the Rust core — the ONLY rules implementation (the JS twin was retired) —
+// so instantiate the wasm before any `getLevel` can need it. Module evaluation already awaits the
+// baked-data import above, so this adds one small parallel-ish await to boot. In tests the setup
+// file has already `initCoreWasmSync`'d, making this a no-op. If it genuinely fails (blocked fetch,
+// unsupported browser) the app does NOT come up: the rules live core-side since F6, so the store
+// throws while deriving the resume board's status, `main.tsx` catches it and shows the retry screen.
 await initCoreWasm();
 
 /**

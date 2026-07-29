@@ -7,12 +7,26 @@
  *   - `wasmHintMove` — the hint seam, used by the wasm hint worker;
  *   - `wasmStuck` — the stuck-loop check with the visited set held CORE-SIDE (the F3 design
  *     point resolved per F6: canonical keys never cross the boundary — the core owns them);
- *   - `initCoreWasm` — idempotent async init, safe to fire-and-forget on flag enable; every
- *     entry point no-ops (returns the "unavailable" value) until the module is ready, so
- *     callers keep their JS fallback until then.
+ *   - `initCoreWasm` — idempotent async init, safe to fire-and-forget.
  *
  * Wasm calls are SYNCHRONOUS once initialized — this module is used on the main thread (stuck
  * checks are microseconds) and inside the wasm hint worker (long solves stay off-thread).
+ *
+ * ## Two deliberate contracts before `ready`
+ *
+ * Entry points split into two groups, and the split is intentional rather than an oversight:
+ *
+ *   - FAIL SOFT — `wasmStuck.*` and `wasmHintMove` return the "unavailable" value (no verdict /
+ *     no hint). These are ADVISORY: a missing stuck nudge or hint degrades the experience but
+ *     leaves a playable board, and under-firing is the safe direction for both.
+ *   - THROW — `wasmBoardView`, `wasmPlanTap` and `wasmForcePour`. These are the RULES. Since F6
+ *     retired the JS twin there is no second implementation to fall back to, so there is no
+ *     honest value to return: a board whose status and legal moves are unknown cannot be played.
+ *     Failing loudly at boot (where `main.tsx` catches it and shows the retry screen) beats
+ *     silently rendering a board that ignores taps.
+ *
+ * Note that this means the app genuinely cannot start without the wasm — hence it being precached
+ * by the service worker (see vite.config.ts) rather than fetched on every launch.
  */
 import initWasm, {
   Board,
@@ -71,8 +85,9 @@ let initPromise: Promise<boolean> | null = null;
 
 /**
  * Load + instantiate the wasm module (idempotent; concurrent callers share one attempt).
- * Resolves `false` if the platform can't load it (old browser, blocked fetch) — callers just
- * stay on the JS path.
+ * Resolves `false` if the platform can't load it (old browser, blocked fetch) and clears the
+ * memoized attempt so a later call can retry. `false` is NOT a degraded-but-working state: the
+ * advisory entry points go quiet and the rule entry points throw (see the header).
  */
 export function initCoreWasm(): Promise<boolean> {
   if (ready) return Promise.resolve(true);
@@ -85,7 +100,7 @@ export function initCoreWasm(): Promise<boolean> {
       return true;
     })
     .catch((err: unknown) => {
-      console.warn('[core-wasm] init failed — staying on the JS core', err);
+      console.warn('[core-wasm] init failed — the rules surface will throw until a retry succeeds', err);
       initPromise = null; // allow a later retry (e.g. after a transient network failure)
       return false;
     });
